@@ -1831,9 +1831,17 @@ function pillMerge(list, max) {                       // ab 1.85.24: nur echte P
       const key = lab.textContent.replace(/[\d.,:%]+\s*(s|min)?/g, '').replace(/\s+/g, ' ').trim(); if (!key) continue;
       const add = mul ? +mul[1] : 1, o = seen.get(key);
       if (o) o.n += add; else seen.set(key, { lab, n: add, title: key }); } }
-  const all = [...seen.values()].sort((a, b) => b.n - a.n), show = all.slice(0, max), rest = all.slice(max);
-  return '<span class="pmerge">' + show.map(x => { const l = x.lab; l.classList.add('pm'); l.insertAdjacentHTML('beforeend', ` <b class="pcnt">×${x.n}</b>`); return l.outerHTML; }).join('')
-    + (rest.length ? `<span class="art pmore" title="${esc(rest.map(x => x.title + ' ×' + x.n).join(', '))}">+${rest.length}</span>` : '') + '</span>';
+  const all = [...seen.values()].sort((a, b) => b.n - a.n);       // alle, nach Anzahl; was nicht in die Spalte passt, blendet pmFit aus und zählt es in „+n“
+  return '<span class="pmerge">' + all.map(x => { const l = x.lab; l.classList.add('pm'); l.dataset.t = x.title + ' ×' + x.n; l.insertAdjacentHTML('beforeend', ` <b class="pcnt">×${x.n}</b>`); return l.outerHTML; }).join('')
+    + '<span class="art pmore" hidden></span></span>';
+}
+function pmFit(root) {                                // Pillen einer zusammengefassten Zeile: so viele wie in die Spalte passen, Rest als „+n“ (Liste beim Darüberfahren)
+  for (const el of (root || document).querySelectorAll('.pmerge')) {
+    const ps = [...el.querySelectorAll(':scope > .pm')], mo = el.querySelector(':scope > .pmore'); if (!mo || !el.clientWidth) continue;
+    ps.forEach(x => { x.hidden = false; }); mo.hidden = true; let n = 0;
+    for (let i = ps.length - 1; i > 0 && el.scrollWidth > el.clientWidth + 1; i--) { ps[i].hidden = true; n++; mo.hidden = false; mo.textContent = '+' + n; }
+    if (n) mo.title = ps.filter(x => x.hidden).map(x => x.dataset.t).join(', ');
+  }
 }
 const fmtSpan = v => { const x = +v || 0; return x >= 60 ? Math.floor(x / 60) + ':' + String(Math.round(x % 60)).padStart(2, '0') + ' min' : fmtDur(x); };   // Dauer eines Ereignisses
 /* Filter (Sensoren/Art/Notizen) erst nach dem Zusammenfassen: ein Ereignis bleibt, wenn etwas darin sichtbar ist – dann ganz, mit allen Einträgen */
@@ -2148,9 +2156,9 @@ function glGrid(box, o) {
       if (b) { e.preventDefault(); b.click(); return; }
       if (e.key === 'Enter' && o.onRow) { e.preventDefault(); o.onRow({ target: cell, type: 'keydown' }, p.data, cell.closest('.ag-row')); } },
     onSortChanged: () => { if (o.key) try { localStorage.setItem(o.key, JSON.stringify(G.api.getColumnState().filter(s => s.sort).map(s => ({ colId: s.colId, sort: s.sort })))); } catch (e) { } },
-    onModelUpdated: () => { G.sizeSoon(); if (o.onModel) o.onModel(G); },
-    onGridSizeChanged: () => G.fit(), onFirstDataRendered: () => { G.fit(); G.sizeSoon(); },
-    onColumnResized: p => { if (!wk || !p.finished || p.source !== 'uiColumnResized' || !p.column) return;     // von Hand gezogen: Breite merken
+    onModelUpdated: () => { G.sizeSoon(); G.pmSoon(); if (o.onModel) o.onModel(G); }, onViewportChanged: () => G.pmSoon(), onBodyScrollEnd: () => G.pmSoon(),
+    onGridSizeChanged: () => { G.fit(); G.pmSoon(); }, onFirstDataRendered: () => { G.fit(); G.sizeSoon(); G.pmSoon(); },
+    onColumnResized: p => { G.pmSoon(); if (!wk || !p.finished || p.source !== 'uiColumnResized' || !p.column) return;     // von Hand gezogen: Breite merken
       const id = p.column.getColId(); if (id && id !== '_rc') colSave(wk, id, Math.round(p.column.getActualWidth())); },
   };
   G.maxPx = () => { const m = String(o.max || '70vh').match(/^([\d.]+)(vh|px)$/); return m ? (m[2] === 'vh' ? innerHeight * m[1] / 100 : +m[1]) : innerHeight * 0.7; };
@@ -2163,6 +2171,7 @@ function glGrid(box, o) {
     if (Math.abs(box.offsetHeight - h) > 1) box.style.height = h + 'px';
   };
   G.sizeSoon = () => { cancelAnimationFrame(G.raf); G.raf = requestAnimationFrame(G.size); };
+  G.pmSoon = () => { clearTimeout(G.pmt); G.pmt = setTimeout(() => pmFit(box), 30); };   // Pillen an die Spaltenbreite anpassen
   G.fit = () => {                                     // schmal: weniger wichtige Spalten ausblenden (höchste prio, ganz rechts zuerst)
     if (!G.api || G.api.isDestroyed()) return;
     const w = box.clientWidth; if (!w) return;

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.25
+- Pillen einer zusammengefassten Zeile werden nicht mehr abgeschnitten: so viele wie in die Spalte passen, der Rest als „+n“ (Liste beim Darüberfahren); passt sich der Spaltenbreite an.
+
 ## 1.85.24
 - **Zusammengefasste Zeilen ruhig:** eine Zeile je Ereignis; Zeit „20:29–20:34“; in „Art“ und „Was vorkam“ die drei häufigsten Pillen nach Anzahl, Rest als „+n“ (Liste beim Darüberfahren); Zählung einheitlich „×n“; kein Notiz-Symbol als Pille; Dauer ab 1 min als „43:03 min“; Quellen gekürzt („Server-Mikrofon +1“); Sensor-Bestätigung zeigt das beste Ergebnis der Gruppe.
 
