@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.22
+- **Live-Tabelle: eigener Umschalter „Ereignisse | Alle einzeln“** (Standard „Ereignisse“) – unabhängig von Protokolle; Störungen kurz hintereinander, Sensoren und Notizen eines Ereignisses sind eine Zeile.
+- Klick auf ein zusammengefasstes Ereignis (Live und Protokolle): klappt auf und zeigt im Graphen den ganzen Zeitraum vom ersten bis zum letzten Eintrag, markiert.
+
 ## 1.85.21
 - **Aufklapp-Menüs mit Shoelace (MIT, lokal eingebunden):** Art, Sensoren (Protokolle und Live), Sensoren je Verlauf-Zeile und „＋ Rubrik“ schließen bei Klick daneben und mit Esc, werden nicht abgeschnitten, bleiben beim Ankreuzen offen.
 - Ausgeblendete/leere Bereiche liegen außerhalb des Rasters – das Raster ordnet nicht mehr bei jeder Kleinigkeit neu (offene Menüs blieben vorher nicht offen).

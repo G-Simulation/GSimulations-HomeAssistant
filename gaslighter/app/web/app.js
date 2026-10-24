@@ -6718,6 +6718,7 @@ function levTick() {                                  // sichtbarer Bereich änd
   if (w[0] < LEV.fa || w[1] > LEV.fb - 30000) levLoad(true); else levRender();
 }
 let LTBL = null, LTBL_KEY = '';
+const levGrp = () => { try { return localStorage.getItem('gl_lev_grp') !== 'all'; } catch (e) { return true; } };   // Live-Tabelle: Standard „Ereignisse“ (zusammengefasst)
 const LEVOPEN = new Set();                             // aufgeklappte Gruppen der Live-Tabelle
 function levRender() {
   const j = LEV.data, box = $('ldev'); if (!j || !box) return;
@@ -6738,7 +6739,7 @@ function levRender() {
     for (let i = rows.length - 1; i >= 0; i--) if (!inWin(rows[i])) rows.splice(i, 1);
   }
   const sf = STATS.filt.live; if (sf) for (let i = rows.length - 1; i >= 0; i--) if (!statMatch(sf, rows[i], 'live')) rows.splice(i, 1);
-  if (EVVIEW === 'grp') {                              // ab 1.85.20: wie in Protokolle zusammenfassen (Notiz + Störungen + Sensoren eines Ereignisses = eine Zeile)
+  if (levGrp()) {                                     // ab 1.85.20: wie in Protokolle zusammenfassen (ab 1.85.22 eigener Umschalter „Ereignisse | Alle einzeln“) (Notiz + Störungen + Sensoren eines Ereignisses = eine Zeile)
     for (const d of rows) { d._t = d.r ? 'ev' : d.fn ? 'note' : 'sens'; if (d.fn) d.n = d.fn; }
     const cl = evCluster(rows, j); rows.length = 0; rows.push(...cl);
     for (const g of rows) if (g._t === 'grp') { g.k = ''; g.nt = g._children.map(c => c.nt).filter(Boolean).join(' · '); }
@@ -6821,6 +6822,8 @@ function initLev() {
   $('ldevsrc').value = LEV.src;
   $('ldevsrc').onchange = () => { LEV.src = $('ldevsrc').value; levSave(); levLoad(true); };
   $('ldevcfg').onclick = e => { e.stopPropagation(); if (LTBL) LTBL.colMenu($('ldevcfg')); };   // ab 1.84.0 kompaktes Menü „Spalten ▾“ statt der Kästchen-Reihe (levCols bleibt nur als Rückfall ohne Tabelle)
+  { const gb = $('ldevgrp'); if (gb) { const sync = () => gb.querySelectorAll('button').forEach(b => { const on = (b.dataset.v === 'grp') === levGrp(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      gb.querySelectorAll('button').forEach(b => b.onclick = () => { try { localStorage.setItem('gl_lev_grp', b.dataset.v); } catch (e) { } sync(); LEV.sig = ''; levRender(); }); sync(); } }
   const rs = $('ldevrng'); rs.innerHTML = LEV_RNG.map(k => `<option value="${k}">${esc(t('lev_r_' + k))}</option>`).join(''); rs.value = LEV.rng;
   const cf = $('ldevcf'), ct = $('ldevct'); cf.value = LEV.cf || dtl(new Date(new Date(nowServer()).setHours(0, 0, 0, 0))).slice(0, 16); ct.value = LEV.ct || dtl(new Date(nowServer())).slice(0, 16);
   $('ldevcus').hidden = LEV.rng !== 'custom';
