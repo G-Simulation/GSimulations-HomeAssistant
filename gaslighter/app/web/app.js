@@ -1795,7 +1795,10 @@ function evCluster(out, j) {
   const U = out.map(d => { const ch = d._t === 'grp' ? d._children : [d]; let a = Infinity, b = -Infinity, ev = false; for (const c of ch) { const [x, y] = itv(c); if (x < a) a = x; if (y > b) b = y; if (c._t === 'ev') ev = true; } return { d, ch, a, b, ev }; });
   const P = U.map((_, i) => i), f = i => { while (P[i] !== i) { P[i] = P[P[i]]; i = P[i]; } return i; }, un = (i, k) => { const x = f(i), y = f(k); if (x !== y) P[y] = x; };
   const evs = U.map((u, i) => [u, i]).filter(([u]) => u.ev), oth = U.map((u, i) => [u, i]).filter(([u]) => !u.ev);
-  if (mix) for (const [u, i] of evs) for (const [o, k] of oth) if (o.a >= u.a && o.a <= u.b + tail) un(i, k);
+  if (mix) {                                         // ein Ereignis läuft weiter, solange binnen „Gruppe endet … s“ nach dem letzten Eintrag wieder etwas kommt (Störung, Sensor oder Notiz)
+    const ord = U.map((u, i) => i).sort((x, y) => U[x].a - U[y].a); let last = -1, end = -Infinity;
+    for (const i of ord) { const u = U[i]; if (last >= 0 && u.a <= end + tail && (u.ev || U[last].ev || evs.some(([e]) => e.a <= u.a && e.b + tail >= U[last].a))) un(last, i); else if (last >= 0 && u.a > end + tail) end = -Infinity; end = Math.max(end, u.b); last = i; }
+  }
   if (fng) for (const [n, i] of oth) { if (n.d._t !== 'note') continue; const [pre, post] = fnWin(j, n.d.n);
     for (const [u, k] of U.map((u, k) => [u, k])) if (k !== i && (u.d._t !== 'note' ? u.b >= n.a - post && u.a <= n.b + pre : u.a >= n.a - post && u.a <= n.b + pre)) un(i, k); }   // auch mehrere Notizen im selben Zeitfenster
   const by = new Map(); U.forEach((u, i) => { const r = f(i); (by.get(r) || by.set(r, []).get(r)).push(u); });
