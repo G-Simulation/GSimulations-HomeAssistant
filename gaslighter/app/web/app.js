@@ -4610,7 +4610,7 @@ const FORM = [
     ['rise_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
     ['fall_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
     ['min_event_ms', 'num', 0, 2000, 20]]],
-  ['s_ki', [['classify', 'chk'], ['ki_min', 'num', 5, 90, 1, 'classify'], ['ki_bg', 'chk', 'classify'], ['ki_short', 'chk', 'classify'], ['ki_short_ms', 'num', 20, 1000, 10, 'ki_short'], ['ki_damp', 'text', 'classify'], ['ki_learn_fix', 'chk', 'classify'], ['ki_learn_min', 'num', 60, 98, 1, 'ki_learn_fix'], ['ki_embed', 'chk'], ['fp_store', 'chk']]],
+  ['s_ki', [['classify', 'chk'], ['ki_min', 'num', 5, 90, 1, 'classify'], ['ki_bg', 'chk', 'classify'], ['ki_short', 'chk', 'classify'], ['ki_short_ms', 'num', 20, 1000, 10, 'ki_short'], ['ki_damp', 'text', 'classify'], ['ki_learn_fix', 'chk', 'classify'], ['ki_learn_min', 'num', 60, 98, 1, 'ki_learn_fix'], ['ki_notes', 'chk'], ['ki_embed', 'chk'], ['fp_store', 'chk']]],
   ['s_quiet', [['quiet_from', 'time'], ['quiet_to', 'time'], ['quiet_sunday', 'chk']]],
   ['s_rec', [['ctx_s', 'num', 0, 120, 1], ['day_layers', 'chk'], ['day_spec', 'chk'], ['co_record', 'chk']]],
   ['s_wav', [['save_audio', 'chk'], ['audio_novoice', 'chk', 'save_audio'], ['pre_roll_s', 'num', 0, 30, 0.1, 'save_audio'], ['post_roll_s', 'num', 0.1, 60, 0.1, 'save_audio'], ['max_clip_s', 'num', 1, 300, 0.5, 'save_audio']]],
@@ -8017,6 +8017,12 @@ function initProf() {
   $('pfok').onclick = () => pfTeach('finish');
   $('pfdrop').onclick = () => { if (confirm(t('pf_drop_q'))) pfTeach('cancel'); };
   $('scango').onclick = scanGo;
+  if ($('scannt')) $('scannt').onclick = async () => {               // ab 1.85.27: aus Notizen lernen, dann rückwirkend alles neu untersuchen
+    try { const r = await (await fetch('scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"action":"notes"}' })).json();
+      $('scanst').textContent = r.ok ? t('scan_nt_done', { n: r.n, k: (r.kinds || []).join(', ') || '–' }) : t('saveerr');
+      if (r.scan && r.scan.ok) { PF.scan = { state: 'running', done: 0, total: 1 }; setTimeout(scanRender, 1500); } else if (r.scan && r.scan.error === 'busy') alert(t('pf_busy'));
+      pfLoad(); } catch (e) { alert(t('saveerr')); }
+  };
   $('scanstop').onclick = async () => { try { await fetch('scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"action":"cancel"}' }); } catch (e) { } };
 }
 function initEvView() {

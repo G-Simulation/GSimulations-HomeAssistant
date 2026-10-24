@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.26"
+VERSION = "1.85.27"
 
 # =====================================================================
 # Einstellungen
@@ -44,7 +44,7 @@ DEFAULTS = {
     "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0,
     "pre_roll_s": 5, "post_roll_s": 5, "max_clip_s": 60, "ctx_s": 30, "save_audio": False, "audio_novoice": True,
     "day_track": True, "day_layers": True, "day_spec": True, "co_record": True, "fp_store": True,
-    "group_pause_s": 120, "grp_tail_s": 120, "grp_mix": True, "fn_grp": True, "fn_pick": "peak", "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
+    "group_pause_s": 120, "grp_tail_s": 120, "grp_mix": True, "fn_grp": True, "fn_pick": "peak", "ki_notes": True, "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
     "auto_delete": False, "retention_days": 90,
     "active_from": "", "active_to": "", "mqtt": True, "output_dir": "/share/gaslighter_beta" if (os.environ.get("LAERM_CHANNEL") == "beta" or "gaslighter-beta" in os.environ.get("HOSTNAME", "")) else "/share/gaslighter", "language": "auto",
     "mic_port": "", "classify": True, "ki_embed": False, "ki_min": 25, "ki_bg": True, "ki_short": True, "ki_short_ms": 150, "ki_damp": "", "ki_learn_fix": True, "ki_learn_min": 75,
@@ -60,7 +60,7 @@ SPEC = {
     "bg_window": ("int", 1, 3600), "bg_unit": ("choice", ["s", "min"]), "bg_stat": ("choice", ["median", "quiet", "min", "mean", "max"]),
     "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000),
     "pre_roll_s": ("num", 0, 30, 0.1), "post_roll_s": ("num", 0.1, 60, 0.1), "max_clip_s": ("num", 1, 300, 0.5),
-    "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "grp_tail_s": ("int", 0, 3600), "grp_mix": ("bool",), "fn_grp": ("bool",), "fn_pick": ("choice", ["peak", "near"]), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
+    "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "grp_tail_s": ("int", 0, 3600), "grp_mix": ("bool",), "fn_grp": ("bool",), "fn_pick": ("choice", ["peak", "near"]), "ki_notes": ("bool",), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
     "active_from": ("time",), "active_to": ("time",), "mqtt": ("bool",), "output_dir": ("str",),
     "language": ("choice", ["auto", "de", "en"]), "mic_port": ("optstr",), "classify": ("bool",), "ki_embed": ("bool",), "ki_min": ("int", 5, 90), "ki_bg": ("bool",), "ki_short": ("bool",), "ki_short_ms": ("int", 20, 1000), "ki_damp": ("optstr",), "ki_learn_fix": ("bool",), "ki_learn_min": ("int", 60, 98),
     "clip_dir": ("optstr",), "video_width": ("int", 0, 3840), "video_fps": ("int", 1, 30), "video_crf": ("int", 18, 40),
@@ -4482,8 +4482,13 @@ def label_change(action, data):
                     x = next((x for x in e["l"] if x["id"] == data.get("id")), None)
                     if not x:
                         return {"ok": False, "error": "not found"}
+                    if x.get("nt"):
+                        nl_rej_add(x.pop("nt"))        # von Hand geändert: gehört jetzt dir, Notiz ersetzt es nicht mehr
                     x.update(a=a, b=b, name=name)
             elif action == "del":
+                for x in e["l"]:
+                    if x["id"] == data.get("id") and x.get("nt"):
+                        nl_rej_add(x["nt"])            # von Hand entfernt: diese Notiz lernt nicht mehr
                 e["l"] = [x for x in e["l"] if x["id"] != data.get("id")]
             elif action == "reject":
                 name = clean_label_name(data.get("name"))
@@ -5368,6 +5373,146 @@ def scan_run(t_from, t_to, name, events, areas):
     except Exception as e:
         SCAN.update(state="done", msg="error: " + str(e)[:200])
         log("Neu untersuchen fehlgeschlagen:", repr(e))
+
+
+# ---------- Lernen aus Notizen (ab 1.85.27) ----------
+# Notizen mit einer Art (Tag oder Wort im Text: Klopfen, Möbelrücken, Schritte, Tür …) sind Beispiele: der Kern der Störung,
+# mit der die Notiz verknüpft ist (die lauteste in ihrem Fenster), wird ein Beispiel des Profils dieser Art. Danach wird
+# rückwirkend alles neu untersucht. Geändert wird nur die Einordnung (Profil, markierte Bereiche) – nie Aufnahme oder Notiz.
+NL_KIND = {"klopfen": "Klopfen/Hämmern", "moebel": "Möbelrücken", "schritte": "Schritte/Trampeln", "tuer": "Türenknallen",
+           "bohren": "Bohren", "musik": "Musik/Bass", "stimmen": "Stimmen/Schreien", "hund": "Hund"}
+NL_WORDS = [("klopfen", r"klopf|hämmer|haemmer|poch|klapper|wumm|rumms|bumm"), ("moebel", r"möbel|moebel|rücken|ruecken|verrück|schieb|stuhl|stühl|kratz|schleif"),
+            ("schritte", r"schritt|trampel|stampf|hüpf|huepf|gerenne"), ("tuer", r"tür|tuer|knall|zuschlag|zugeschlag"),
+            ("bohren", r"bohr|schraub|flex|säg|saeg"), ("musik", r"musik|bass|lied|gesang"), ("stimmen", r"schrei|stimmen|brüll|bruell|streit|gelächter"),
+            ("hund", r"hund|bell|kläff|klaeff")]
+NL = {"timer": None, "last": 0, "n": 0, "at": ""}
+NL_LOCK = threading.Lock()
+
+
+def nl_rej_path():
+    return os.path.join(paths()[1], "notiz_lernen.json")
+
+
+def nl_rej():
+    d = read_json(nl_rej_path()) if os.path.exists(nl_rej_path()) else {}
+    return set(d.get("rej") or []) if isinstance(d, dict) else set()
+
+
+def nl_rej_add(nk):
+    r = nl_rej(); r.add(str(nk))
+    os.makedirs(os.path.dirname(nl_rej_path()), exist_ok=True)
+    with open(nl_rej_path() + ".tmp", "w", encoding="utf-8") as f:
+        json.dump({"v": 1, "rej": sorted(r)[-5000:]}, f)
+    os.replace(nl_rej_path() + ".tmp", nl_rej_path())
+
+
+def note_kind(tags, text):
+    """Genau eine Art aus Tags, sonst aus dem Text; mehrdeutig oder keine → None (dann lernt die Notiz nichts)."""
+    ks = [t_ for t_ in (tags or []) if t_ in NL_KIND]
+    if not ks:
+        low = str(text or "").lower()
+        ks = [k for k, rx in NL_WORDS if re.search(rx, low)]
+    ks = list(dict.fromkeys(ks))
+    return ks[0] if len(ks) == 1 else None
+
+
+def nl_examples():
+    """→ [(Notiz-Schlüssel, stem, a, b, Name)] aus freien Notizen (über die Zuordnung) und Notizen an einer Störung."""
+    allrows = read_log(); keys = row_keys(allrows)
+    keyed = [dict(r, k=k) for r, k in zip(allrows, keys)]
+    by_k = {r["k"]: r for r in keyed}
+    out = []
+
+    def add(nk, r, kind):
+        n = int(r["k"].rsplit("|", 1)[1] or 0)
+        g = track_for(r.get("datei")) if r.get("datei") else None
+        if g is None:
+            g, _ki, _ = _event_data(r, n)
+        core = (g or {}).get("core")
+        if not core or core[1] - core[0] < 100:
+            return
+        a, b = int(core[0]), int(core[1])
+        if b - a > 12000:                              # sehr lange Kerne: um die Spitze herum
+            m = (g or {}).get("peak_o")
+            a, b = (int(m) - 1500, int(m) + 1500) if m is not None else (a, a + 12000)
+        out.append((nk, event_stem(r, n), max(0, a), b, NL_KIND[kind]))
+
+    fns = [n for n in fnotes_in(0, int(time.time() * 1000) + 60000, "all") if not n.get("noassign")]
+    m = fn_assign(fns, keyed) if fns else {}
+    for n in fns:
+        kind = note_kind(n.get("tags"), n.get("text"))
+        x = m.get(na_key(n))
+        if kind and x and x.get("k") in by_k:
+            add(na_key(n), by_k[x["k"]], kind)
+    stem_row = {}
+    for r in keyed:
+        stem_row.setdefault(event_stem(r, int(r["k"].rsplit("|", 1)[1] or 0)), r)
+    with NOTES_LOCK:
+        en = {st: list(v or []) for st, v in (notes_all().get("notes") or {}).items()}
+    for st, lst in en.items():
+        r = stem_row.get(st)
+        if r is None:
+            continue
+        for nt in lst:
+            kind = note_kind(nt.get("tags"), nt.get("text"))
+            if kind:
+                add("e:" + str(nt.get("id") or st), r, kind)
+    return out
+
+
+def note_learn(rescan=True):
+    """Beispiele aus Notizen in die Profile übernehmen (alte aus Notizen werden ersetzt), dann alles rückwirkend neu untersuchen."""
+    ex = nl_examples(); rej = nl_rej()
+    want = {}
+    for nk, stem, a, b, name in ex:
+        if nk not in rej:
+            want.setdefault(stem, []).append((nk, a, b, name))
+    n = 0
+    with LABELS_LOCK:
+        L = labels_all()
+        for stem in list(L.keys()):                    # alte Beispiele aus Notizen entfernen
+            e = L[stem]
+            if any(x.get("nt") for x in e.get("l") or []):
+                e["l"] = [x for x in e["l"] if not x.get("nt")]
+                if not e["l"] and not e.get("rej"):
+                    L.pop(stem, None)
+        for stem, xs in want.items():
+            e = L.setdefault(stem, {"l": [], "rej": []}); e.setdefault("l", []); e.setdefault("rej", [])
+            for nk, a, b, name in xs:
+                if any(x["name"] == name and min(x["b"], b) - max(x["a"], a) > 0 for x in e["l"]):
+                    continue                           # gleicher Bereich schon benannt (von Hand oder andere Notiz)
+                e["l"].append({"id": secrets.token_hex(4), "a": a, "b": b, "name": name, "t": int(time.time()), "nt": nk}); n += 1
+        labels_save()
+    PROTO_CACHE.clear()
+    NL.update(n=n, at=dt.datetime.now().astimezone().isoformat(timespec="seconds"), last=time.time())
+    log(f"Aus Notizen gelernt: {n} Beispiele")
+    res = {"ok": True, "n": n, "kinds": sorted({x[4] for x in ex})}
+    if rescan and n:
+        rows = read_log()
+        t0 = min((ms_of(r.get("start")) or int(time.time() * 1000)) for r in rows) if rows else int(time.time() * 1000) - 86400000
+        res["scan"] = scan_start(t0 - 60000, int(time.time() * 1000) + 60000)
+    return res
+
+
+def nl_soon(delay=600):
+    """Nach dem Speichern einer Notiz: in 10 min lernen (mehrere Notizen hintereinander = ein Lauf), höchstens alle 30 min."""
+    if CFG.get("ki_notes", True) is False:
+        return
+    with NL_LOCK:
+        if NL["timer"] is not None:
+            return
+        wait = max(delay, 1800 - (time.time() - NL["last"]))
+
+        def go():
+            with NL_LOCK:
+                NL["timer"] = None
+            try:
+                if SCAN.get("state") == "running":
+                    nl_soon(600); return
+                note_learn()
+            except Exception as e:
+                log("Lernen aus Notizen fehlgeschlagen:", repr(e))
+        NL["timer"] = threading.Timer(wait, go); NL["timer"].daemon = True; NL["timer"].start()
 
 
 LIVE_ART = {}            # Quelle -> letztes Ergebnis der Live-Erkennung
@@ -9670,6 +9815,7 @@ def main():
     threading.Thread(target=gr_hello, daemon=True).start()
     threading.Thread(target=tiles_watch, daemon=True).start()
     threading.Thread(target=kl_worker, daemon=True).start()        # ab 1.84.0: aus eigenen Korrekturen der Geräuschart lernen (nur Vorschläge)
+    nl_soon(900)                                     # ab 1.85.27: nach dem Start einmal aus Notizen lernen (auch GReport-Notizen)
     if classify is not None:
         threading.Thread(target=art_worker, daemon=True).start()
         threading.Thread(target=live_art_worker, daemon=True).start()
@@ -13816,6 +13962,7 @@ def gremote_api(handler, name, data):
     if name == "fnote":
         if not isinstance(data, dict) or data.get("action") not in ("add", "edit", "del"):
             return {"ok": False, "error": "bad request"}
+        nl_soon()
         return fnote_change(data["action"], data)
     if name == "mark":                                  # „Störung jetzt markieren“
         de = CFG.get("language") != "en"
@@ -14425,6 +14572,8 @@ class Handler(BaseHandler):
                                 TEACH["state"] = "done"
                         return self.js(teach_status())
                     return self.js({"ok": False, "error": "bad action"}, 400)
+                if data.get("action") == "notes":      # aus Notizen lernen, dann alles neu untersuchen
+                    return self.js(note_learn())
                 if data.get("action") == "cancel":
                     SCAN["cancel"] = True
                     return self.js({"ok": True})
@@ -14496,11 +14645,13 @@ class Handler(BaseHandler):
                 data = json.loads(body or b"{}")
                 if not isinstance(data, dict) or data.get("action") not in ("add", "edit", "del"):
                     return self.js({"ok": False, "error": "bad request"}, 400)
+                nl_soon()
                 return self.js(fnote_change(data["action"], data))
             if name in ("note_add", "note_edit", "note_del"):
                 data = json.loads(body or b"{}")
                 if not isinstance(data, dict):
                     return self.js({"ok": False, "error": "bad request"}, 400)
+                nl_soon()
                 return self.js(note_change(name[5:], data))
             if name == "classify_events":            # Ereignisse nachtraeglich (neu) einordnen lassen
                 data = json.loads(body or b"{}")

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.27
+
+- **Lernen aus Notizen:** Notizen mit genau einer Art (Tag oder Wort im Text: Klopfen, Möbelrücken, Schritte, Tür, Bohren, Musik, Stimmen, Hund) werden Beispiele. Die lauteste Störung im Zeitfenster der Notiz wird dem Profil dieser Art beigebracht, danach wird **rückwirkend** alles neu eingeordnet – Störungen und durchgehend die Tagesaufzeichnung (auch kurzes Klopfen, das vorher nur „Sonstiges“ war). Läuft von selbst nach dem Speichern einer Notiz (höchstens alle 30 min) und nach dem Start; von Hand unter 🧩 Profile → „🧠 Aus Notizen lernen und alles neu untersuchen“. Abschaltbar: Einstellungen → KI → „Aus Notizen lernen“.
+- Ein falsches Beispiel im Ereignis unter 🏷 entfernen: die Notiz lernt danach nicht mehr. Aufnahme, Prüfsummen und Notizen bleiben unverändert, es ändert sich nur die Einordnung.
+
 ## 1.85.26
 
 - Eine Notiz wird jetzt der **lautesten** Störung in ihrem Zeitfenster zugeordnet (größter Ausschlag), nicht mehr der zeitlich nächsten. Umstellbar unter Einstellungen → „Notiz verknüpfen mit“.
