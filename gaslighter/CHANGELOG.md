@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.19
+- **Ein Ereignis über lange Zeit:** eine Gruppe läuft weiter, solange binnen „Ereignis endet (s) nach dem letzten Eintrag“ wieder eine Störung, ein Sensor-Ereignis oder eine Notiz kommt – z. B. 300 s: eine halbe Stunde Lärm mit kurzen Pausen und Notizen zwischendrin ist ein Eintrag in der Tabelle und eine Detailansicht.
+
 ## 1.85.18
 - **Zusammenfassen in der Ansicht „Gruppen“ (Tabelle):**
   - Sensor-Ereignisse und Notizen, die in den Zeitraum einer Störungsgruppe fallen, erscheinen mit in der Gruppe.
