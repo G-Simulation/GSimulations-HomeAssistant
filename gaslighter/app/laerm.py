@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.17"
+VERSION = "1.85.18"
 
 # =====================================================================
 # Einstellungen
@@ -44,7 +44,7 @@ DEFAULTS = {
     "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0,
     "pre_roll_s": 5, "post_roll_s": 5, "max_clip_s": 60, "ctx_s": 30, "save_audio": False, "audio_novoice": True,
     "day_track": True, "day_layers": True, "day_spec": True, "co_record": True, "fp_store": True,
-    "group_pause_s": 120, "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
+    "group_pause_s": 120, "grp_tail_s": 120, "grp_mix": True, "fn_grp": True, "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
     "auto_delete": False, "retention_days": 90,
     "active_from": "", "active_to": "", "mqtt": True, "output_dir": "/share/gaslighter_beta" if (os.environ.get("LAERM_CHANNEL") == "beta" or "gaslighter-beta" in os.environ.get("HOSTNAME", "")) else "/share/gaslighter", "language": "auto",
     "mic_port": "", "classify": True, "ki_embed": False, "ki_min": 25, "ki_bg": True, "ki_short": True, "ki_short_ms": 150, "ki_damp": "", "ki_learn_fix": True, "ki_learn_min": 75,
@@ -60,7 +60,7 @@ SPEC = {
     "bg_window": ("int", 1, 3600), "bg_unit": ("choice", ["s", "min"]), "bg_stat": ("choice", ["median", "quiet", "min", "mean", "max"]),
     "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000),
     "pre_roll_s": ("num", 0, 30, 0.1), "post_roll_s": ("num", 0.1, 60, 0.1), "max_clip_s": ("num", 1, 300, 0.5),
-    "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
+    "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "grp_tail_s": ("int", 0, 3600), "grp_mix": ("bool",), "fn_grp": ("bool",), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
     "active_from": ("time",), "active_to": ("time",), "mqtt": ("bool",), "output_dir": ("str",),
     "language": ("choice", ["auto", "de", "en"]), "mic_port": ("optstr",), "classify": ("bool",), "ki_embed": ("bool",), "ki_min": ("int", 5, 90), "ki_bg": ("bool",), "ki_short": ("bool",), "ki_short_ms": ("int", 20, 1000), "ki_damp": ("optstr",), "ki_learn_fix": ("bool",), "ki_learn_min": ("int", 60, 98),
     "clip_dir": ("optstr",), "video_width": ("int", 0, 3840), "video_fps": ("int", 1, 30), "video_crf": ("int", 18, 40),
@@ -12321,6 +12321,8 @@ def events_summary(src="all", n=200, plist="", rng=None, art=""):
             "events": out_rows, "grps": {str(k): v for k, v in G.items() if k in used_g},
             "sens": _sens_for(src, rng), "ha_names": ha_rule_names(), "fnotes": _fnotes_asg(_fnotes_for(src, rng), keyed_all), "fn_assign_min": CFG.get("fn_assign_min", 5),
             "fn_pre_min": int(CFG.get("fn_pre_min", 2) or 0), "fn_post_min": int(CFG.get("fn_post_min", 15) or 0),
+            "group_pause_s": int(CFG.get("group_pause_s", 120) or 120), "grp_tail_s": int(CFG.get("grp_tail_s", 120) or 0),
+            "grp_mix": CFG.get("grp_mix", True) is not False, "fn_grp": CFG.get("fn_grp", True) is not False,
             "fn_gr_pre_min": int(CFG.get("fn_gr_pre_min", 10) or 0), "fn_gr_post_min": int(CFG.get("fn_gr_post_min", 30) or 0),
             "fine": classify.fine_meta("en" if CFG.get("language") == "en" else "de") if classify is not None else {}}
 

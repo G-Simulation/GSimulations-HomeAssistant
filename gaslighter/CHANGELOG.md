@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.85.18
+- **Zusammenfassen in der Ansicht „Gruppen“ (Tabelle):**
+  - Sensor-Ereignisse und Notizen, die in den Zeitraum einer Störungsgruppe fallen, erscheinen mit in der Gruppe.
+  - Eine Notiz wird mit allen Störungen und Sensor-Ereignissen in ihrem Zeitfenster zusammengefasst (Einstellung „Notiz gehört zur Störung ab … davor / … nach dem Störungsende“, z. B. 0 / 5 min).
+  - Mehrere Notizen im selben Zeitfenster kommen in dieselbe Gruppe.
+  - Neu einstellbar (Einstellungen → Protokoll & Notizen): „Gruppe endet (s) nach der letzten Störung“, „Sensor-Ereignisse und Notizen in Gruppen aufnehmen“, „Notiz mit den Ereignissen in ihrem Zeitfenster zusammenfassen“.
+- **Detailansicht der Gruppe:** Doppelklick (oder F2) auf eine Gruppe zeigt alle Störungen, Sensor-Ereignisse und Notizen des Zeitraums – jede einzeln zu öffnen – und „Im Verlauf zeigen“ für den ganzen Zeitraum.
+
 ## 1.85.17
 - **Sensoren als Fähnchen im Verlauf (Pegelspur, Lautstärke, Spektrogramm) und in der Live-Pegelspur:** je Sensor eine eigene Höhe – lösen mehrere gleichzeitig aus, liegen die Fähnchen übereinander und alle bleiben sichtbar. Fähnchen, Linie und Marke in der Farbe des Sensors.
 - **Je Zeile wählbar, welche Sensoren erscheinen:** „📡 Sensoren“ in der Zeile (neben Gerät und Darstellung), gemerkt je Zeile.

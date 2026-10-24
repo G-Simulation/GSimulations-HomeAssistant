@@ -1782,8 +1782,56 @@ function evRows(evs, sv, grpMode) {
     if (ev) for (const d of out) if (d._t === 'ev' && d.r === ev) (d.fn = d.fn || []).push([n, dms]);   // auch an der Störung sichtbar, mit Abstand
   }
   for (const x of sv) out.push({ _t: 'sens', id: 's:' + x.key, x, start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak != null ? x.peak : null });
-  out.sort((a, b) => b.start - a.start);
-  return out;
+  const res = grpMode ? evCluster(out, EV || {}) : out;
+  res.sort((a, b) => b.start - a.start);
+  return res;
+}
+/* ab 1.85.18: in der Gruppen-Ansicht zusammenfassen – (1) Sensor-Ereignisse und Notizen, die in eine Störungsgruppe fallen (bis „Gruppe endet … s nach der
+   letzten Störung“), (2) eine Notiz mit allen Störungen und Sensor-Ereignissen in ihrem Zeitfenster (Einstellungen „Notiz gehört zur Störung …“). Nur Anzeige. */
+function evCluster(out, j) {
+  const mix = j.grp_mix !== false, fng = j.fn_grp !== false; if (!mix && !fng) return out;
+  const tail = (j.grp_tail_s != null ? +j.grp_tail_s : j.group_pause_s != null ? +j.group_pause_s : 120) * 1000;
+  const itv = c => c._t === 'ev' ? [c.start, c.start + (c.dur || 0) * 1000] : c._t === 'note' ? [c.n.a, Math.max(c.n.b || c.n.a, c.n.a)] : c._t === 'sens' ? [c.x.a, Math.max(c.x.b || c.x.a, c.x.a)] : [c.start, c.start];
+  const U = out.map(d => { const ch = d._t === 'grp' ? d._children : [d]; let a = Infinity, b = -Infinity, ev = false; for (const c of ch) { const [x, y] = itv(c); if (x < a) a = x; if (y > b) b = y; if (c._t === 'ev') ev = true; } return { d, ch, a, b, ev }; });
+  const P = U.map((_, i) => i), f = i => { while (P[i] !== i) { P[i] = P[P[i]]; i = P[i]; } return i; }, un = (i, k) => { const x = f(i), y = f(k); if (x !== y) P[y] = x; };
+  const evs = U.map((u, i) => [u, i]).filter(([u]) => u.ev), oth = U.map((u, i) => [u, i]).filter(([u]) => !u.ev);
+  if (mix) for (const [u, i] of evs) for (const [o, k] of oth) if (o.a >= u.a && o.a <= u.b + tail) un(i, k);
+  if (fng) for (const [n, i] of oth) { if (n.d._t !== 'note') continue; const [pre, post] = fnWin(j, n.d.n);
+    for (const [u, k] of U.map((u, k) => [u, k])) if (k !== i && (u.d._t !== 'note' ? u.b >= n.a - post && u.a <= n.b + pre : u.a >= n.a - post && u.a <= n.b + pre)) un(i, k); }   // auch mehrere Notizen im selben Zeitfenster
+  const by = new Map(); U.forEach((u, i) => { const r = f(i); (by.get(r) || by.set(r, []).get(r)).push(u); });
+  const res = [];
+  for (const us of by.values()) {
+    if (us.length === 1) { res.push(us[0].d); continue; }
+    const ch = us.flatMap(u => u.ch).sort((x, y) => itv(x)[0] - itv(y)[0]), a = Math.min(...us.map(u => u.a)), b = Math.max(...us.map(u => u.b));
+    const base = (us.find(u => u.d._t === 'grp') || {}).d, g = Object.assign({}, base ? base.g : {}, { a: new Date(a).toISOString(), b: new Date(b).toISOString(), n: ch.length, mix: true,
+      ne: ch.filter(c => c._t === 'ev').length, nn: ch.filter(c => c._t === 'note').length, ns: ch.filter(c => c._t === 'sens').length });
+    const gid = 'm' + String(ch[0].id);
+    const p = { _t: 'grp', id: 'g' + gid, gid, g, start: a, src: '', tags: [], dur: (b - a) / 1000, pk: null, _children: ch };
+    for (const c of ch) { for (const x of c.tags || []) if (!p.tags.includes(x)) p.tags.push(x); if (!p.src) p.src = c.src; else if (c.src && p.src !== c.src) p.srcs = true; if (c.pk != null && c._t === 'ev' && (p.pk == null || c.pk > p.pk)) p.pk = c.pk; }
+    res.push(p);
+  }
+  return res;
+}
+const grpN = g => g && g.mix ? t('grp_nx', { n: g.n, e: g.ne || 0, s: g.ns || 0, f: g.nn || 0 }) : t('grp_n', { n: g.n });
+/* Detailansicht einer Gruppe: alle Störungen, Sensor-Ereignisse und Notizen des Zeitraums, jede einzeln zu öffnen, dazu „Im Verlauf zeigen“ */
+function grpOpen(p) {
+  let d = $('grpdlg'); if (!d) { d = el('dialog', { id: 'grpdlg', className: 'evdlg prognd grpdlg' }); d.setAttribute('aria-labelledby', 'grpdlgh'); document.body.appendChild(d);
+    d.addEventListener('click', e => { if (e.target === d) d.close(); }); }
+  const g = p.g, a = new Date(g.a).getTime(), b = new Date(g.b).getTime(), ev = p._children.filter(c => c._t === 'ev');
+  const row = (c, i) => { const w = c._t === 'ev' ? '📈' : c._t === 'note' ? '📝' : sensIcon(c.x.kind);
+    const what = c._t === 'ev' ? esc(c.src) + (c.tags.length ? ' · ' + esc(c.tags.join(', ')) : '') : c._t === 'note' ? esc(c.n.text || (c.n.tags || []).map(x => ntLabel(x)).join(', ') || t('fn_row')) : esc(sensLabel(c.x));
+    const val = c._t === 'ev' ? esc(fmtDur(c.dur)) + (c.pk != null ? ' · ' + esc(fdb(c.pk)) + ' dBFS' : '') : c._t === 'sens' && c.dur ? esc(fmtDur(c.dur)) : '';
+    return `<li class="grpit"><span class="grpic" aria-hidden="true">${w}</span><b class="grpt">${esc(clockOf(new Date(c.start).toISOString()))}</b><span class="grpw">${what}</span><small class="mut">${val}</small><button type="button" class="chip grpgo" data-i="${i}">${esc(t('grp_open1'))}</button></li>`; };
+  const chips = [[t('grp_c_ev'), ev.length], [t('grp_c_sens'), g.ns || 0], [t('grp_c_fn'), g.nn || 0]].filter(x => x[1]).map(([l, n]) => `<span class="chip">${n} ${esc(l)}</span>`).join('');
+  d.innerHTML = `<div class="dh"><h3 id="grpdlgh">🗂 ${esc(clockOf(g.a))}–${esc(clockOf(g.b))} · ${esc(fmtDur((b - a) / 1000))}</h3><button type="button" class="grpx" aria-label="${esc(t('a_close'))}">✕</button></div>
+    <div class="dbody"><div class="grpchips">${chips}${p.pk != null ? `<span class="chip">${esc(t('peak'))} ${esc(fdb(p.pk))} dBFS</span>` : ''}</div>
+    <ol class="grplist">${p._children.map(row).join('')}</ol></div>
+    <div class="df"><button type="button" class="chip grpgraph">📈 ${esc(t('grp_graph'))}</button><span class="grow"></span><button type="button" class="pri grpdone">${esc(t('a_close'))}</button></div>`;
+  d.querySelector('.grpx').onclick = d.querySelector('.grpdone').onclick = () => d.close();
+  d.querySelector('.grpgraph').onclick = () => { d.close(); dtFocus(a, Math.max(b, a + 1000)); };
+  d.querySelectorAll('.grpgo').forEach(bt => bt.onclick = () => { const c = p._children[+bt.dataset.i]; d.close();
+    if (c._t === 'ev') openEvent(c.id); else if (c._t === 'note') fnOpenId(c.n); else if (c._t === 'sens') { if (c.x.kind === 'ha') haPop({ a: c.x.a, b: c.x.b, name: sensLabel(c.x), note: c.x.note || '', key: c.x.key }); else dtFocus(c.x.a, c.x.b); } });
+  d.showModal(); setTimeout(() => d.querySelector('.grpdone').focus(), 50);
 }
 function evAllEv() { const out = []; if (!TBL) return out; const walk = rows => { for (const d of rows) { if (d._t === 'ev') out.push(d); if (d._children) walk(d._children); } }; walk(TBL.top()); return out; }
 let EVCUR = '', EVMENU = '';                          // zuletzt im Verlauf gezeigte Störung, Zeile mit offenem Menü ⋮
@@ -1802,19 +1850,19 @@ function evGrid(evs, sv, useArt, grpMode) {
   const valid = new Set(EV.events.map(ek)); for (const k of [...SEL]) if (!valid.has(k)) SEL.delete(k);
   const nar = matchMedia('(max-width:600px)').matches, key = JSON.stringify([lang, useArt, nar]);
   const chk = d => d._t === 'ev' ? `<input type="checkbox" class="ckc" tabindex="-1"${SEL.has(d.id) ? ' checked' : ''} aria-label="${esc(t('ev_sel'))}">`
-    : d._t === 'grp' ? `<input type="checkbox" class="ckg" tabindex="-1"${d._children.every(c => SEL.has(c.id)) ? ' checked' : ''} aria-label="${esc(t('sel_all'))}">` : '';
+    : d._t === 'grp' ? `<input type="checkbox" class="ckg" tabindex="-1"${d._children.filter(c => c._t === 'ev').every(c => SEL.has(c.id)) ? ' checked' : ''} aria-label="${esc(t('sel_all'))}">` : '';
   const profChip = r => r.prof ? `<span class="art prof${r.bg ? ' bgp' : ''}" title="${esc(t(r.prof_ok ? 'pf_ok_tip' : 'pf_auto_tip'))}">🧩 ${esc(r.prof)}${r.prof_ok ? ' ✓' : r.prof_c != null ? ` <small>${r.prof_c} %</small>` : ''}${r.bg ? ' · ' + esc(t('pf_bg_short')) : ''}</span>` : '';
   const srcHTML = r => srcCell(r).replace(/^<td[^>]*>/, '').replace(/<\/td>$/, '');
   const cols = [
     { f: 'sel', title: t('sel_all'), sort: false, w: nar ? 32 : 40, prio: 0, cls: 'ck', hide: true,
       head: () => { const c = document.createElement('input'); c.type = 'checkbox'; c.id = 'ckall'; c.title = t('sel_all'); c.setAttribute('aria-label', t('sel_all')); c.onclick = e => e.stopPropagation(); c.onchange = () => { evSelToggle(evAllEv().map(d => d.id), c.checked); }; setTimeout(syncDelBar, 0); return c; },
       html: chk,
-      click: (e, d) => { if (d._t === 'ev') evSelToggle([d.id], !SEL.has(d.id)); else if (d._t === 'grp') { const all = d._children.every(c => SEL.has(c.id)); evSelToggle(d._children.map(c => c.id), !all); } } },
+      click: (e, d) => { if (d._t === 'ev') evSelToggle([d.id], !SEL.has(d.id)); else if (d._t === 'grp') { const evc = d._children.filter(c => c._t === 'ev'), all = evc.every(c => SEL.has(c.id)); evSelToggle(evc.map(c => c.id), !all); } } },
     { f: 'play', title: t('ev_play_snd'), sort: false, w: 48, vis: hasPlay, prio: 0, cls: 'pl', hide: true,
       html: d => d._t === 'ev' && d.r.play ? `<button class="pbtn" type="button" aria-label="${esc(t('ev_play_snd'))}" title="${esc(t('ev_play_snd'))}">▶</button>` : '',
       click: (e, d) => { if (d._t === 'ev' && e.target.closest('.pbtn')) { e.stopPropagation(); openEvent(d.id, null, true); } else return false; } },
     { f: 'start', title: t('start'), sort: 'num', minW: nar ? 120 : 230, grow: 2, prio: 0, cls: 'tm',
-      html: d => (d._t === 'grp' ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${EVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${EVOPEN.has(d.gid) ? '▾' : '▸'}</button><b>${esc(clockOf(d.g.a).slice(0, nar ? 5 : 8))}${nar ? '' : '–' + esc(clockOf(d.g.b).slice(0, 8))}</b>${nar ? `<span class="sr">${esc(t('grp_n', { n: d.g.n }))}</span>` : ` <span class="mut" title="${esc(t('grp_n', { n: d.g.n }))}" aria-label="${esc(t('grp_n', { n: d.g.n }))}">· ×${d.g.n}</span>`}`
+      html: d => (d._t === 'grp' ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${EVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${EVOPEN.has(d.gid) ? '▾' : '▸'}</button><b>${esc(clockOf(d.g.a).slice(0, nar ? 5 : 8))}${nar ? '' : '–' + esc(clockOf(d.g.b).slice(0, 8))}</b>${nar ? `<span class="sr">${esc(grpN(d.g))}</span>` : ` <span class="mut" title="${esc(grpN(d.g))}" aria-label="${esc(grpN(d.g))}">· ×${d.g.n}</span>`}`
         : d._t === 'sens' ? `${esc(fmtWhen(new Date(d.x.a).toISOString()))}${d.x.note ? `<span class="ntc" title="${esc(d.x.note)}">📝</span>` : ''}`
         : d._t === 'note' ? `${esc(fmtWhen(new Date(d.n.a).toISOString()))}${d.n.b > d.n.a ? '–' + esc(d.n.clock_to || '') : ''}${d.n.rz ? ' 🌙' : ''}`
         : `${esc(nar ? narWhen(d.r.start) : fmtWhen(d.r.start))}${d.r.notes ? `<span class="ntc" title="${esc(t('nt_title', { n: d.r.notes }))}">📝 ${d.r.notes}</span>` : ''}`) },
@@ -1827,6 +1875,7 @@ function evGrid(evs, sv, useArt, grpMode) {
       html: d => {
         if (d._t === 'sens') return `<span class="art sensc">${sensIcon(d.x.kind)} ${esc(sensLabel(d.x))}</span>${d.x.note ? `<div class="hant">📝 ${esc(d.x.note)}</div>` : ''}`;
         if (d._t === 'note') return `<span class="art fnc">📝 ${esc(t('fn_row'))}</span>${d.ev ? `<button type="button" class="chip fnlink" tabindex="-1" title="${esc(t('fn_link_tip'))}">🔗 ${esc(t('fn_link', { c: clockOf(d.ev.start) }))}</button> <small class="fnasg${(d.n.asg || {}).man ? ' fnman' : ''}">${esc(fnAsgHow(d.n, EV))}</small>` : (d.n.asg && d.n.asg.man ? ` <small class="fnasg fnman">${esc(t('fn_asg_detached'))}</small>` : '')}<div class="fnrowt">${fnText(d.n)}</div>`;
+        if (d._t === 'grp' && d.g.mix && !d.g.kind && !d.g.prof) return `<span class="art grpmix">${esc(grpN(d.g))}</span>`;   // zusammengefasst ohne gemeinsame Art
         if (d._t === 'grp') return d.g.prof ? `<span class="art prof">🧩 ${esc(d.g.kind)}</span>` : d.g.kind && d.g.kind !== '?' ? artChip(d.g.kind, null, false) : esc(t('art_pending'));
         const r = d.r; return `${fnAsgHTML(d.fn, EV)}${(r.ha_on || []).filter(n => !SHIDE.has('ha:' + n)).map(n => `<span class="art haon" title="${esc(t('ha_on_tip'))}">📡 ${esc(n)} ${esc(t('ha_on'))}</span>`).join('')}${(r.raise_on || []).map(x => `<span class="art haraisec" title="${esc(t('ha_raise_tip'))}">📈 ${esc(x[0])} +${esc(fmtDb(x[1]))} dB</span>`).join('')}${profChip(r)}${(r.labels || []).map(n => `<span class="art lbl" title="${esc(t('lb_own'))}">🏷 ${esc(n)}</span>`).join('')}${mfChip(r)}${r.art ? artChip(r.art, r.art_c, r.art_man || r.art_ok, CUR && CUR.classify === false ? '' : r.k, r.art_lern != null ? r.art_lki : null) : (r.datei && !(r.labels || []).length && !r.prof ? '<span class="noclip" title="' + esc(t('art_pending')) + '">…</span>' : (r.labels || []).length || r.prof ? '' : '<span class="noclip">–</span>')}`; } },
     { f: 'sc', title: t('sc_col'), minW: 165, vis: hasSc, prio: 3, sort: false, cls: 'scol', flt: 'ms', aria: t('sc_col_a'),
@@ -1865,7 +1914,7 @@ function evGrid(evs, sv, useArt, grpMode) {
         else if (d._t === 'grp') { EVOPEN.has(d.gid) ? EVOPEN.delete(d.gid) : EVOPEN.add(d.gid); TBL.redraw(x => x === d); TBL.refilter(); }
         else if (d._t === 'sens') { const x = d.x; dtFocus(x.a, x.b); }
         else if (d._t === 'note') { if (e.target.closest && e.target.closest('.fnlink') && d.ev) { openEvent(ek(d.ev)); return; } dtFocus(d.n.a, Math.max(d.n.b || d.n.a, d.n.a + 1000)); } },
-      onDbl: (e, d) => { if (e.target.closest('input,button,a')) return; if (d._t === 'ev') openEvent(d.id); else if (d._t === 'note') fnOpenId(d.n); else if (d._t === 'sens' && d.x.kind === 'ha') haPop({ a: d.x.a, b: d.x.b, name: sensLabel(d.x), note: d.x.note || '', key: d.x.key }); },
+      onDbl: (e, d) => { if (e.target.closest('input,button,a')) return; if (d._t === 'grp') { grpOpen(d); return; } if (d._t === 'ev') openEvent(d.id); else if (d._t === 'note') fnOpenId(d.n); else if (d._t === 'sens' && d.x.kind === 'ha') haPop({ a: d.x.a, b: d.x.b, name: sensLabel(d.x), note: d.x.note || '', key: d.x.key }); },
       onCtx: (e, d, rowEl) => { if (d._t !== 'ev') return; e.preventDefault(); openRowMenu(evRowRef(d, rowEl), e.clientX, e.clientY); },
       onModel: G => { evCount(G.top()); syncDelBar(); },
     });
@@ -4525,7 +4574,7 @@ const FORM = [
   ['s_keep', [['auto_delete', 'chk'], ['retention_days', 'num', 1, 3650, 1]]],
   ['s_mirror', [['mirror_dir', 'text'], ['mirror_time', 'time'], ['mirror_offload', 'chk']]],
   ['s_misc', [['language', 'sel', ['auto', 'de', 'en'], { auto: 'lauto', de: '#Deutsch', en: '#English' }], ['wheel_zoom', 'sel', ['ctrl', 'always'], { ctrl: 'wz_ctrl', always: 'wz_always' }], ['auto_thr', 'sel', ['thr', 'data'], { thr: 'at_thr', data: 'at_data' }], ['tip_mode', 'sel', ['hover', 'always', 'off'], { hover: 'tm_hover', always: 'tm_always', off: 'tm_off' }]]],
-  ['s_list', [['group_pause_s', 'num', 10, 3600, 10], ['fn_pre_min', 'num', 0, 120, 1], ['fn_post_min', 'num', 0, 120, 1], ['fn_gr_pre_min', 'num', 0, 120, 1], ['fn_gr_post_min', 'num', 0, 120, 1]]],
+  ['s_list', [['group_pause_s', 'num', 10, 3600, 10], ['grp_tail_s', 'num', 0, 3600, 10], ['grp_mix', 'chk'], ['fn_grp', 'chk'], ['fn_pre_min', 'num', 0, 120, 1], ['fn_post_min', 'num', 0, 120, 1], ['fn_gr_pre_min', 'num', 0, 120, 1], ['fn_gr_post_min', 'num', 0, 120, 1]]],
 ];
 /* Reihenfolge der Kästen je Reiter (nach dem, was man tun will) */
 const SEC_ORDER = ['srcbox', 's_audio', 's_cal', 's_thr', 's_ki', 's_prof', 's_muster', 's_time', 's_quiet', 's_sched', 's_ha',

@@ -1496,3 +1496,11 @@ button.sure{background:var(--bad,var(--red,#c92a2a))!important;border-color:var(
 /* Notiz im Bereich bearbeiten: nur EIN Rahmen, so rund wie der Bereich (kein eckiger blauer über dem gestrichelten) */
 .pnlbd > .capture.lay{outline:0}
 .grid-stack .pnl:has(> .pnlbd > .capture.lay){outline:2px solid var(--acc);outline-offset:-2px}
+/* Gruppe (zusammengefasst): Detailansicht */
+.grpdlg .grpchips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.grpdlg .grplist{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:60vh;overflow:auto}
+.grpdlg .grpit{display:grid;grid-template-columns:24px 72px 1fr auto auto;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--bd);border-radius:10px}
+.grpdlg .grpw{min-width:0;overflow-wrap:anywhere}
+.grpdlg .df{display:flex;gap:8px;align-items:center}
+@media(max-width:600px){.grpdlg .grpit{grid-template-columns:24px 1fr auto;}.grpdlg .grpit small{grid-column:2/3}.grpdlg .grpit .grpw{grid-column:2/-1}}
+.art.grpmix{font-weight:400;color:var(--mut)}
