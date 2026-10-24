@@ -1822,15 +1822,20 @@ function grpShow(p, live) {                           // ab 1.85.22: ganzer Zeit
   DT.mark = [a, b]; DT.from = a - pad; DT.to = b + pad; dtLoad(DT, true);
 }
 /* Pillen einer Gruppe zusammenfassen: gleiche Art (Text ohne Zahlen/Zeiten) nur einmal, dahinter „×n“; Verweise einer Notiz auf eine Störung entfallen */
-function pillMerge(list) {
-  const tmp = document.createElement('div'), seen = new Map(), order = [];
+function pillMerge(list, max) {                       // ab 1.85.24: nur echte Pillen (.art/.kd), gleiche einmal mit Summe „×n“, nach Anzahl sortiert, höchstens max, Rest als „+n“
+  max = max || 3; const tmp = document.createElement('div'), seen = new Map();
   for (const h of list) { if (!h) continue; tmp.innerHTML = h;
-    for (const e of [...tmp.children]) { if (e.matches('.fnlink, .fnlk, .hant')) continue;
-      const key = e.textContent.replace(/×\s*\d+/g, '').replace(/[\d.,:]+\s*(s|min|%|dBFS)?/g, '').replace(/\s+/g, ' ').trim(); if (!key) continue;
-      if (!seen.has(key)) { seen.set(key, { el: e.outerHTML, n: 0 }); order.push(key); } seen.get(key).n++; } }
-  return order.map(k => { const x = seen.get(k); if (x.n < 2) return x.el; const c = `<b class="pcnt">×${x.n}</b>`;   // eigene Zahl/Dauer der ersten Pille ersetzt durch die Anzahl
-    return /<b[^>]*>[^<]*<\/b>(?![\s\S]*<b)/.test(x.el) ? x.el.replace(/<b[^>]*>[^<]*<\/b>(?![\s\S]*<b)/, c) : x.el.replace(/<\/(span|button|div)>\s*$/, ` ${c}</$1>`); }).join('');
+    for (const e of tmp.querySelectorAll('.art, .kd')) { if (e.matches('.fnlk, .grpmix') || e.parentElement.closest('.art, .kd')) continue;
+      const bx = e.querySelector('b'), bt = bx ? bx.textContent.trim() : '', mul = /^×\s*(\d+)$/.exec(bt);
+      const lab = e.cloneNode(true); lab.querySelectorAll('b, small, .pcnt').forEach(x => x.remove());
+      const key = lab.textContent.replace(/[\d.,:%]+\s*(s|min)?/g, '').replace(/\s+/g, ' ').trim(); if (!key) continue;
+      const add = mul ? +mul[1] : 1, o = seen.get(key);
+      if (o) o.n += add; else seen.set(key, { lab, n: add, title: key }); } }
+  const all = [...seen.values()].sort((a, b) => b.n - a.n), show = all.slice(0, max), rest = all.slice(max);
+  return '<span class="pmerge">' + show.map(x => { const l = x.lab; l.classList.add('pm'); l.insertAdjacentHTML('beforeend', ` <b class="pcnt">×${x.n}</b>`); return l.outerHTML; }).join('')
+    + (rest.length ? `<span class="art pmore" title="${esc(rest.map(x => x.title + ' ×' + x.n).join(', '))}">+${rest.length}</span>` : '') + '</span>';
 }
+const fmtSpan = v => { const x = +v || 0; return x >= 60 ? Math.floor(x / 60) + ':' + String(Math.round(x % 60)).padStart(2, '0') + ' min' : fmtDur(x); };   // Dauer eines Ereignisses
 /* Filter (Sensoren/Art/Notizen) erst nach dem Zusammenfassen: ein Ereignis bleibt, wenn etwas darin sichtbar ist – dann ganz, mit allen Einträgen */
 function evVisible(rows) { return rows.filter(d => d._t === 'grp' ? d._children.some(c => !c._hid) : !d._hid); }
 const grpN = g => g && g.mix ? t('grp_nx', { n: g.n, e: g.ne || 0, s: g.ns || 0, f: g.nn || 0 }) : t('grp_n', { n: g.n });
@@ -1883,7 +1888,7 @@ function evGrid(evs, sv, useArt, grpMode) {
       html: d => d._t === 'ev' && d.r.play ? `<button class="pbtn" type="button" aria-label="${esc(t('ev_play_snd'))}" title="${esc(t('ev_play_snd'))}">▶</button>` : '',
       click: (e, d) => { if (d._t === 'ev' && e.target.closest('.pbtn')) { e.stopPropagation(); openEvent(d.id, null, true); } else return false; } },
     { f: 'start', title: t('start'), sort: 'num', minW: nar ? 120 : 230, grow: 2, prio: 0, cls: 'tm',
-      html: d => (d._t === 'grp' ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${EVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${EVOPEN.has(d.gid) ? '▾' : '▸'}</button><b>${esc(clockOf(d.g.a).slice(0, nar ? 5 : 8))}${nar ? '' : '–' + esc(clockOf(d.g.b).slice(0, 8))}</b>${nar ? `<span class="sr">${esc(grpN(d.g))}</span>` : ` <span class="mut" title="${esc(grpN(d.g))}" aria-label="${esc(grpN(d.g))}">· ×${d.g.n}</span>`}`
+      html: d => (d._t === 'grp' ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${EVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${EVOPEN.has(d.gid) ? '▾' : '▸'}</button><b title="${esc(grpN(d.g))}">${esc(clockOf(d.g.a).slice(0, 5))}${nar ? '' : '–' + esc(clockOf(d.g.b).slice(0, 5))}</b>${nar ? `<span class="sr">${esc(grpN(d.g))}</span>` : `<span class="sr">${esc(grpN(d.g))}</span>`}`
         : d._t === 'sens' ? `${esc(fmtWhen(new Date(d.x.a).toISOString()))}${d.x.note ? `<span class="ntc" title="${esc(d.x.note)}">📝</span>` : ''}`
         : d._t === 'note' ? `${esc(fmtWhen(new Date(d.n.a).toISOString()))}${d.n.b > d.n.a ? '–' + esc(d.n.clock_to || '') : ''}${d.n.rz ? ' 🌙' : ''}`
         : `${esc(nar ? narWhen(d.r.start) : fmtWhen(d.r.start))}${d.r.notes ? `<span class="ntc" title="${esc(t('nt_title', { n: d.r.notes }))}">📝 ${d.r.notes}</span>` : ''}`) },
@@ -1906,7 +1911,7 @@ function evGrid(evs, sv, useArt, grpMode) {
     { f: 'devs', title: t('devs_col'), minW: 130, vis: hasDev, prio: 5, sort: false, cls: 'devc',
       html: d => { if (d._t !== 'ev') return ''; const x = d.r.devs || []; if (x.length < 2) return '<span class="noclip">–</span>';
         return x.map((v, i) => `<span class="dvp${i === 0 ? ' top' : ''}${v[3] === d.r.k ? ' own' : ''}" title="${esc(v[1])}">${esc(shortName(v[1]))} ${v[2] != null ? v[2].toFixed(0) : '–'}</span>`).join(''); } },
-    { f: 'dur', title: t('dur'), sort: 'num', minW: 90, prio: 2, cls: 'dur', html: d => d._t === 'note' && !d.dur ? '–' : esc(fmtDur(d.dur)) + (d._t === 'sens' && d.x.open ? ' · ' + esc(t('mot_open')) : '') },
+    { f: 'dur', title: t('dur'), sort: 'num', minW: 90, prio: 2, cls: 'dur', html: d => d._t === 'grp' ? esc(fmtSpan(d.dur)) : d._t === 'note' && !d.dur ? '–' : esc(fmtDur(d.dur)) + (d._t === 'sens' && d.x.open ? ' · ' + esc(t('mot_open')) : '') },
     { f: 'pk', title: t('peak'), sort: 'num', minW: 105, prio: 3, cls: 'pk',
       html: d => d.pk == null ? '' : d._t === 'sens' ? esc(f2(d.pk)) + ' <small>' + esc(d.x.unit || '') + '</small>' : esc(fdb(d.pk)) + ' <small>dBFS</small>' },
     { f: 'thr', title: t('thr_col'), sort: 'num', minW: 120, prio: 6, html: d => d._t === 'ev' ? esc(fdb(d.thr)) : '' },
@@ -6771,8 +6776,8 @@ function levRender() {
   const hm = ms_ => { const d = new Date(ms_), td = new Date(nowServer()); return (d.toDateString() === td.toDateString() ? '' : pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '. ') + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
   const def = {
     tm: { f: 'start', title: levHead('tm'), sort: 'num', minW: 76, prio: 0, flt: 'txt', fpass: (v, d) => hm(d.start).includes(v), html: d => d._t === 'grp'
-      ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${LEVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${LEVOPEN.has(d.gid) ? '▾' : '▸'}</button><b>${esc(hm(d.start))}</b> <span class="mut" title="${esc(grpN(d.g))}" aria-label="${esc(grpN(d.g))}">· ×${d.g.n}</span>` : esc(hm(d.start)) },
-    src: Object.assign({ f: 'src', title: levHead('src'), minW: 150, grow: 2, prio: 3, cls: 'srcc', html: d => d._t === 'grp' ? `<span class="si">🗂</span><span class="sn"><b>${esc([...new Set(d._children.map(c => c.src).filter(Boolean))].join(', '))}</b></span>` : d.fn ? `<span class="si">📝</span><span class="sn"><b>${esc(d.src)}</b></span>` : d.r ? srcCell(d.r).replace(/^<td[^>]*>/, '').replace(/<\/td>$/, '') : `<span class="si">${d.x.kind === 'ha' ? '🏠' : '📱'}</span><span class="sn"><b>${esc(d.src)}</b></span>` }, ms('src')),
+      ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${LEVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${LEVOPEN.has(d.gid) ? '▾' : '▸'}</button><b title="${esc(grpN(d.g))}">${esc(clockOf(d.g.a).slice(0, 5))}–${esc(clockOf(d.g.b).slice(0, 5))}</b><span class="sr">${esc(grpN(d.g))}</span>` : esc(hm(d.start)) },
+    src: Object.assign({ f: 'src', title: levHead('src'), minW: 150, grow: 2, prio: 3, cls: 'srcc', html: d => d._t === 'grp' ? (q => `<span class="si">🗂</span><span class="sn" title="${esc(q.join(', '))}"><b>${esc(q.length > 1 ? q[0] + ' +' + (q.length - 1) : q[0] || '')}</b></span>`)([...new Set(d._children.map(c => c.src).filter(Boolean))]) : d.fn ? `<span class="si">📝</span><span class="sn"><b>${esc(d.src)}</b></span>` : d.r ? srcCell(d.r).replace(/^<td[^>]*>/, '').replace(/<\/td>$/, '') : `<span class="si">${d.x.kind === 'ha' ? '🏠' : '📱'}</span><span class="sn"><b>${esc(d.src)}</b></span>` }, ms('src')),
     art: Object.assign({ f: 'tags', title: levHead('art'), minW: 120, grow: 2, sort: false, prio: 1, html: d => d.fn ? `<span class="art fnc">📝 ${esc(t('fn_row'))}</span>${d.fev ? `<span class="art fnlk">🔗 ${esc(t('fn_link', { c: clockOf(d.fev.start) }))}</span>` : ''}` : d.r ? `${d.r.prof ? `<span class="art prof${d.r.bg ? ' bgp' : ''}">🧩 ${esc(d.r.prof)}${d.r.prof_ok ? ' ✓' : d.r.prof_c != null ? ` <small>${d.r.prof_c} %</small>` : ''}</span>` : ''}${(d.r.labels || []).map(n => `<span class="art lbl">🏷 ${esc(n)}</span>`).join('')}${mfChip(d.r)}${d.r.art ? artChip(d.r.art, d.r.art_c, d.r.art_man || d.r.art_ok, d.r.k, d.r.art_lern != null ? d.r.art_lki : null) : ''}` : `<span class="art sensc">${sensIcon(d.x.kind)} ${esc(sensLabel(d.x))}</span>${d.x.kind === 'ha' ? `<button type="button" class="chip sned snote" tabindex="-1" aria-label="${esc(t('ha_note'))}" title="${esc(t('ha_note'))}">📝${d.x.note ? ' ' + esc(d.x.note.slice(0, 40)) : ''}</button>` : ''}` }, ms('tags')),
     sc: { f: 'sc', title: levHead('sc'), minW: 130, sort: false, prio: 3, flt: 'ms', aria: t('sc_col_a'), vals: () => SC_ST.map(scLabel), fpass: (v, d) => v.includes(scLabel(d.r ? (d.r.sc || {}).s || '' : '')), html: d => d.r ? scChip(d.r.sc) : '' },
     kinds: { f: 'kinds', title: levHead('kinds'), minW: 140, sort: false, prio: 4, html: d => d.r ? kindsHTML(d.r.kinds, j.fine) : '' },
@@ -6788,11 +6793,11 @@ function levRender() {
       const uniq = l => [...new Set(l.filter(Boolean))].join('');
       if (k === 'art') return pillMerge(d._children.map(h0));
       if (k === 'kinds') return pillMerge(d._children.filter(c => c.r).map(h0));
-      if (k === 'sc') return (d._children.filter(c => c.r).map(h0).find(Boolean)) || '';
-      if (k === 'dur') return esc(fmtDur(d.dur));
+      if (k === 'sc') { const ev = d._children.filter(c => c.r && c.r.sc), rk = x => ['own', 'ok', 'no', 'nb'].indexOf((x.r.sc || {}).s); ev.sort((a, b) => (rk(a) < 0 ? 9 : rk(a)) - (rk(b) < 0 ? 9 : rk(b))); return ev.length ? h0(ev[0]) : ''; }   // bestes Ergebnis der Gruppe
+      if (k === 'dur') return esc(fmtSpan(d.dur));
       if (k === 'pk') return d.pk == null ? '' : esc(fdb(d.pk)) + ' <small>dBFS</small>';
       return ''; }; }
-  def.nt.aria = t('col_text'); def.nt.menu = '📝 ' + t('fn_row'); def.tm.cls = 'tm'; def.tm.minW = LEV.rng === 'today' || LEV.vis ? 84 : 128; def.sc.minW = 165;
+  def.nt.aria = t('col_text'); def.nt.menu = '📝 ' + t('fn_row'); def.tm.cls = 'tm'; def.tm.minW = levGrp() ? 132 : LEV.rng === 'today' || LEV.vis ? 84 : 128; def.sc.minW = 165;
   const hasSc = evs.some(r => r.sc && r.sc.s);
   // ab 1.84.0: alle passenden Spalten an die Tabelle; an/aus, Reihenfolge und Dichte über „Spalten ▾“ (gemerkt in layout.json). Ältere Auswahl (laerm_lev) gilt als Vorgabe.
   const cols = LEV_COLS.filter(c => (useArt || (c !== 'art' && c !== 'kinds')) && (c !== 'devs' || multi) && (c !== 'sc' || hasSc)).map(c => Object.assign({}, def[c]));

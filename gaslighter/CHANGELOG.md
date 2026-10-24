@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.24
+- **Zusammengefasste Zeilen ruhig:** eine Zeile je Ereignis; Zeit „20:29–20:34“; in „Art“ und „Was vorkam“ die drei häufigsten Pillen nach Anzahl, Rest als „+n“ (Liste beim Darüberfahren); Zählung einheitlich „×n“; kein Notiz-Symbol als Pille; Dauer ab 1 min als „43:03 min“; Quellen gekürzt („Server-Mikrofon +1“); Sensor-Bestätigung zeigt das beste Ergebnis der Gruppe.
+
 ## 1.85.23
 - **Gleiche Pillen einer Gruppe zusammengefasst:** in „Art“ und „Was vorkam“ steht jede Art einmal, mit Anzahl (z. B. „Stimmen ×3“) – Live und Protokolle.
 - **Filter wirken auf Ereignisse:** sind z. B. Störungen ausgeblendet, erscheinen Ereignisse mit einem sichtbaren Sensor oder einer Notiz trotzdem – ganz, mit ihren Störungen. Nur Ereignisse, die nur aus Ausgeblendetem bestehen, fehlen. In „Alle einzeln“ wie bisher.

@@ -1512,3 +1512,8 @@ sl-dropdown.sfltd .sfltl label{display:flex;gap:6px;align-items:center;white-spa
 /* „＋ Rubrik“-Typauswahl im Shoelace-Menü */
 sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
 .pcnt{font-weight:700;margin-left:3px;font-variant-numeric:tabular-nums}
+/* ab 1.85.24: zusammengefasste Zeile ruhig – Pillen in einer Zeile, nach Anzahl, Rest „+n“ */
+.pmerge{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;overflow:hidden;min-width:0}
+.pmerge > .art,.pmerge > .kd{white-space:nowrap;flex:none}
+.pmerge .pmore{color:var(--mut);background:transparent;border:1px dashed var(--bd);font-weight:600}
+.glg .ag-row.grph .ag-cell .sn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
