@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.29"
+VERSION = "1.85.30"
 
 # =====================================================================
 # Einstellungen
@@ -5442,10 +5442,17 @@ def nl_examples():
         memo[r["k"]] = None
         n = int(r["k"].rsplit("|", 1)[1] or 0)
         g, ki, _ = _event_data(r, n)
-        core = (g or {}).get("core")
-        if not core or core[1] - core[0] < 100:
+        if not g:
             return None
+        core = g.get("core")
+        if not core:                                   # ohne Kern: der Bereich mit Ausschlag
+            d0 = lernen.decode(g)
+            if d0 is None:
+                return None
+            core = lernen.candidate_region(d0)
         a, b = max(0, int(core[0])), int(core[1])
+        if b - a < 100:                                # kurzer Schlag (oft nur 20 ms): ±250 ms darum, wie beim Vergleich
+            a, b = max(0, a - 250), a + 250
         if b - a > 12000:                              # sehr lange Kerne: nur der Anfang
             b = a + 12000
         d = lernen.decode(g)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.30
+
+- Lernen aus Notizen: Kurze Schläge (oft nur 20 ms) und Störungen ohne Kern wurden übersprungen. Jetzt zählt ±250 ms um den Schlag, wie beim Vergleich. Dadurch finden auch die Sensor-Beispiele (Briefkasten) ihre Störung.
+
 ## 1.85.29
 
 - Lernen aus Notizen versteht Abfolgen wie „Briefkasten, dann Mülleimer, dann Klopfen“:
