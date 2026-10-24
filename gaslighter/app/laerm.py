@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.27"
+VERSION = "1.85.28"
 
 # =====================================================================
 # Einstellungen
@@ -5386,6 +5386,8 @@ NL_WORDS = [("klopfen", r"klopf|hämmer|haemmer|poch|klapper|wumm|rumms|bumm"), 
             ("bohren", r"bohr|schraub|flex|säg|saeg"), ("musik", r"musik|bass|lied|gesang"), ("stimmen", r"schrei|stimmen|brüll|bruell|streit|gelächter"),
             ("hund", r"hund|bell|kläff|klaeff")]
 NL = {"timer": None, "last": 0, "n": 0, "at": ""}
+NL_SIM = 0.70          # so ähnlich muss eine weitere Störung im Fenster dem Anker sein
+NL_SIB_MAX = 40        # höchstens so viele weitere Beispiele je Notiz
 NL_LOCK = threading.Lock()
 
 
@@ -5423,27 +5425,47 @@ def nl_examples():
     by_k = {r["k"]: r for r in keyed}
     out = []
 
-    def add(nk, r, kind):
+    def core_of(r):
         n = int(r["k"].rsplit("|", 1)[1] or 0)
-        g = track_for(r.get("datei")) if r.get("datei") else None
-        if g is None:
-            g, _ki, _ = _event_data(r, n)
+        g, ki, _ = _event_data(r, n)
         core = (g or {}).get("core")
         if not core or core[1] - core[0] < 100:
-            return
-        a, b = int(core[0]), int(core[1])
-        if b - a > 12000:                              # sehr lange Kerne: um die Spitze herum
-            m = (g or {}).get("peak_o")
-            a, b = (int(m) - 1500, int(m) + 1500) if m is not None else (a, a + 12000)
-        out.append((nk, event_stem(r, n), max(0, a), b, NL_KIND[kind]))
+            return None
+        a, b = max(0, int(core[0])), int(core[1])
+        if b - a > 12000:                              # sehr lange Kerne: nur der Anfang
+            b = a + 12000
+        d = lernen.decode(g)
+        if d is None:
+            return None
+        return event_stem(r, n), a, b, lernen.proto_from(d, ki, a, b)
+
+    def add(nk, r, kind):
+        c = core_of(r)
+        if c:
+            out.append((nk, c[0], c[1], c[2], NL_KIND[kind]))
+        return c
 
     fns = [n for n in fnotes_in(0, int(time.time() * 1000) + 60000, "all") if not n.get("noassign")]
     m = fn_assign(fns, keyed) if fns else {}
     for n in fns:
         kind = note_kind(n.get("tags"), n.get("text"))
         x = m.get(na_key(n))
-        if kind and x and x.get("k") in by_k:
-            add(na_key(n), by_k[x["k"]], kind)
+        if not (kind and x and x.get("k") in by_k):
+            continue
+        anc = add(na_key(n), by_k[x["k"]], kind)       # Anker: die lauteste Störung im Fenster
+        if not anc or anc[3].get("band") is None:
+            continue
+        sib = 0
+        for k2, _d in (x.get("cand") or [])[:80]:      # weitere Störungen im Fenster, die genauso klingen (mehrmals Klopfen in 10 min)
+            if k2 == x["k"] or k2 not in by_k:
+                continue
+            c = core_of(by_k[k2])
+            if not c:
+                continue
+            if lernen.score(anc[3], c[3].get("band"), c[3].get("emb")) >= NL_SIM:
+                out.append((na_key(n) + "#" + k2, c[0], c[1], c[2], NL_KIND[kind])); sib += 1
+                if sib >= NL_SIB_MAX:
+                    break
     stem_row = {}
     for r in keyed:
         stem_row.setdefault(event_stem(r, int(r["k"].rsplit("|", 1)[1] or 0)), r)
@@ -5465,7 +5487,7 @@ def note_learn(rescan=True):
     ex = nl_examples(); rej = nl_rej()
     want = {}
     for nk, stem, a, b, name in ex:
-        if nk not in rej:
+        if nk not in rej and nk.split("#")[0] not in rej:   # Anker entfernt = ganze Notiz lernt nicht mehr
             want.setdefault(stem, []).append((nk, a, b, name))
     n = 0
     with LABELS_LOCK:

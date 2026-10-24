@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.28
+
+- Lernen aus Notizen: Nicht nur die lauteste Störung im Zeitfenster wird ein Beispiel. Jede weitere Störung im Fenster, die ihr ähnlich ist (mehrmals Klopfen in 10 Minuten), wird auch eines, bis zu 40 je Notiz. Andere Geräusche im Fenster werden nicht übernommen. Entfernst du das Beispiel der lautesten Störung, lernt die ganze Notiz nicht mehr.
+
 ## 1.85.27
 
 - **Lernen aus Notizen:** Notizen mit genau einer Art (Tag oder Wort im Text: Klopfen, Möbelrücken, Schritte, Tür, Bohren, Musik, Stimmen, Hund) werden Beispiele. Die lauteste Störung im Zeitfenster der Notiz wird dem Profil dieser Art beigebracht, danach wird **rückwirkend** alles neu eingeordnet – Störungen und durchgehend die Tagesaufzeichnung (auch kurzes Klopfen, das vorher nur „Sonstiges“ war). Läuft von selbst nach dem Speichern einer Notiz (höchstens alle 30 min) und nach dem Start; von Hand unter 🧩 Profile → „🧠 Aus Notizen lernen und alles neu untersuchen“. Abschaltbar: Einstellungen → KI → „Aus Notizen lernen“.
