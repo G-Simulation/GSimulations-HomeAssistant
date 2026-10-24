@@ -1815,6 +1815,12 @@ function evCluster(out, j) {
   }
   return res;
 }
+function grpSpan(p) { let a = Infinity, b = -Infinity; for (const c of p._children || []) { const x = c._t === 'note' ? [c.n.a, Math.max(c.n.b || c.n.a, c.n.a)] : c._t === 'sens' ? [c.x.a, Math.max(c.x.b || c.x.a, c.x.a)] : [c.start, c.start + (c.dur || 0) * 1000]; a = Math.min(a, x[0]); b = Math.max(b, x[1]); } return [a, Math.max(b, a + 1000)]; }
+function grpShow(p, live) {                           // ab 1.85.22: ganzer Zeitraum des Ereignisses im Graphen (erster bis letzter Eintrag, mit Rand), markiert
+  const [a, b] = grpSpan(p), pad = Math.max(15000, (b - a) * 0.08);
+  if (live) { liveJump(a, b, grpN(p.g)); return; }
+  DT.mark = [a, b]; DT.from = a - pad; DT.to = b + pad; dtLoad(DT, true);
+}
 const grpN = g => g && g.mix ? t('grp_nx', { n: g.n, e: g.ne || 0, s: g.ns || 0, f: g.nn || 0 }) : t('grp_n', { n: g.n });
 /* Detailansicht einer Gruppe: alle Störungen, Sensor-Ereignisse und Notizen des Zeitraums, jede einzeln zu öffnen, dazu „Im Verlauf zeigen“ */
 function grpOpen(p) {
@@ -1831,7 +1837,7 @@ function grpOpen(p) {
     <ol class="grplist">${p._children.map(row).join('')}</ol></div>
     <div class="df"><button type="button" class="chip grpgraph">📈 ${esc(t('grp_graph'))}</button><span class="grow"></span><button type="button" class="pri grpdone">${esc(t('a_close'))}</button></div>`;
   d.querySelector('.grpx').onclick = d.querySelector('.grpdone').onclick = () => d.close();
-  d.querySelector('.grpgraph').onclick = () => { d.close(); dtFocus(a, Math.max(b, a + 1000)); };
+  d.querySelector('.grpgraph').onclick = () => { d.close(); NV.open ? dtFocus(...grpSpan(p)) : grpShow(p, true); };
   d.querySelectorAll('.grpgo').forEach(bt => bt.onclick = () => { const c = p._children[+bt.dataset.i]; d.close();
     if (c._t === 'ev') openEvent(c.k || c.id); else if (c._t === 'note') fnOpenId(c.n); else if (c._t === 'sens') { if (c.x.kind === 'ha') haPop({ a: c.x.a, b: c.x.b, name: sensLabel(c.x), note: c.x.note || '', key: c.x.key }); else dtFocus(c.x.a, c.x.b); } });
   d.showModal(); setTimeout(() => d.querySelector('.grpdone').focus(), 50);
@@ -1914,7 +1920,7 @@ function evGrid(evs, sv, useArt, grpMode) {
         if (d._t === 'ev' ? d.r.bg || d.r.inc_bg : d._t === 'grp' && d.g.bg) a.push('bgrow'); return a; },
       onRow: (e, d, rowEl) => { if (e.target.closest && e.target.closest('input,button:not(.gtog),a,.ck')) { if (!(d._t === 'note' && e.target.closest('.fnlink'))) return; }
         if (d._t === 'ev') dtJump(d.id);
-        else if (d._t === 'grp') { EVOPEN.has(d.gid) ? EVOPEN.delete(d.gid) : EVOPEN.add(d.gid); TBL.redraw(x => x === d); TBL.refilter(); }
+        else if (d._t === 'grp') { EVOPEN.has(d.gid) ? EVOPEN.delete(d.gid) : EVOPEN.add(d.gid); TBL.redraw(x => x === d); TBL.refilter(); grpShow(d, false); }
         else if (d._t === 'sens') { const x = d.x; dtFocus(x.a, x.b); }
         else if (d._t === 'note') { if (e.target.closest && e.target.closest('.fnlink') && d.ev) { openEvent(ek(d.ev)); return; } dtFocus(d.n.a, Math.max(d.n.b || d.n.a, d.n.a + 1000)); } },
       onDbl: (e, d) => { if (e.target.closest('input,button,a')) return; if (d._t === 'grp') { grpOpen(d); return; } if (d._t === 'ev') openEvent(d.id); else if (d._t === 'note') fnOpenId(d.n); else if (d._t === 'sens' && d.x.kind === 'ha') haPop({ a: d.x.a, b: d.x.b, name: sensLabel(d.x), note: d.x.note || '', key: d.x.key }); },
@@ -6787,7 +6793,7 @@ function levRender() {
       onModel: G => levCount(G.shown(), G.nFilters()),
       onRow: (e, d) => {                               // Klick: der Graph springt zur Stelle (1.84.3); öffnen/bearbeiten mit Doppelklick oder der Taste in der Zeile
         const on = s_ => e.target && e.target.closest && e.target.closest(s_);
-        if (d._t === 'grp') { LEVOPEN.has(d.gid) ? LEVOPEN.delete(d.gid) : LEVOPEN.add(d.gid); LTBL.redraw(x => x === d); LTBL.refilter(); return; }   // Klick: auf-/zuklappen
+        if (d._t === 'grp') { LEVOPEN.has(d.gid) ? LEVOPEN.delete(d.gid) : LEVOPEN.add(d.gid); LTBL.redraw(x => x === d); LTBL.refilter(); grpShow(d, true); return; }   // Klick: auf-/zuklappen und ganzen Zeitraum zeigen
         if (d.fn && d.fev && on('.fnlk')) { openEvent(d.fev.k || ''); return; }
         if (d.x && d.x.kind === 'ha' && on('.snote')) { levOpen(d); return; }
         const a = d.fn ? d.fn.a : d.x ? d.x.a : d.start, b = d.fn ? Math.max(d.fn.b || d.fn.a, d.fn.a + 1000) : d.x ? d.x.b : d.start + Math.max(1000, (+(d.r && d.r.dauer_s) || 1) * 1000);
