@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.23
+- **Gleiche Pillen einer Gruppe zusammengefasst:** in „Art“ und „Was vorkam“ steht jede Art einmal, mit Anzahl (z. B. „Stimmen ×3“) – Live und Protokolle.
+- **Filter wirken auf Ereignisse:** sind z. B. Störungen ausgeblendet, erscheinen Ereignisse mit einem sichtbaren Sensor oder einer Notiz trotzdem – ganz, mit ihren Störungen. Nur Ereignisse, die nur aus Ausgeblendetem bestehen, fehlen. In „Alle einzeln“ wie bisher.
+
 ## 1.85.22
 - **Live-Tabelle: eigener Umschalter „Ereignisse | Alle einzeln“** (Standard „Ereignisse“) – unabhängig von Protokolle; Störungen kurz hintereinander, Sensoren und Notizen eines Ereignisses sind eine Zeile.
 - Klick auf ein zusammengefasstes Ereignis (Live und Protokolle): klappt auf und zeigt im Graphen den ganzen Zeitraum vom ersten bis zum letzten Eintrag, markiert.

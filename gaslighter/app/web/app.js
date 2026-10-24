@@ -1579,11 +1579,11 @@ function renderEvents() {
   syncLabelFilter(); sfltBuild();
   $('artflt').querySelectorAll('option').forEach(o => { if (o.value && o.value !== '_notes' && !o.value.startsWith('lb:')) o.hidden = !useArt; }); artMsBuild();
   const one = (r, flt) => flt === '_notes' ? r.notes > 0 : flt.startsWith('lb:') ? (r.labels || []).includes(flt.slice(3)) : !useArt ? true : flt === '_none' ? !r.art : r.art === flt;
-  const evs = SHIDE.has('_ev') ? [] : EV.events.filter(r => !mfHide(r) && (!ARTSEL.size || [...ARTSEL].some(f => one(r, f))));   // Musterfilter: ausgefilterte nur mit „ausgefilterte zeigen“   // Art: Mehrfachauswahl, eine passende genügt
+  const evs = EV.events.filter(r => !mfHide(r)); for (const r of evs) r.__hid = SHIDE.has('_ev') || !!(ARTSEL.size && ![...ARTSEL].some(f => one(r, f)));   // ab 1.85.23: ausgeblendete bleiben in Ereignissen mit sichtbarem Sensor/Notiz   // Musterfilter: ausgefilterte nur mit „ausgefilterte zeigen“   // Art: Mehrfachauswahl, eine passende genügt
   // Nur neu aufbauen, wenn sich etwas geaendert hat. Der Player ist von der Tabelle getrennt: Wiedergabe laeuft weiter.
   const grpMode = EVVIEW === 'grp';
-  const sv = sensVis();
-  const sig = JSON.stringify([useArt, lang, grpMode, evs.map(r => [r.k, r.ha_on, r.raise_on, r.start, r.art, r.art_c, r.art_man, r.video, r.audio, r.datei, r.notes, r.labels, r.kinds, r.prof, r.prof_c, r.prof_ok, r.inc, r.grp, r.lead, r.devs, r.bg, r.mf, r.art_ok, r.sc]), MF.show, SOURCES.map(x => [x.id, x.name]), sv, [...SHIDE]]);
+  const sv = sensAll();
+  const sig = JSON.stringify([useArt, lang, grpMode, [...SHIDE], [...ARTSEL], evs.map(r => [r.k, r.ha_on, r.raise_on, r.start, r.art, r.art_c, r.art_man, r.video, r.audio, r.datei, r.notes, r.labels, r.kinds, r.prof, r.prof_c, r.prof_ok, r.inc, r.grp, r.lead, r.devs, r.bg, r.mf, r.art_ok, r.sc]), MF.show, SOURCES.map(x => [x.id, x.name]), sv, [...SHIDE]]);
   const sig2 = sig + JSON.stringify([(EV.fnotes || []).map(n => [n.id, n.a, n.b, n.text, n.tags, n.witness]), fnShow(), EV.fn_pre_min, EV.fn_post_min]);
   const ss = $('scsum'); if (ss) { const tx = scSumTxt(EV.sc_sum); ss.textContent = tx; ss.hidden = !tx; }
   if (sig2 === EVSIG) return;
@@ -1766,7 +1766,7 @@ const fnShow = () => !SHIDE.has('_fn') && (!ARTSEL.size || ARTSEL.has('_notes') 
 const fnText = n => `${n.gr ? '<span class="art grsrc" title="' + esc(t('gr_from_tip')) + '">GReport</span>' : ''}${n.kind_l ? `<span class="fbkind sm" style="--kc:${esc(/^#[0-9a-f]{6}$/i.test(n.kind_c || '') ? n.kind_c : '#5f6b78')}"${n.noassign ? ` title="${esc(t('fk_noassign'))}"` : ''}>${n.kind_i ? esc(n.kind_i) + ' ' : ''}${esc(n.kind_l)}</span>` : ''}${(n.tags || []).map(ntTag).join('')}${n.text ? `<span class="ntt" title="${esc(n.text)}">${esc(n.text)}</span>` : ''}${n.witness ? `<span class="ntw">👤 ${esc(n.witness)}</span>` : ''}${fbx(n)}`;
 function evRows(evs, sv, grpMode) {
   const G = EV.grps || {}, out = [], seen = new Map();
-  const one = r => ({ _t: 'ev', id: ek(r), r, start: new Date(r.start).getTime(), src: evSrcName(r), tags: evTags(r), dur: +r.dauer_s || 0, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs });
+  const one = r => ({ _t: 'ev', _hid: !!r.__hid, id: ek(r), r, start: new Date(r.start).getTime(), src: evSrcName(r), tags: evTags(r), dur: +r.dauer_s || 0, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs });
   for (const r of evs) {
     if (grpMode && r.inc != null && !r.lead) continue;      // gleiche Störung an mehreren Geräten: eine Zeile (lautestes Gerät), Spalte „Geräte“ zeigt die anderen
     const g = grpMode && r.grp != null ? G[r.grp] : null;
@@ -1777,12 +1777,12 @@ function evRows(evs, sv, grpMode) {
       if (c.pk != null && (p.pk == null || c.pk > p.pk)) p.pk = c.pk;
     } else out.push(one(r));
   }
-  if (fnShow()) for (const [n, ev, dms] of fnLink(EV.fnotes, EV.events, EV)) {
-    out.push({ _t: 'note', id: 'n:' + n.id, n, ev, dms, start: n.a, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null });
+  const fnV = fnShow(); for (const [n, ev, dms] of fnLink(EV.fnotes, EV.events, EV)) {
+    out.push({ _t: 'note', _hid: !fnV, id: 'n:' + n.id, n, ev, dms, start: n.a, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null });
     if (ev) for (const d of out) if (d._t === 'ev' && d.r === ev) (d.fn = d.fn || []).push([n, dms]);   // auch an der Störung sichtbar, mit Abstand
   }
-  for (const x of sv) out.push({ _t: 'sens', id: 's:' + x.key, x, start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak != null ? x.peak : null });
-  const res = grpMode ? evCluster(out, EV || {}) : out;
+  for (const x of sv) out.push({ _t: 'sens', _hid: !!x.__hid, id: 's:' + x.key, x, start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak != null ? x.peak : null });
+  const res = evVisible(grpMode ? evCluster(out, EV || {}) : out);
   res.sort((a, b) => b.start - a.start);
   return res;
 }
@@ -1821,6 +1821,18 @@ function grpShow(p, live) {                           // ab 1.85.22: ganzer Zeit
   if (live) { liveJump(a, b, grpN(p.g)); return; }
   DT.mark = [a, b]; DT.from = a - pad; DT.to = b + pad; dtLoad(DT, true);
 }
+/* Pillen einer Gruppe zusammenfassen: gleiche Art (Text ohne Zahlen/Zeiten) nur einmal, dahinter „×n“; Verweise einer Notiz auf eine Störung entfallen */
+function pillMerge(list) {
+  const tmp = document.createElement('div'), seen = new Map(), order = [];
+  for (const h of list) { if (!h) continue; tmp.innerHTML = h;
+    for (const e of [...tmp.children]) { if (e.matches('.fnlink, .fnlk, .hant')) continue;
+      const key = e.textContent.replace(/×\s*\d+/g, '').replace(/[\d.,:]+\s*(s|min|%|dBFS)?/g, '').replace(/\s+/g, ' ').trim(); if (!key) continue;
+      if (!seen.has(key)) { seen.set(key, { el: e.outerHTML, n: 0 }); order.push(key); } seen.get(key).n++; } }
+  return order.map(k => { const x = seen.get(k); if (x.n < 2) return x.el; const c = `<b class="pcnt">×${x.n}</b>`;   // eigene Zahl/Dauer der ersten Pille ersetzt durch die Anzahl
+    return /<b[^>]*>[^<]*<\/b>(?![\s\S]*<b)/.test(x.el) ? x.el.replace(/<b[^>]*>[^<]*<\/b>(?![\s\S]*<b)/, c) : x.el.replace(/<\/(span|button|div)>\s*$/, ` ${c}</$1>`); }).join('');
+}
+/* Filter (Sensoren/Art/Notizen) erst nach dem Zusammenfassen: ein Ereignis bleibt, wenn etwas darin sichtbar ist – dann ganz, mit allen Einträgen */
+function evVisible(rows) { return rows.filter(d => d._t === 'grp' ? d._children.some(c => !c._hid) : !d._hid); }
 const grpN = g => g && g.mix ? t('grp_nx', { n: g.n, e: g.ne || 0, s: g.ns || 0, f: g.nn || 0 }) : t('grp_n', { n: g.n });
 /* Detailansicht einer Gruppe: alle Störungen, Sensor-Ereignisse und Notizen des Zeitraums, jede einzeln zu öffnen, dazu „Im Verlauf zeigen“ */
 function grpOpen(p) {
@@ -1884,13 +1896,13 @@ function evGrid(evs, sv, useArt, grpMode) {
       html: d => {
         if (d._t === 'sens') return `<span class="art sensc">${sensIcon(d.x.kind)} ${esc(sensLabel(d.x))}</span>${d.x.note ? `<div class="hant">📝 ${esc(d.x.note)}</div>` : ''}`;
         if (d._t === 'note') return `<span class="art fnc">📝 ${esc(t('fn_row'))}</span>${d.ev ? `<button type="button" class="chip fnlink" tabindex="-1" title="${esc(t('fn_link_tip'))}">🔗 ${esc(t('fn_link', { c: clockOf(d.ev.start) }))}</button> <small class="fnasg${(d.n.asg || {}).man ? ' fnman' : ''}">${esc(fnAsgHow(d.n, EV))}</small>` : (d.n.asg && d.n.asg.man ? ` <small class="fnasg fnman">${esc(t('fn_asg_detached'))}</small>` : '')}<div class="fnrowt">${fnText(d.n)}</div>`;
-        if (d._t === 'grp' && d.g.mix && !d.g.kind && !d.g.prof) return `<span class="art grpmix">${esc(grpN(d.g))}</span>`;   // zusammengefasst ohne gemeinsame Art
+        if (d._t === 'grp' && d._children && d._children.length) return pillMerge(d._children.map(c => cols.find(x => x.f === 'tags').html(c)));   // ab 1.85.23: gleiche Pillen der Gruppe einmal, mit Anzahl
         if (d._t === 'grp') return d.g.prof ? `<span class="art prof">🧩 ${esc(d.g.kind)}</span>` : d.g.kind && d.g.kind !== '?' ? artChip(d.g.kind, null, false) : esc(t('art_pending'));
         const r = d.r; return `${fnAsgHTML(d.fn, EV)}${(r.ha_on || []).filter(n => !SHIDE.has('ha:' + n)).map(n => `<span class="art haon" title="${esc(t('ha_on_tip'))}">📡 ${esc(n)} ${esc(t('ha_on'))}</span>`).join('')}${(r.raise_on || []).map(x => `<span class="art haraisec" title="${esc(t('ha_raise_tip'))}">📈 ${esc(x[0])} +${esc(fmtDb(x[1]))} dB</span>`).join('')}${profChip(r)}${(r.labels || []).map(n => `<span class="art lbl" title="${esc(t('lb_own'))}">🏷 ${esc(n)}</span>`).join('')}${mfChip(r)}${r.art ? artChip(r.art, r.art_c, r.art_man || r.art_ok, CUR && CUR.classify === false ? '' : r.k, r.art_lern != null ? r.art_lki : null) : (r.datei && !(r.labels || []).length && !r.prof ? '<span class="noclip" title="' + esc(t('art_pending')) + '">…</span>' : (r.labels || []).length || r.prof ? '' : '<span class="noclip">–</span>')}`; } },
     { f: 'sc', title: t('sc_col'), minW: 165, vis: hasSc, prio: 3, sort: false, cls: 'scol', flt: 'ms', aria: t('sc_col_a'),
       vals: () => SC_ST.map(scLabel), fpass: (v, d) => v.includes(scLabel(scOf(d))),
       html: d => d._t === 'ev' ? scChip(d.r.sc) : '' },
-    { f: 'kinds', title: t('kinds_col'), minW: 150, grow: 2, vis: hasKinds, prio: 4, sort: false, cls: 'kinds', html: d => d._t === 'ev' ? kindsHTML(d.r.kinds, EV.fine) : '' },
+    { f: 'kinds', title: t('kinds_col'), minW: 150, grow: 2, vis: hasKinds, prio: 4, sort: false, cls: 'kinds', html: d => d._t === 'ev' ? kindsHTML(d.r.kinds, EV.fine) : d._t === 'grp' ? pillMerge(d._children.filter(c => c._t === 'ev').map(c => kindsHTML(c.r.kinds, EV.fine))) : '' },
     { f: 'devs', title: t('devs_col'), minW: 130, vis: hasDev, prio: 5, sort: false, cls: 'devc',
       html: d => { if (d._t !== 'ev') return ''; const x = d.r.devs || []; if (x.length < 2) return '<span class="noclip">–</span>';
         return x.map((v, i) => `<span class="dvp${i === 0 ? ' top' : ''}${v[3] === d.r.k ? ' own' : ''}" title="${esc(v[1])}">${esc(shortName(v[1]))} ${v[2] != null ? v[2].toFixed(0) : '–'}</span>`).join(''); } },
@@ -2326,6 +2338,7 @@ function shideSave() { try { localStorage.setItem('gl_shide', JSON.stringify([..
 const sensKey = x => x.kind === 'ha' ? 'ha:' + x.name : x.kind;
 const sensIcon = k => k === 'vib' ? '🫨' : k === 'tilt' ? '📐' : k === 'cam' ? '🏃' : '📡';
 const sensLabel = x => x.kind === 'ha' ? x.name : t(x.kind === 'vib' ? 'sens_vib' : x.kind === 'tilt' ? 'sens_tilt' : 'sens_cam');
+function sensAll() { const vis = new Set(sensVis()); return ((EV && EV.sens) || []).map(x => (x.__hid = !vis.has(x), x)); }   // alle Sensor-Ereignisse, ausgeblendete markiert
 function sensVis() { return ((EV && EV.sens) || []).filter(x => !SHIDE.has(sensKey(x)) && (!ARTSEL.size || ARTSEL.has(sensKey(x)))); }   // Art: gewählte Sensoren
 /* Auswahlliste „Sensoren“ (Mehrfachauswahl): Störungen, jede HA-Regel, Handy-Erschütterung, Handy-Bewegung */
 function levData() { try { return LEV.data; } catch (e) { return null; } }
@@ -6723,16 +6736,16 @@ const LEVOPEN = new Set();                             // aufgeklappte Gruppen d
 function levRender() {
   const j = LEV.data, box = $('ldev'); if (!j || !box) return;
   sfltBuild();
-  const evs = SHIDE.has('_ev') ? [] : (j.events || []).filter(r => r.lead !== false && !mfHide(r));          // je Störung eine Zeile (lautestes Gerät), wie in Protokolle; Musterfilter
-  const sens = ((j.sens || []).filter(x => !SHIDE.has(sensKey(x))));
+  const evs = (j.events || []).filter(r => r.lead !== false && !mfHide(r)), evHid = SHIDE.has('_ev');          // je Störung eine Zeile (lautestes Gerät), wie in Protokolle; Musterfilter
+  const sens = (j.sens || []);
   const multi = evs.some(r => (r.devs || []).length > 1);
   const useArt = !CUR || CUR.classify !== false;
   const txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.trim(); };
-  const rows = evs.map(r => ({ id: 'e' + (r.k || r.start), k: r.k || '', start: new Date(r.start).getTime(), src: r.quelle || (SOURCES.find(x => x.id === (r.quelle_id || 'main')) || {}).name || r.quelle_id || '', r,
+  const rows = evs.map(r => ({ _hid: evHid, id: 'e' + (r.k || r.start), k: r.k || '', start: new Date(r.start).getTime(), src: r.quelle || (SOURCES.find(x => x.id === (r.quelle_id || 'main')) || {}).name || r.quelle_id || '', r,
     tags: [].concat((r.mf || []).map(id => '⊘ ' + mfInfo(id).name), r.prof ? ['🧩 ' + r.prof] : [], (r.labels || []).map(n => '🏷 ' + n)), dur: r.dauer_s, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs, nt: r.notes ? '📝 ' + r.notes : '' }))
-    .concat(fnShow() ? fnLink(j.fnotes, j.events, j).map(([n, ev, dms]) => ({ id: 'n' + n.id, k: '', start: n.a, fdms: dms, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), fn: n, fev: ev,
-      tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null, nt: '📝 ' + [n.text, ...(n.tags || []).map(x => ntLabel(x)), n.witness ? '👤 ' + n.witness : '', ...fbList(n)].filter(Boolean).join(' · ') + (ev ? ' · 🔗 ' + t('fn_link', { c: clockOf(ev.start) }) : '') })) : [])
-    .concat(sens.map(x => ({ id: 's' + x.key, k: '', start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', x, tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak, nt: x.note ? '📝 ' + x.note : '' })));
+    .concat(fnLink(j.fnotes, j.events, j).map(([n, ev, dms]) => ({ _hid: !fnShow(), id: 'n' + n.id, k: '', start: n.a, fdms: dms, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), fn: n, fev: ev,
+      tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null, nt: '📝 ' + [n.text, ...(n.tags || []).map(x => ntLabel(x)), n.witness ? '👤 ' + n.witness : '', ...fbList(n)].filter(Boolean).join(' · ') + (ev ? ' · 🔗 ' + t('fn_link', { c: clockOf(ev.start) }) : '') })))
+    .concat(sens.map(x => ({ _hid: SHIDE.has(sensKey(x)), id: 's' + x.key, k: '', start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', x, tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak, nt: x.note ? '📝 ' + x.note : '' })));
   const win = LEV.vis ? levWin() : null;
   if (win) {                                          // nur was im sichtbaren Bereich liegt (auch teilweise)
     const inWin = d => { const a = d.start, b = a + (d.dur || 0) * 1000; return b >= win[0] && a <= win[1]; };
@@ -6741,9 +6754,9 @@ function levRender() {
   const sf = STATS.filt.live; if (sf) for (let i = rows.length - 1; i >= 0; i--) if (!statMatch(sf, rows[i], 'live')) rows.splice(i, 1);
   if (levGrp()) {                                     // ab 1.85.20: wie in Protokolle zusammenfassen (ab 1.85.22 eigener Umschalter „Ereignisse | Alle einzeln“) (Notiz + Störungen + Sensoren eines Ereignisses = eine Zeile)
     for (const d of rows) { d._t = d.r ? 'ev' : d.fn ? 'note' : 'sens'; if (d.fn) d.n = d.fn; }
-    const cl = evCluster(rows, j); rows.length = 0; rows.push(...cl);
+    const cl = evVisible(evCluster(rows, j)); rows.length = 0; rows.push(...cl);
     for (const g of rows) if (g._t === 'grp') { g.k = ''; g.nt = g._children.map(c => c.nt).filter(Boolean).join(' · '); }
-  }
+  } else for (let i = rows.length - 1; i >= 0; i--) if (rows[i]._hid) rows.splice(i, 1);   // „Alle einzeln“: Filter wie bisher
   levTitleSet();
   const rs = $('ldevrng'); if (rs && rs.value !== LEV.rng) rs.value = LEV.rng;
   const cw = $('ldevcus'); if (cw) cw.hidden = LEV.rng !== 'custom';
@@ -6773,8 +6786,8 @@ function levRender() {
   for (const k of Object.keys(def)) { if (k === 'tm' || k === 'src' || k === 'nt') continue; const h0 = def[k].html;   // zusammengefasste Zeile: Werte für das Ganze
     def[k].html = d => { if (d._t !== 'grp') return h0(d);
       const uniq = l => [...new Set(l.filter(Boolean))].join('');
-      if (k === 'art') return uniq(d._children.map(c => h0(c).replace(/<span class="art fnlk">.*?<\/span>/g, '')));
-      if (k === 'kinds') return uniq(d._children.filter(c => c.r).map(h0));
+      if (k === 'art') return pillMerge(d._children.map(h0));
+      if (k === 'kinds') return pillMerge(d._children.filter(c => c.r).map(h0));
       if (k === 'sc') return (d._children.filter(c => c.r).map(h0).find(Boolean)) || '';
       if (k === 'dur') return esc(fmtDur(d.dur));
       if (k === 'pk') return d.pk == null ? '' : esc(fdb(d.pk)) + ' <small>dBFS</small>';

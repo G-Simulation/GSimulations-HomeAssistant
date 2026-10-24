@@ -1511,3 +1511,4 @@ sl-dropdown.sfltd .sfltl{position:static!important;inset:auto!important;display:
 sl-dropdown.sfltd .sfltl label{display:flex;gap:6px;align-items:center;white-space:nowrap;cursor:pointer;padding:3px 2px}
 /* „＋ Rubrik“-Typauswahl im Shoelace-Menü */
 sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
+.pcnt{font-weight:700;margin-left:3px;font-variant-numeric:tabular-nums}
