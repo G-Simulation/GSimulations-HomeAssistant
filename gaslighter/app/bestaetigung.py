@@ -293,7 +293,7 @@ def assign_notes(notes, incs, pre_ms, post_ms):
     return out
 
 
-def assign(notes, evs, ovr=None):
+def assign(notes, evs, ovr=None, pick="near"):
     """Notizen den Störungen zuordnen (ab 1.83), je Notiz mit eigenem Fenster (GLighter −2/+15 min, GReport −10/+30 min):
     Zeitraum der Notiz [a, b] überschneidet [Störungsbeginn − vor, Störungsende + nach]; die nächste zum Beginn gewinnt.
     Eine Wahl von Hand (ovr: {Notiz: Schlüssel oder None = gelöst}) geht vor; sie liegt in einer eigenen Datei, die Notiz bleibt unverändert.
@@ -312,10 +312,12 @@ def assign(notes, evs, ovr=None):
         b = max(b or a, a)
         i0 = bisect.bisect_left(starts, a - post - maxd); i1 = bisect.bisect_right(starts, b + pre)
         cand = []
-        for k, ea, eb, dev in evs[i0:i1]:
+        for e in evs[i0:i1]:
+            k, ea, eb, dev = e[0], e[1], e[2], e[3]
+            pk = e[4] if len(e) > 4 and e[4] is not None else -999.0
             eb = max(eb or ea, ea)
             if (src in (None, "", "all") or not dev or dev == src) and a <= eb + post and b >= ea - pre:
-                cand.append((abs(a - ea), ea, k))
+                cand.append((-pk if pick == "peak" else abs(a - ea), ea, k))   # ab 1.85.26: „peak“ = lauteste Störung im Fenster gewinnt
         cand.sort(key=lambda x: (x[0], x[1]))
         cl = [[k, a - ea] for _, ea, k in cand]
         if nid in ovr:

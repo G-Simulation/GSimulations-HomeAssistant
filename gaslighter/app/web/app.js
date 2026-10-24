@@ -1614,7 +1614,7 @@ function fnLink(notes, evs, j) {                       // Zuordnung kommt vom Se
     let best = null, bd = 1e18;
     for (const [r, s0, s1] of lst) {
       if ((r.quelle_id || 'main') !== (n.src || 'all') && (n.src || 'all') !== 'all') continue;
-      if (a <= s1 + post && b >= s0 - pre) { const dd = Math.abs(s0 - a); if (dd < bd) { bd = dd; best = r; } }
+      if (a <= s1 + post && b >= s0 - pre) { const dd = (j && j.fn_pick === 'near') ? Math.abs(s0 - a) : -(+r.spitze_dbfs || -999); if (dd < bd) { bd = dd; best = r; } }   // ab 1.85.26: lauteste im Fenster (Einstellung)
     }
     return [n, best, best ? a - new Date(best.start).getTime() : null];
   });
@@ -4619,7 +4619,7 @@ const FORM = [
   ['s_keep', [['auto_delete', 'chk'], ['retention_days', 'num', 1, 3650, 1]]],
   ['s_mirror', [['mirror_dir', 'text'], ['mirror_time', 'time'], ['mirror_offload', 'chk']]],
   ['s_misc', [['language', 'sel', ['auto', 'de', 'en'], { auto: 'lauto', de: '#Deutsch', en: '#English' }], ['wheel_zoom', 'sel', ['ctrl', 'always'], { ctrl: 'wz_ctrl', always: 'wz_always' }], ['auto_thr', 'sel', ['thr', 'data'], { thr: 'at_thr', data: 'at_data' }], ['tip_mode', 'sel', ['hover', 'always', 'off'], { hover: 'tm_hover', always: 'tm_always', off: 'tm_off' }]]],
-  ['s_list', [['group_pause_s', 'num', 10, 3600, 10], ['grp_tail_s', 'num', 0, 3600, 10], ['grp_mix', 'chk'], ['fn_grp', 'chk'], ['fn_pre_min', 'num', 0, 120, 1], ['fn_post_min', 'num', 0, 120, 1], ['fn_gr_pre_min', 'num', 0, 120, 1], ['fn_gr_post_min', 'num', 0, 120, 1]]],
+  ['s_list', [['fn_pick', 'sel', ['peak', 'near'], { peak: 'fnp_peak', near: 'fnp_near' }], ['group_pause_s', 'num', 10, 3600, 10], ['grp_tail_s', 'num', 0, 3600, 10], ['grp_mix', 'chk'], ['fn_grp', 'chk'], ['fn_pre_min', 'num', 0, 120, 1], ['fn_post_min', 'num', 0, 120, 1], ['fn_gr_pre_min', 'num', 0, 120, 1], ['fn_gr_post_min', 'num', 0, 120, 1]]],
 ];
 /* Reihenfolge der Kästen je Reiter (nach dem, was man tun will) */
 const SEC_ORDER = ['srcbox', 's_audio', 's_cal', 's_thr', 's_ki', 's_prof', 's_muster', 's_time', 's_quiet', 's_sched', 's_ha',

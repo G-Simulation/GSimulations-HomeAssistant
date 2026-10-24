@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.26
+
+- Eine Notiz wird jetzt der **lautesten** Störung in ihrem Zeitfenster zugeordnet (größter Ausschlag), nicht mehr der zeitlich nächsten. Umstellbar unter Einstellungen → „Notiz verknüpfen mit“.
+- Erkennung: Schwelle folgt dem Hintergrund weiter nach unten (Abstand 18 dB, Untergrenze −55 dBFS), damit leises Klopfen im Treppenhaus nicht mehr untergeht.
+
 ## 1.85.25
 - Pillen einer zusammengefassten Zeile werden nicht mehr abgeschnitten: so viele wie in die Spalte passen, der Rest als „+n“ (Liste beim Darüberfahren); passt sich der Spaltenbreite an.
 
