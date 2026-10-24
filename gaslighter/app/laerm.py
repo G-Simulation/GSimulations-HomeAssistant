@@ -24,6 +24,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 import numpy as np
 import queue
 import itertools
+import bisect
 try:
     from scipy import signal as sps          # fuer den Brummfilter
 except Exception:                            # pragma: no cover
@@ -33,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.28"
+VERSION = "1.85.29"
 
 # =====================================================================
 # Einstellungen
@@ -5380,11 +5381,12 @@ def scan_run(t_from, t_to, name, events, areas):
 # mit der die Notiz verknüpft ist (die lauteste in ihrem Fenster), wird ein Beispiel des Profils dieser Art. Danach wird
 # rückwirkend alles neu untersucht. Geändert wird nur die Einordnung (Profil, markierte Bereiche) – nie Aufnahme oder Notiz.
 NL_KIND = {"klopfen": "Klopfen/Hämmern", "moebel": "Möbelrücken", "schritte": "Schritte/Trampeln", "tuer": "Türenknallen",
-           "bohren": "Bohren", "musik": "Musik/Bass", "stimmen": "Stimmen/Schreien", "hund": "Hund"}
+           "bohren": "Bohren", "musik": "Musik/Bass", "stimmen": "Stimmen/Schreien", "hund": "Hund",
+           "muell": "Mülleimer/Tonne", "briefkasten": "Briefkasten"}
 NL_WORDS = [("klopfen", r"klopf|hämmer|haemmer|poch|klapper|wumm|rumms|bumm"), ("moebel", r"möbel|moebel|rücken|ruecken|verrück|schieb|stuhl|stühl|kratz|schleif"),
             ("schritte", r"schritt|trampel|stampf|hüpf|huepf|gerenne"), ("tuer", r"tür|tuer|knall|zuschlag|zugeschlag"),
             ("bohren", r"bohr|schraub|flex|säg|saeg"), ("musik", r"musik|bass|lied|gesang"), ("stimmen", r"schrei|stimmen|brüll|bruell|streit|gelächter"),
-            ("hund", r"hund|bell|kläff|klaeff")]
+            ("hund", r"hund|bell|kläff|klaeff"), ("muell", r"müll|muell|tonne|abfall|deckel"), ("briefkasten", r"briefkast|post")]
 NL = {"timer": None, "last": 0, "n": 0, "at": ""}
 NL_SIM = 0.70          # so ähnlich muss eine weitere Störung im Fenster dem Anker sein
 NL_SIB_MAX = 40        # höchstens so viele weitere Beispiele je Notiz
@@ -5408,24 +5410,36 @@ def nl_rej_add(nk):
     os.replace(nl_rej_path() + ".tmp", nl_rej_path())
 
 
-def note_kind(tags, text):
-    """Genau eine Art aus Tags, sonst aus dem Text; mehrdeutig oder keine → None (dann lernt die Notiz nichts)."""
+def note_kinds(tags, text):
+    """Arten einer Notiz aus Tags und Wörtern im Text (auch mehrere: „Briefkasten, Mülleimer, Klopfen“)."""
     ks = [t_ for t_ in (tags or []) if t_ in NL_KIND]
-    if not ks:
-        low = str(text or "").lower()
-        ks = [k for k, rx in NL_WORDS if re.search(rx, low)]
-    ks = list(dict.fromkeys(ks))
+    low = str(text or "").lower()
+    ks += [k for k, rx in NL_WORDS if re.search(rx, low)]
+    return list(dict.fromkeys(ks))
+
+
+def note_kind(tags, text):
+    """Genau eine Art (für Tests und Anzeige), sonst None."""
+    ks = note_kinds(tags, text)
     return ks[0] if len(ks) == 1 else None
 
 
 def nl_examples():
-    """→ [(Notiz-Schlüssel, stem, a, b, Name)] aus freien Notizen (über die Zuordnung) und Notizen an einer Störung."""
+    """→ [(Schlüssel, stem, a, b, Name)].
+    1) Sensor zuerst: Störungen, die zeitgleich mit einem Sensor (z. B. Briefkasten) begannen, sind Beispiele dieses Sensors –
+       nie einer Notiz-Art. 2) Notizen mit genau einer Art: Anker = das Geräusch, das in den anderen Notizen dieser Art und im
+       eigenen Fenster immer wieder vorkommt (Gleichstand: das lautere, nie eine Sensor-Störung). 3) Jede weitere Störung im Fenster kommt zu der Art der
+       Notiz, der sie am ähnlichsten ist (Notizen mit mehreren Arten: nur so) – passt sie besser zu einem Sensor, gehört sie dorthin."""
     allrows = read_log(); keys = row_keys(allrows)
     keyed = [dict(r, k=k) for r, k in zip(allrows, keys)]
     by_k = {r["k"]: r for r in keyed}
     out = []
+    memo = {}
 
     def core_of(r):
+        if r["k"] in memo:
+            return memo[r["k"]]
+        memo[r["k"]] = None
         n = int(r["k"].rsplit("|", 1)[1] or 0)
         g, ki, _ = _event_data(r, n)
         core = (g or {}).get("core")
@@ -5437,35 +5451,61 @@ def nl_examples():
         d = lernen.decode(g)
         if d is None:
             return None
-        return event_stem(r, n), a, b, lernen.proto_from(d, ki, a, b)
-
-    def add(nk, r, kind):
-        c = core_of(r)
-        if c:
-            out.append((nk, c[0], c[1], c[2], NL_KIND[kind]))
+        pr = lernen.proto_from(d, ki, a, b)
+        if pr.get("band") is None:
+            return None
+        memo[r["k"]] = c = (event_stem(r, n), a, b, pr, ms_of(r.get("start")))
         return c
 
-    fns = [n for n in fnotes_in(0, int(time.time() * 1000) + 60000, "all") if not n.get("noassign")]
+    def sim(pr, ps):
+        return max([lernen.score(p_, pr.get("band"), pr.get("emb")) for p_ in ps] or [0.0])
+
+    # 1) Sensoren: Einsatz eines Sensors bis 2 s vor/nach Beginn des Kerns einer Störung
+    now = int(time.time() * 1000)
+    rs = sorted((r for r in keyed if ms_of(r.get("start")) is not None), key=lambda r: ms_of(r.get("start")))
+    rst = [ms_of(r.get("start")) for r in rs]
+    t0 = rst[0] if rst else now
+    try:
+        ons = sorted(((a, str(nm)) for a, b, nm, *_ in ha_intervals("*", t0, now) if a is not None and nm), reverse=True)
+    except Exception as e:
+        log("Sensoren fürs Lernen nicht geladen:", e); ons = []
+    sens_k = {}                                        # Störung → Sensorname
+    sens_p = {}                                        # Sensorname → Beispiele
+    for sa, nm in ons:
+        if len(sens_p.get(nm, [])) >= 60:
+            continue
+        i0 = bisect.bisect_left(rst, sa - 15000); i1 = bisect.bisect_right(rst, sa + 2500)
+        for r in rs[i0:i1]:
+            if r["k"] in sens_k:
+                continue
+            c = core_of(r)
+            if c and c[4] + c[1] - 2000 <= sa <= c[4] + c[1] + 2000:
+                sens_k[r["k"]] = nm; sens_p.setdefault(nm, []).append(c[3])
+                out.append(("s:" + r["k"], c[0], c[1], c[2], clean_label_name(nm)))
+                break
+
+    def seeds_for(kind, skip_note):
+        ps = [p_ for nk, kd, p_ in seeds if kd == kind and nk != skip_note]
+        rx = dict(NL_WORDS).get(kind)
+        if rx:                                         # Sensor mit passendem Namen (z. B. „Erschütterung Briefkasten“) zählt als Beispiel der Art
+            for nm, sp in sens_p.items():
+                if re.search(rx, nm.lower()):
+                    ps += sp
+        return ps
+
+    # Notizen sammeln: (Schlüssel, Arten, Kandidaten-Schlüssel ohne Sensor-Störungen, lauteste zuerst)
+    items = []
+    fns = [n for n in fnotes_in(0, now + 60000, "all") if not n.get("noassign")]
     m = fn_assign(fns, keyed) if fns else {}
     for n in fns:
-        kind = note_kind(n.get("tags"), n.get("text"))
+        kinds = note_kinds(n.get("tags"), n.get("text"))
         x = m.get(na_key(n))
-        if not (kind and x and x.get("k") in by_k):
+        if not kinds or not x:
             continue
-        anc = add(na_key(n), by_k[x["k"]], kind)       # Anker: die lauteste Störung im Fenster
-        if not anc or anc[3].get("band") is None:
-            continue
-        sib = 0
-        for k2, _d in (x.get("cand") or [])[:80]:      # weitere Störungen im Fenster, die genauso klingen (mehrmals Klopfen in 10 min)
-            if k2 == x["k"] or k2 not in by_k:
-                continue
-            c = core_of(by_k[k2])
-            if not c:
-                continue
-            if lernen.score(anc[3], c[3].get("band"), c[3].get("emb")) >= NL_SIM:
-                out.append((na_key(n) + "#" + k2, c[0], c[1], c[2], NL_KIND[kind])); sib += 1
-                if sib >= NL_SIB_MAX:
-                    break
+        cks = [k2 for k2, _d in (x.get("cand") or []) if k2 in by_k and k2 not in sens_k]
+        cks.sort(key=lambda k2: -(fnum(by_k[k2].get("spitze_dbfs")) or -999))
+        if cks:
+            items.append((na_key(n), kinds, cks[:80]))
     stem_row = {}
     for r in keyed:
         stem_row.setdefault(event_stem(r, int(r["k"].rsplit("|", 1)[1] or 0)), r)
@@ -5473,12 +5513,55 @@ def nl_examples():
         en = {st: list(v or []) for st, v in (notes_all().get("notes") or {}).items()}
     for st, lst in en.items():
         r = stem_row.get(st)
-        if r is None:
+        if r is None or r["k"] in sens_k:
             continue
         for nt in lst:
-            kind = note_kind(nt.get("tags"), nt.get("text"))
-            if kind:
-                add("e:" + str(nt.get("id") or st), r, kind)
+            kinds = note_kinds(nt.get("tags"), nt.get("text"))
+            if kinds:
+                items.append(("e:" + str(nt.get("id") or st), kinds, [r["k"]]))
+
+    # 2) Anker je Notiz mit einer Art: das Geräusch, das in den anderen Notizen dieser Art (und im eigenen Fenster) immer
+    #    wieder vorkommt – nicht einfach das lauteste (Mülleimer ist oft lauter als das Klopfen). Gleichstand: das lautere.
+    seeds = []; anchors = {}
+    cs_of = {nk: [(k2, core_of(by_k[k2])) for k2 in cks] for nk, kinds, cks in items}
+    cs_of = {nk: [(k2, c) for k2, c in v if c] for nk, v in cs_of.items()}
+    by_kind = {}
+    for nk, kinds, cks in items:
+        for kd in kinds:
+            by_kind.setdefault(kd, []).append(nk)
+    for nk, kinds, cks in items:
+        if len(kinds) != 1 or not cs_of.get(nk):
+            continue
+        others = [c[3] for on in by_kind[kinds[0]] if on != nk for _k, c in cs_of.get(on, [])]
+        mine = cs_of[nk]
+
+        def votes(i):
+            p_ = mine[i][1][3]
+            return sum(1 for o in others if lernen.score(p_, o.get("band"), o.get("emb")) >= NL_SIM) + \
+                0.5 * sum(1 for j, (_k, c) in enumerate(mine) if j != i and lernen.score(p_, c[3].get("band"), c[3].get("emb")) >= NL_SIM)
+        bi = max(range(len(mine)), key=lambda i: (votes(i), -i))
+        anchors[nk] = mine[bi]
+        seeds.append((nk, kinds[0], mine[bi][1][3]))
+    # 3) zuordnen
+    for nk, kinds, cks in items:
+        cs = cs_of.get(nk) or []
+        if not cs:
+            continue
+        sp_all = list(sens_p.items())
+        anc = anchors.get(nk)
+        if anc is not None:
+            out.append((nk, anc[1][0], anc[1][1], anc[1][2], NL_KIND[kinds[0]]))
+        sib = 0
+        for k2, c in cs:
+            if anc is not None and k2 == anc[0]:
+                continue
+            sc = {kd: sim(c[3], seeds_for(kd, nk) + ([anc[1][3]] if anc is not None else [])) for kd in kinds}
+            kd, v = max(sc.items(), key=lambda x: x[1])
+            sv = max([sim(c[3], ps) for _nm, ps in sp_all] or [0.0])
+            if v >= NL_SIM and v >= sv:                # klingt eher wie der Briefkasten-Sensor: nicht dieser Art beibringen
+                out.append((nk + "#" + k2, c[0], c[1], c[2], NL_KIND[kd])); sib += 1
+                if sib >= NL_SIB_MAX:
+                    break
     return out
 
 

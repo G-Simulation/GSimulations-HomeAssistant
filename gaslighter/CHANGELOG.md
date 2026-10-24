@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.85.29
+
+- Lernen aus Notizen versteht Abfolgen wie „Briefkasten, dann Mülleimer, dann Klopfen“:
+  - **Sensor zuerst:** Eine Störung, die zeitgleich (±2 s) mit einem Sensor begann, ist ein Beispiel dieses Sensors (z. B. „Erschütterung Briefkasten“) und wird nie einer Notiz-Art beigebracht.
+  - **Anker:** Gelernt wird das Geräusch, das in deinen Notizen dieser Art und im eigenen Fenster immer wiederkommt. Das ist nicht mehr einfach das lauteste, denn der Mülleimer ist oft lauter als das Klopfen.
+  - **Mehrere Arten in einer Notiz** („Briefkasten, Mülleimer, Klopfen“): Jede Störung im Fenster geht an die Art, der sie am ähnlichsten ist. Klingt sie eher wie ein Sensor, wird sie nicht übernommen.
+  - Neue Arten aus dem Text: Mülleimer/Tonne, Briefkasten.
+
 ## 1.85.28
 
 - Lernen aus Notizen: Nicht nur die lauteste Störung im Zeitfenster wird ein Beispiel. Jede weitere Störung im Fenster, die ihr ähnlich ist (mehrmals Klopfen in 10 Minuten), wird auch eines, bis zu 40 je Notiz. Andere Geräusche im Fenster werden nicht übernommen. Entfernst du das Beispiel der lautesten Störung, lernt die ganze Notiz nicht mehr.
