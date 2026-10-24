@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.17
+- **Sensoren als Fähnchen im Verlauf (Pegelspur, Lautstärke, Spektrogramm) und in der Live-Pegelspur:** je Sensor eine eigene Höhe – lösen mehrere gleichzeitig aus, liegen die Fähnchen übereinander und alle bleiben sichtbar. Fähnchen, Linie und Marke in der Farbe des Sensors.
+- **Je Zeile wählbar, welche Sensoren erscheinen:** „📡 Sensoren“ in der Zeile (neben Gerät und Darstellung), gemerkt je Zeile.
+
 ## 1.85.16
 - Auch in der Feldliste: „＋ Rubrik“ öffnet beim Klick die Typauswahl (statt Auswahlliste + „Hinzufügen“) – überall gleich.
 

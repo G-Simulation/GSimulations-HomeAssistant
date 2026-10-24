@@ -676,12 +676,12 @@ function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
   const span = t1 - t0, haV = (r.ha || []).filter(a => a[5] !== 'pause' && a[5] !== 'quiet' && !SHIDE.has('ha:' + a[2]) && a[1] >= t0 && a[0] <= t1), haLane = haLanes(haV);
   c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph + 12 * d); c.clip();
   for (const a of haV) {                               // Fähnchen oben im Bild, gestrichelte Linie ab Oberkante des Fähnchens, rote Marke unter dem Bild
-    const x0 = X(Math.max(a[0], t0)), x1 = Math.max(X(Math.min(a[1], t1)), x0 + 3 * d), hb = a[7] ? 2 : 1, ly = T + (haLane.get(a[2]) || 0) * 6 * d;
+    const x0 = X(Math.max(a[0], t0)), x1 = Math.max(X(Math.min(a[1], t1)), x0 + 3 * d), hb = a[7] ? 2 : 1, ly = T + (haLane.get(a[2]) || 0) * HA_LS * d;
     const ev = a[5] === 'event', col = ev ? sensCol(a) : '#1c7ed6';
-    if (ev) { c.fillStyle = ca(NC.red || '#e03131', 0.10); c.fillRect(x0, T, x1 - x0, ph);
-      c.strokeStyle = ca(NC.red || '#e03131', 0.75); c.lineWidth = hb * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); c.moveTo(x0 + 0.5 * d, ly); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]); }
+    if (ev) { c.fillStyle = ca(col, 0.10); c.fillRect(x0, T, x1 - x0, ph);
+      c.strokeStyle = ca(col, 0.8); c.lineWidth = hb * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); c.moveTo(x0 + 0.5 * d, ly); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]); }
     c.fillStyle = col; c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb);
-    if (ev) { c.fillRect(x0, ly, 2 * d * hb, 12 * d * hb); c.fillStyle = NC.red || '#e03131'; c.fillRect(x0 - 1 * d * hb, T + ph + 1 * d, Math.max(3 * d, x1 - x0), (a[7] ? 8 : 4) * d); }
+    if (ev) { haFlag(c, x0, ly, d, hb, col); c.fillStyle = col; c.fillRect(x0 - 1 * d * hb, T + ph + 1 * d, Math.max(3 * d, x1 - x0), (a[7] ? 8 : 4) * d); }
   }
   c.restore();
   const y0 = T - 20 * d, fine = r.fine || {}; let lastX = -1e9;
@@ -2233,6 +2233,8 @@ function evCount(rows) {                             // Zählung über der Tabel
 const EVOPEN = new Set();
 /* Sensor-Filter (Mehrfachauswahl): ausgeblendete Sensoren als 'ha:<Name>', 'vib', 'cam', '_ev' (Störungen) */
 let SHIDE = (() => { try { return new Set(JSON.parse(localStorage.getItem('gl_shide') || '[]')); } catch (e) { return new Set(); } })();
+const HA_LS = 11;                                    // Höhe je Sensor-Spur im Verlauf (px): gleichzeitige Fähnchen liegen übereinander, alle sichtbar
+const haOk = (S, a) => !SHIDE.has('ha:' + a[2]) && !(S && S.hs && S.hs.has(a[2]));   // global ausgeblendet oder in dieser Zeile abgewählt
 /* Filter „Art“ oben als Mehrfachauswahl (z. B. Stimme + Musik): die versteckte Auswahl #artflt liefert die Einträge */
 const ARTSEL = new Set();
 function artApply() { NV.art = !ARTSEL.size ? '' : ARTSEL.size === 1 ? [...ARTSEL][0] : JSON.stringify([...ARTSEL]); EVSIG = ''; loadNight(); if (EV) renderEvents(); artMsBuild(); }
@@ -5766,6 +5768,13 @@ document.addEventListener('click', e => {
     const h = S.ahits.find(q => Math.abs(q.x - x) <= q.w * 0.7 + 3 && Math.abs(q.y - y) <= q.w * 0.9 + 3);
     if (h) { e.stopPropagation(); artHiPop(h.g, h.n, h.i, e); return; } }
 }, true);
+/* ab 1.85.17: Sensoren im Verlauf (Pegelspur und Spektrogramm) – je Sensor eine eigene Höhe (HA_LS px), damit gleichzeitige Fähnchen alle sichtbar sind;
+   je Zeile wählbar, welche Sensoren gezeigt werden (row.hs = ausgeblendete Namen) */
+function haFlag(c, x, y, d, hb, col) {               // Fähnchen: Stiel und kleine Fahne in der Farbe des Sensors, heller Rand trennt übereinanderliegende
+  c.save(); c.fillStyle = col; c.fillRect(x, y, 2 * d * hb, 13 * d * hb);
+  c.beginPath(); c.moveTo(x + 2 * d * hb, y); c.lineTo(x + 10 * d * hb, y + 3.5 * d * hb); c.lineTo(x + 2 * d * hb, y + 7 * d * hb); c.closePath(); c.fill();
+  c.strokeStyle = ca(NC.bg || '#fff', 0.85); c.lineWidth = 1 * d; c.stroke(); c.restore();
+}
 function dtDraw(S, hoverX) {
   S = S || DT; const r = S.data, cv = $(S.el.cv); if (!r || !cv || !cv.offsetParent) return;
   fit(cv); readNC();
@@ -5827,26 +5836,26 @@ function dtDraw(S, hoverX) {
     c.restore();
     (S.downHit || (S.downHit = [])).push([x0 / d, x1 / d, (g[2] ? '📝 ' + g[2] + '\n' : '') + t(g[2] ? 'run_click_edit' : 'run_click_add'), g]);
   }
-  const haV = (r.ha || []).filter(a => !SHIDE.has('ha:' + a[2])), haLane = haLanes(haV);
+  const haV = (r.ha || []).filter(a => haOk(S, a)), haLane = haLanes(haV);
   {                                                  // Sensor-Ereignisse (Regel „als Ereignis“): dünne rote Linie über die ganze Höhe – ganz unten, Fähnchen, Punkte und Pegelkurve liegen darüber
     c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph); c.clip();
-    for (const a of (r.ha || []).filter(a => a[5] === 'event' && !SHIDE.has('ha:' + a[2]))) {
+    for (const a of (r.ha || []).filter(a => a[5] === 'event' && haOk(S, a))) {
       const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(x0 + 2 * d, X(Math.min(a[1], r.to))); if (x1 < L || x0 > L + pw) continue;
-      c.fillStyle = ca(NC.red, 0.10); c.fillRect(x0, T, x1 - x0, ph);
-      c.strokeStyle = ca(NC.red, 0.75); c.lineWidth = (a[7] ? 2 : 1) * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); const fy = T + (haLane.get(a[2]) || 0) * 6 * d; c.moveTo(x0 + 0.5 * d, fy); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]);   // erst ab Oberkante des Fähnchens
+      c.fillStyle = ca(sensCol(a), 0.10); c.fillRect(x0, T, x1 - x0, ph);
+      c.strokeStyle = ca(sensCol(a), 0.8); c.lineWidth = (a[7] ? 2 : 1) * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); const fy = T + (haLane.get(a[2]) || 0) * HA_LS * d; c.moveTo(x0 + 0.5 * d, fy); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]);   // erst ab Oberkante des Fähnchens
     }
     c.restore();
   }
   for (const a of haV) { const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(X(Math.min(a[1], r.to)), X(Math.max(a[0], r.from)) + 3 * d); if (x1 <= x0 || x1 < L || x0 > L + pw) continue;
-    const md = a[5] || 'note', col = md === 'event' ? sensCol(a) : '#1c7ed6', ly = T + haLane.get(a[2]) * 6 * d;
+    const md = a[5] || 'note', col = md === 'event' ? sensCol(a) : '#1c7ed6', ly = T + haLane.get(a[2]) * HA_LS * d;
     if (md === 'pause') { c.fillStyle = ca(col, specM ? 0.0 : a[4] ? 0.26 : 0.18); c.fillRect(x0, T, x1 - x0, ph); }   // nur „pausieren“ füllt die ganze Höhe (dort wurde nicht ausgewertet)
     c.fillStyle = col; const hb = a[7] ? 2 : 1; c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb);   // „nur festhalten“/„als Ereignis“: schmaler Streifen oben, je Sensor eine Spur (hervorgehoben: doppelt so groß)
-    if (md === 'event') { c.fillRect(x0, ly, 2 * d * hb, 12 * d * hb); }
+    if (md === 'event') haFlag(c, x0, ly, d, hb, col);
     if (a[4] && x1 - x0 > 30 * d) {                  // Notiz zum Sensor-Zeitraum gut sichtbar unter dem Streifen (gekürzt, ganzer Text im Tooltip)
       c.save(); c.beginPath(); c.rect(Math.max(x0, L), T, Math.min(x1, L + pw) - Math.max(x0, L), ph); c.clip();
       c.font = '600 ' + (11 * d) + 'px system-ui'; c.textAlign = 'left'; const tx = '📝 ' + a[4], mw = Math.min(x1, L + pw) - Math.max(x0, L) - 8 * d;
       let s0 = tx; while (s0.length > 4 && c.measureText(s0).width > mw) s0 = s0.slice(0, -2); if (s0 !== tx) s0 = s0.slice(0, -1) + '…';
-      const tw = c.measureText(s0).width, xx = Math.max(x0, L) + 4 * d, yy = T + haLane.size * 6 * d + 12 * d + haLane.get(a[2]) * 15 * d;   // Notizen unter allen Spuren, je Sensor eine Zeile
+      const tw = c.measureText(s0).width, xx = Math.max(x0, L) + 4 * d, yy = T + haLane.size * HA_LS * d + 12 * d + haLane.get(a[2]) * 15 * d;   // Notizen unter allen Spuren, je Sensor eine Zeile
       c.fillStyle = ca(NC.bg || '#000', 0.7); c.fillRect(xx - 2 * d, yy - 11 * d, tw + 4 * d, 15 * d); c.fillStyle = md === 'event' ? '#ff922b' : (typeof darkUI === 'function' && !darkUI()) ? '#1864ab' : '#74c0fc'; c.fillText(s0, xx, yy); c.restore();
     } }
   if ((r.hav || []).length && span <= 6 * 3600000) {   // Lautstärke des Fernsehers an den Wechseln
@@ -5915,7 +5924,7 @@ function dtDraw(S, hoverX) {
   for (const a of haV) {                             // Fähnchen der Sensor-Ereignisse nach der Pegelkurve nochmal zeichnen: liegen über Kurve und Linie
     if (a[5] !== 'event') continue;
     const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(X(Math.min(a[1], r.to)), x0 + 3 * d); if (x1 <= x0 || x1 < L || x0 > L + pw) continue;
-    const ly = T + haLane.get(a[2]) * 6 * d, hb = a[7] ? 2 : 1; c.fillStyle = sensCol(a); c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb); c.fillRect(x0, ly, 2 * d * hb, 12 * d * hb);
+    const ly = T + haLane.get(a[2]) * HA_LS * d, hb = a[7] ? 2 : 1; c.fillStyle = sensCol(a); c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb); haFlag(c, x0, ly, d, hb, sensCol(a));
   }
   if ((r.pa || []).length) {                         // Bereiche aus „Neu untersuchen“ (Profile, auch unter der Schwelle)
     c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph); c.clip(); let lastX = -1e9;
@@ -5928,9 +5937,9 @@ function dtDraw(S, hoverX) {
   c.fillStyle = NC.red; for (const e of r.ev || []) { const x = X(e[0]); if (x >= L && x <= L + pw) c.fillRect(x - 1 * d, T + ph + 1 * d, Math.max(2 * d, X(e[0] + e[1]) - x), 4 * d); }
   {                                                  // Sensor-Ereignisse (Regel „als Ereignis“, z. B. Türsensor): rote Marker wie bei Störungen, dazu eine dünne Linie über die ganze Höhe
     c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph + 12 * d); c.clip();
-    for (const a of (r.ha || []).filter(a => a[5] === 'event' && !SHIDE.has('ha:' + a[2]))) {
+    for (const a of (r.ha || []).filter(a => a[5] === 'event' && haOk(S, a))) {
       const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(x0 + 2 * d, X(Math.min(a[1], r.to))); if (x1 < L || x0 > L + pw) continue;
-      c.fillStyle = NC.red; c.fillRect(x0 - 1 * d * (a[7] ? 2 : 1), T + ph + 1 * d, Math.max(3 * d, x1 - x0) * (a[7] ? 1 : 1), (a[7] ? 8 : 4) * d);
+      c.fillStyle = sensCol(a); c.fillRect(x0 - 1 * d * (a[7] ? 2 : 1), T + ph + 1 * d, Math.max(3 * d, x1 - x0) * (a[7] ? 1 : 1), (a[7] ? 8 : 4) * d);
     }
     c.restore();
   }
@@ -5940,11 +5949,11 @@ function dtDraw(S, hoverX) {
     const pad = (matchMedia('(pointer:coarse)').matches ? 16 : 8), hits = [];
     for (const n of r.fn || []) { const x0 = X(Math.max(n[0], r.from)) / d, x1 = Math.max(x0, X(Math.min(n[1], r.to)) / d); if (x1 < L / d - pad || x0 > (L + pw) / d + pad) continue;
       hits.push([x0 - pad, x1 + pad, '📝 ' + (n[2] || t('fn_btn')) + '\n' + t('fn_click_edit'), { kind: 'fn', a: n[0], b: n[1], id: n[3] }]); }
-    const haV2 = (r.ha || []).filter(a => !SHIDE.has('ha:' + a[2])), lanes2 = haLanes(haV2), nl = lanes2.size;
+    const haV2 = (r.ha || []).filter(a => haOk(S, a)), lanes2 = haLanes(haV2), nl = lanes2.size;
     for (const a of haV2) { const x0 = X(Math.max(a[0], r.from)) / d, x1 = Math.max(x0, X(Math.min(a[1], r.to)) / d); if (x1 < L / d - pad || x0 > (L + pw) / d + pad) continue;
       // Sensoren können gleichzeitig an sein (Fernseher + Türsensor): jede Spur hat ihre eigene Klickfläche, darunter bleibt Ziehen frei
-      const ln = lanes2.get(a[2]), ly = T / d + ln * 6, solo = (nl === 1 && x1 - x0 <= 40) || (a[5] === 'event' && x1 - x0 <= 40);   // Ereignis-Sensoren (rote Linie, Marker oben und unten): auf ganzer Höhe anklickbar
-      const ymax = solo ? null : a[4] ? T / d + nl * 6 + 16 + ln * 15 : ly + 8, ymin = solo ? null : ln === 0 ? null : ly - 2;   // breiter Balken: nur oben anklickbar (Leiste + Notiz), darunter bleibt Ziehen/Markieren frei
+      const ln = lanes2.get(a[2]), ly = T / d + ln * HA_LS, solo = (nl === 1 && x1 - x0 <= 40) || (a[5] === 'event' && x1 - x0 <= 40);   // Ereignis-Sensoren (rote Linie, Marker oben und unten): auf ganzer Höhe anklickbar
+      const ymax = solo ? null : a[4] ? T / d + nl * HA_LS + 16 + ln * 15 : ly + HA_LS, ymin = solo ? null : ln === 0 ? null : ly - 2;   // breiter Balken: nur oben anklickbar (Leiste + Notiz), darunter bleibt Ziehen/Markieren frei
       hits.push([x0 - pad, x1 + pad, '📡 ' + a[2] + ' ' + t('ha_on') + ' · ' + hms(a[0]) + '–' + hms(a[1]) + (a[4] ? '\n📝 ' + a[4] : '') + '\n' + t('ha_click'), { kind: 'ha', a: a[0], b: a[1], name: a[2], rid: a[3], note: a[4] || '', S }, ymax, ymin]); }
     S.downHit = hits.concat(S.downHit || []);
   }
@@ -6173,14 +6182,24 @@ function dtRowsRender(S) {
     ss.onchange = () => { row.src = ss.value; dtRowsSave(S.rows); dtRowsRender(S); };
     ms.onchange = () => { row.mode = ms.value; dtRowsSave(S.rows); dtRowsRender(S); };
     const mvb = el('span', { className: 'ndrmv' }); mvb.append(up, dn, rm);          // ↑ ↓ ✕ bleiben zusammen (Handy)
-    hd.append(ss, ms, ...(lt ? [lt] : []), el('span', { className: 'ndrgap' }), mvb, lb);
+    const rd = S.byData && S.byData[row.src], hsN = [...new Set(((rd && rd.ha) || []).map(a => a[2]))].sort((p, q) => p.localeCompare(q));
+    let hsB = null;                                   // ab 1.85.17: welche Sensoren diese Zeile zeigt (Pegelspur, Lautstärke, Spektrogramm)
+    if (hsN.length) {
+      const hid = new Set(row.hs || []), on = hsN.filter(n => !hid.has(n)).length;
+      hsB = el('details', { className: 'sfltd ndrhs' }); const sfw = el('span', { className: 'sflt' }); sfw.appendChild(hsB);
+      hsB.innerHTML = `<summary class="chip" title="${esc(t('dt_hs_tip'))}">📡 ${esc(t('dt_hs'))} <small>${on}/${hsN.length}</small></summary><div class="sfltl">` + hsN.map(n => `<label><input type="checkbox" data-n="${esc(n)}"${hid.has(n) ? '' : ' checked'}> <i class="ndsw" style="background:${esc(sensCol((rd.ha || []).find(a => a[2] === n)))}"></i> ${esc(n)}</label>`).join('') + '</div>';
+      hsB.querySelectorAll('input').forEach(c => c.onchange = () => { const h = new Set(row.hs || []); c.checked ? h.delete(c.dataset.n) : h.add(c.dataset.n); row.hs = [...h]; if (!row.hs.length) delete row.hs; dtRowsSave(S.rows);
+        const sb = S.subs.find(x => x.row === row); if (sb) { sb.hs = new Set(row.hs || []); if (sb.data) dtDraw(sb); } hsB.querySelector('summary small').textContent = hsN.filter(n => !(row.hs || []).includes(n)).length + '/' + hsN.length; });
+      hsB = sfw;
+    }
+    hd.append(ss, ms, ...(lt ? [lt] : []), ...(hsB ? [hsB] : []), el('span', { className: 'ndrgap' }), mvb, lb);
     const cv = el('canvas', { id: 'ndcv_r' + i, className: 'ndcvm' });
     if (row.h) cv.style.height = row.h + 'px';
     const rz = el('div', { className: 'ndrz', title: t('dt_resize') }); rz.setAttribute('role', 'separator'); rz.setAttribute('aria-orientation', 'horizontal');
     const cw = el('div', { className: 'ndcvw' }); cw.append(cv, spinEl());
     box.append(hd, cw, rz);
     const r = S.byData && S.byData[row.src];
-    const sub = { el: { cv: cv.id, hover: 'ndhover' }, src: row.src, name: name(row.src), parent: S, req: 0, mode: row.mode || 'level', lay: Object.assign({ lo: false, mid: false, hi: false, dom: false, cen: false }, row.lay || {}), data: r && r.has ? r : null };
+    const sub = { el: { cv: cv.id, hover: 'ndhover' }, src: row.src, name: name(row.src), parent: S, req: 0, mode: row.mode || 'level', row, hs: new Set(row.hs || []), lay: Object.assign({ lo: false, mid: false, hi: false, dom: false, cen: false }, row.lay || {}), data: r && r.has ? r : null };
     if (!sub.data) { cv.hidden = true; hd.appendChild(el('small', { className: 'ndrnone', textContent: t('dt_none_row') })); }
     bindDay(sub, () => { S.from = S.to = null; S.yk = 1; dtLoad(S, true); });
     S.subs.push(sub);
