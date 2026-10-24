@@ -1833,7 +1833,7 @@ function grpOpen(p) {
   d.querySelector('.grpx').onclick = d.querySelector('.grpdone').onclick = () => d.close();
   d.querySelector('.grpgraph').onclick = () => { d.close(); dtFocus(a, Math.max(b, a + 1000)); };
   d.querySelectorAll('.grpgo').forEach(bt => bt.onclick = () => { const c = p._children[+bt.dataset.i]; d.close();
-    if (c._t === 'ev') openEvent(c.id); else if (c._t === 'note') fnOpenId(c.n); else if (c._t === 'sens') { if (c.x.kind === 'ha') haPop({ a: c.x.a, b: c.x.b, name: sensLabel(c.x), note: c.x.note || '', key: c.x.key }); else dtFocus(c.x.a, c.x.b); } });
+    if (c._t === 'ev') openEvent(c.k || c.id); else if (c._t === 'note') fnOpenId(c.n); else if (c._t === 'sens') { if (c.x.kind === 'ha') haPop({ a: c.x.a, b: c.x.b, name: sensLabel(c.x), note: c.x.note || '', key: c.x.key }); else dtFocus(c.x.a, c.x.b); } });
   d.showModal(); setTimeout(() => d.querySelector('.grpdone').focus(), 50);
 }
 function evAllEv() { const out = []; if (!TBL) return out; const walk = rows => { for (const d of rows) { if (d._t === 'ev') out.push(d); if (d._children) walk(d._children); } }; walk(TBL.top()); return out; }
@@ -6702,6 +6702,7 @@ function levTick() {                                  // sichtbarer Bereich änd
   if (w[0] < LEV.fa || w[1] > LEV.fb - 30000) levLoad(true); else levRender();
 }
 let LTBL = null, LTBL_KEY = '';
+const LEVOPEN = new Set();                             // aufgeklappte Gruppen der Live-Tabelle
 function levRender() {
   const j = LEV.data, box = $('ldev'); if (!j || !box) return;
   sfltBuild();
@@ -6721,6 +6722,11 @@ function levRender() {
     for (let i = rows.length - 1; i >= 0; i--) if (!inWin(rows[i])) rows.splice(i, 1);
   }
   const sf = STATS.filt.live; if (sf) for (let i = rows.length - 1; i >= 0; i--) if (!statMatch(sf, rows[i], 'live')) rows.splice(i, 1);
+  if (EVVIEW === 'grp') {                              // ab 1.85.20: wie in Protokolle zusammenfassen (Notiz + Störungen + Sensoren eines Ereignisses = eine Zeile)
+    for (const d of rows) { d._t = d.r ? 'ev' : d.fn ? 'note' : 'sens'; if (d.fn) d.n = d.fn; }
+    const cl = evCluster(rows, j); rows.length = 0; rows.push(...cl);
+    for (const g of rows) if (g._t === 'grp') { g.k = ''; g.nt = g._children.map(c => c.nt).filter(Boolean).join(' · '); }
+  }
   levTitleSet();
   const rs = $('ldevrng'); if (rs && rs.value !== LEV.rng) rs.value = LEV.rng;
   const cw = $('ldevcus'); if (cw) cw.hidden = LEV.rng !== 'custom';
@@ -6734,8 +6740,9 @@ function levRender() {
   const num = () => ({ flt: 'num' });
   const hm = ms_ => { const d = new Date(ms_), td = new Date(nowServer()); return (d.toDateString() === td.toDateString() ? '' : pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '. ') + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
   const def = {
-    tm: { f: 'start', title: levHead('tm'), sort: 'num', minW: 76, prio: 0, flt: 'txt', fpass: (v, d) => hm(d.start).includes(v), html: d => esc(hm(d.start)) },
-    src: Object.assign({ f: 'src', title: levHead('src'), minW: 150, grow: 2, prio: 3, cls: 'srcc', html: d => d.fn ? `<span class="si">📝</span><span class="sn"><b>${esc(d.src)}</b></span>` : d.r ? srcCell(d.r).replace(/^<td[^>]*>/, '').replace(/<\/td>$/, '') : `<span class="si">${d.x.kind === 'ha' ? '🏠' : '📱'}</span><span class="sn"><b>${esc(d.src)}</b></span>` }, ms('src')),
+    tm: { f: 'start', title: levHead('tm'), sort: 'num', minW: 76, prio: 0, flt: 'txt', fpass: (v, d) => hm(d.start).includes(v), html: d => d._t === 'grp'
+      ? `<button type="button" class="gtog" tabindex="-1" aria-expanded="${LEVOPEN.has(d.gid) ? 'true' : 'false'}" aria-label="${esc(t('g_grp'))}">${LEVOPEN.has(d.gid) ? '▾' : '▸'}</button><b>${esc(hm(d.start))}</b> <span class="mut" title="${esc(grpN(d.g))}" aria-label="${esc(grpN(d.g))}">· ×${d.g.n}</span>` : esc(hm(d.start)) },
+    src: Object.assign({ f: 'src', title: levHead('src'), minW: 150, grow: 2, prio: 3, cls: 'srcc', html: d => d._t === 'grp' ? `<span class="si">🗂</span><span class="sn"><b>${esc([...new Set(d._children.map(c => c.src).filter(Boolean))].join(', '))}</b></span>` : d.fn ? `<span class="si">📝</span><span class="sn"><b>${esc(d.src)}</b></span>` : d.r ? srcCell(d.r).replace(/^<td[^>]*>/, '').replace(/<\/td>$/, '') : `<span class="si">${d.x.kind === 'ha' ? '🏠' : '📱'}</span><span class="sn"><b>${esc(d.src)}</b></span>` }, ms('src')),
     art: Object.assign({ f: 'tags', title: levHead('art'), minW: 120, grow: 2, sort: false, prio: 1, html: d => d.fn ? `<span class="art fnc">📝 ${esc(t('fn_row'))}</span>${d.fev ? `<span class="art fnlk">🔗 ${esc(t('fn_link', { c: clockOf(d.fev.start) }))}</span>` : ''}` : d.r ? `${d.r.prof ? `<span class="art prof${d.r.bg ? ' bgp' : ''}">🧩 ${esc(d.r.prof)}${d.r.prof_ok ? ' ✓' : d.r.prof_c != null ? ` <small>${d.r.prof_c} %</small>` : ''}</span>` : ''}${(d.r.labels || []).map(n => `<span class="art lbl">🏷 ${esc(n)}</span>`).join('')}${mfChip(d.r)}${d.r.art ? artChip(d.r.art, d.r.art_c, d.r.art_man || d.r.art_ok, d.r.k, d.r.art_lern != null ? d.r.art_lki : null) : ''}` : `<span class="art sensc">${sensIcon(d.x.kind)} ${esc(sensLabel(d.x))}</span>${d.x.kind === 'ha' ? `<button type="button" class="chip sned snote" tabindex="-1" aria-label="${esc(t('ha_note'))}" title="${esc(t('ha_note'))}">📝${d.x.note ? ' ' + esc(d.x.note.slice(0, 40)) : ''}</button>` : ''}` }, ms('tags')),
     sc: { f: 'sc', title: levHead('sc'), minW: 130, sort: false, prio: 3, flt: 'ms', aria: t('sc_col_a'), vals: () => SC_ST.map(scLabel), fpass: (v, d) => v.includes(scLabel(d.r ? (d.r.sc || {}).s || '' : '')), html: d => d.r ? scChip(d.r.sc) : '' },
     kinds: { f: 'kinds', title: levHead('kinds'), minW: 140, sort: false, prio: 4, html: d => d.r ? kindsHTML(d.r.kinds, j.fine) : '' },
@@ -6746,6 +6753,15 @@ function levRender() {
     bg: Object.assign({ f: 'bg', title: levHead('bg'), sort: 'num', minW: 100, prio: 7, html: d => d.r ? esc(fdb(d.bg)) : '' }, num()),
     nt: { f: 'nt', title: '📝', minW: 140, grow: 2, prio: 4, flt: 'txt', one: true, cls: 'g1', html: d => d.nt ? `<span class="g1t" title="${esc(d.nt)}">${esc(d.nt)}</span>` : '' },   // eine Zeile, ganzer Text im Hinweis und für Screenreader
   };
+  for (const k of Object.keys(def)) { if (k === 'tm' || k === 'src' || k === 'nt') continue; const h0 = def[k].html;   // zusammengefasste Zeile: Werte für das Ganze
+    def[k].html = d => { if (d._t !== 'grp') return h0(d);
+      const uniq = l => [...new Set(l.filter(Boolean))].join('');
+      if (k === 'art') return uniq(d._children.map(c => h0(c).replace(/<span class="art fnlk">.*?<\/span>/g, '')));
+      if (k === 'kinds') return uniq(d._children.filter(c => c.r).map(h0));
+      if (k === 'sc') return (d._children.filter(c => c.r).map(h0).find(Boolean)) || '';
+      if (k === 'dur') return esc(fmtDur(d.dur));
+      if (k === 'pk') return d.pk == null ? '' : esc(fdb(d.pk)) + ' <small>dBFS</small>';
+      return ''; }; }
   def.nt.aria = t('col_text'); def.nt.menu = '📝 ' + t('fn_row'); def.tm.cls = 'tm'; def.tm.minW = LEV.rng === 'today' || LEV.vis ? 84 : 128; def.sc.minW = 165;
   const hasSc = evs.some(r => r.sc && r.sc.s);
   // ab 1.84.0: alle passenden Spalten an die Tabelle; an/aus, Reihenfolge und Dichte über „Spalten ▾“ (gemerkt in layout.json). Ältere Auswahl (laerm_lev) gilt als Vorgabe.
@@ -6757,17 +6773,18 @@ function levRender() {
   if (!LTBL || LTBL_KEY !== key) {
     if (LTBL) { LTBL.destroy(); LTBL = null; }
     LTBL_KEY = key;
-    LTBL = glGrid(box, { cols, rows, max: '60vh', ph, wkey: 'live_ev', hide0, colBtn: $('ldevcfg'), sort: [{ colId: 'start', sort: 'desc' }], label: levTitle(), rowCls: () => ['gclk'],
+    LTBL = glGrid(box, { cols, rows, max: '60vh', ph, wkey: 'live_ev', hide0, colBtn: $('ldevcfg'), sort: [{ colId: 'start', sort: 'desc' }], label: levTitle(), rowCls: d => d._t === 'grp' ? ['gclk', 'grph'] : ['gclk'], isOpen: p => LEVOPEN.has(p.gid || ''),
       onModel: G => levCount(G.shown(), G.nFilters()),
       onRow: (e, d) => {                               // Klick: der Graph springt zur Stelle (1.84.3); öffnen/bearbeiten mit Doppelklick oder der Taste in der Zeile
         const on = s_ => e.target && e.target.closest && e.target.closest(s_);
+        if (d._t === 'grp') { LEVOPEN.has(d.gid) ? LEVOPEN.delete(d.gid) : LEVOPEN.add(d.gid); LTBL.redraw(x => x === d); LTBL.refilter(); return; }   // Klick: auf-/zuklappen
         if (d.fn && d.fev && on('.fnlk')) { openEvent(d.fev.k || ''); return; }
         if (d.x && d.x.kind === 'ha' && on('.snote')) { levOpen(d); return; }
         const a = d.fn ? d.fn.a : d.x ? d.x.a : d.start, b = d.fn ? Math.max(d.fn.b || d.fn.a, d.fn.a + 1000) : d.x ? d.x.b : d.start + Math.max(1000, (+(d.r && d.r.dauer_s) || 1) * 1000);
         if (d.k) slSel(d.k, d.r && d.r.start);
         liveJump(a, b, d.fn ? t('fn_row') : d.x ? sensLabel(d.x) : (d.src || ''));
       },
-      onDbl: (e, d) => { if (!(e.target && e.target.closest && e.target.closest('input,button,a'))) levOpen(d); } });
+      onDbl: (e, d) => { if (!(e.target && e.target.closest && e.target.closest('input,button,a'))) { if (d._t === 'grp') grpOpen(d); else levOpen(d); } } });
   } else { LTBL.setPh(ph); LTBL.setRows(rows); }
   levCount(LTBL.shown(), LTBL.nFilters());
 }

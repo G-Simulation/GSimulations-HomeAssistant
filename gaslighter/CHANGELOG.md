@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.20
+- **Live-Tabelle „Ereignisse heute“ fasst zusammen wie Protokolle:** Notizen, die Störung dazu und Sensor-Ereignisse eines Ereignisses sind eine Zeile mit Werten für das Ganze (Quellen, Art, Was vorkam, Dauer, Spitze, Notizen). Klick klappt auf, Doppelklick öffnet die Detailansicht der Gruppe. Gilt in der Ansicht „Gruppen“ (Umschalter in Protokolle).
+
 ## 1.85.19
 - **Ein Ereignis über lange Zeit:** eine Gruppe läuft weiter, solange binnen „Ereignis endet (s) nach dem letzten Eintrag“ wieder eine Störung, ein Sensor-Ereignis oder eine Notiz kommt – z. B. 300 s: eine halbe Stunde Lärm mit kurzen Pausen und Notizen zwischendrin ist ein Eintrag in der Tabelle und eine Detailansicht.
 
