@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 import lizenz  # noqa: E402
 import felder  # noqa: E402
 
-VERSION = "1.12.8"
+VERSION = "1.12.9"
 BRAND = "GReport"
 OPTIONS = os.environ.get("GR_OPTIONS", "/data/options.json")
 PRIV = os.environ.get("GR_PRIVATE", "/data")                    # nur für GReport (Pro-Schlüssel)
@@ -137,7 +137,7 @@ def pro_set(key):
 # Schnellwahl (wie in GLighter): eingebaute Tasten, eigene, ausgeblendete, Reihenfolge nach Gebrauch, gelernte Vorschläge
 # =====================================================================
 NOTE_TAGS = {
-    "src": ["oben", "unten", "nebenan", "treppenhaus", "draussen", "unklar"],
+    "src": ["oben", "unten", "nebenan", "treppenhaus", "tuer_o", "draussen", "unklar"],
     "kind": ["klopfen", "schritte", "musik", "stimmen", "tuer", "moebel", "bohren", "hund"],
     "lvl": ["leicht", "deutlich", "stark"],
     "eff": ["aufgewacht", "kind_geweckt", "kein_schlaf", "gestoert"],
@@ -157,13 +157,13 @@ WHEN_DE = {"w_now": "gerade eben", "w_5": "vor 5 Min.", "w_15": "vor 15 Min.", "
 WHEN_EN = {"w_now": "just now", "w_5": "5 min ago", "w_15": "15 min ago", "w_60": "1 hour ago", "w_night": "last night",
            "w_eve": "yesterday evening", "w_none": "no time"}
 WHEN_MAX = 30
-TAG_DE = {"oben": "oben", "unten": "unten", "nebenan": "nebenan", "treppenhaus": "Treppenhaus", "draussen": "draußen", "unklar": "unklar",
-          "klopfen": "Klopfen", "schritte": "Schritte", "musik": "Musik/Bass", "stimmen": "Stimmen", "tuer": "Tür", "moebel": "Möbelrücken",
+TAG_DE = {"oben": "oben", "unten": "unten", "nebenan": "nebenan", "treppenhaus": "Treppenhaus", "tuer_o": "Tür", "draussen": "draußen", "unklar": "unklar",
+          "klopfen": "Klopfen", "schritte": "Schritte", "musik": "Musik/Bass", "stimmen": "Stimmen", "tuer": "Türenknallen", "moebel": "Möbelrücken",
           "bohren": "Bohren", "hund": "Hund", "leicht": "leicht", "deutlich": "deutlich", "stark": "stark", "aufgewacht": "aufgewacht",
           "kind_geweckt": "Kind geweckt", "kein_schlaf": "kein Einschlafen", "gestoert": "gestört", "geklingelt": "geklingelt",
           "angesprochen": "angesprochen", "verwaltung": "Hausverwaltung informiert", "polizei": "Polizei/Ordnungsamt", "zeuge": "Zeuge anwesend",
           "serie": "wiederholt"}
-TAG_EN = {"oben": "above", "unten": "below", "nebenan": "next door", "treppenhaus": "stairwell", "draussen": "outside", "unklar": "unclear", "klopfen": "knocking", "schritte": "footsteps", "musik": "music/bass", "stimmen": "voices", "tuer": "door", "moebel": "moving furniture", "bohren": "drilling", "hund": "dog", "leicht": "slight", "deutlich": "clear", "stark": "strong", "aufgewacht": "woke up", "kind_geweckt": "child woken", "kein_schlaf": "could not sleep", "gestoert": "disturbed", "geklingelt": "rang the bell", "angesprochen": "talked to them", "verwaltung": "informed management", "polizei": "police/authority", "zeuge": "witness present", "serie": "repeated"}
+TAG_EN = {"oben": "above", "unten": "below", "nebenan": "next door", "treppenhaus": "stairwell", "tuer_o": "door", "draussen": "outside", "unklar": "unclear", "klopfen": "knocking", "schritte": "footsteps", "musik": "music/bass", "stimmen": "voices", "tuer": "door slamming", "moebel": "moving furniture", "bohren": "drilling", "hund": "dog", "leicht": "slight", "deutlich": "clear", "stark": "strong", "aufgewacht": "woke up", "kind_geweckt": "child woken", "kein_schlaf": "could not sleep", "gestoert": "disturbed", "geklingelt": "rang the bell", "angesprochen": "talked to them", "verwaltung": "informed management", "polizei": "police/authority", "zeuge": "witness present", "serie": "repeated"}
 QT_LOCK = threading.RLock()
 QT = {"data": None}
 QT_OWN_FREE, QT_OWN_MAX, QT_WORDS_MAX, QT_SUGGEST_N = 5, 40, 400, 3        # ohne Pro: 5 eigene Tasten
@@ -2612,6 +2612,8 @@ def _label_map():
     for k, o in qt_all()["own"].items():
         if isinstance(o, dict) and not o.get("del"):
             m[(o.get("l") or k).lower()] = k
+    for w, k in (("knall", "tuer"), ("slam", "tuer")):         # „Tür knallt“: Woher Tür und Was Türenknallen
+        m.setdefault(w, k)
     return m
 
 

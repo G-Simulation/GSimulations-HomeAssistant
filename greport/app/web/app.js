@@ -97,7 +97,7 @@ function stShow() {
   else if (ST.ha && ST.ha.api) dot('🏠', false, t('gr_ha_log_tip'));
 }
 /* ---------- Schnellwahl: Wörter, Gruppen, Reihenfolge ---------- */
-let NOTE_TAGS = { src: ['oben', 'unten', 'nebenan', 'treppenhaus', 'draussen', 'unklar'], kind: ['klopfen', 'schritte', 'musik', 'stimmen', 'tuer', 'moebel', 'bohren', 'hund'],
+let NOTE_TAGS = { src: ['oben', 'unten', 'nebenan', 'treppenhaus', 'tuer_o', 'draussen', 'unklar'], kind: ['klopfen', 'schritte', 'musik', 'stimmen', 'tuer', 'moebel', 'bohren', 'hund'],
   lvl: ['leicht', 'deutlich', 'stark'], eff: ['aufgewacht', 'kind_geweckt', 'kein_schlaf', 'gestoert'], act: ['geklingelt', 'angesprochen', 'verwaltung', 'polizei'], misc: ['zeuge', 'serie'] };
 const GROUPS = ['src', 'kind', 'lvl', 'eff', 'act', 'misc', 'own'];          // eingebaute Wort-Rubriken
 const NTS = { own: {}, del: new Set(), hide: new Set(), use: {}, sug: [], max: 5, ren: {}, grp: {}, order: [], mode: 'use', gall: [], when: [] };
@@ -1538,8 +1538,8 @@ function layDraw() {
     const k = chip.dataset.k, x = d.keys[k];
     const nb = chip.querySelector('.lkn');
     nb.onclick = () => { if (!LAY.dragged) layRename(chip, x); };
-    nb.onkeydown = e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); layKeyX(x); } else layMoveKey(e, x); };
-    chip.querySelector('.lkx').onclick = () => layKeyX(x);
+    nb.onkeydown = e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); layKeyX(x, chip.querySelector('.lkx')); } else layMoveKey(e, x); };
+    chip.querySelector('.lkx').onclick = ev => layKeyX(x, ev.currentTarget);
   });
   box.querySelector('.lga').onclick = ev => Felder.addMenu(ev.currentTarget, ty => {   // Klick öffnet die Typauswahl: Tasten → neue Rubrik, sonst neues Feld
     if (ty === 'pills') { layAddGroup(); return; }
@@ -1553,9 +1553,11 @@ function layAddGroup() {                              // neue Pillen-Rubrik (auc
   const g = 'g_' + hex6(); d.groups.splice(d.groups.findIndex(x => x.g === 'own'), 0, { g, l: l.trim().slice(0, 30), l0: '', custom: true, hide: false, hide0: false, col: '', col0: '', isNew: true, del: false, req: false, req0: false, one: false, one0: false, h: '', h0: '', keys: [] });
   LAY.focus = `.layg[data-g="${g}"] .lgn`; layDraw(); laySay(t('fb_ed_added', { l: l.trim() }));
 }
-function layKeyX(x) {                                  // eigene Taste löschen, eingebaute ein-/ausblenden
+function layKeyX(x, btn) {                                  // eigene Taste löschen, eingebaute ein-/ausblenden
   const d = LAY.d;
-  if (x.own) { if (!pwin().confirm(t('qt_del_q', { n: x.l }))) return; x.del = true; const g = layFind(x.k); if (g) g.keys = g.keys.filter(k => k !== x.k); laySay(t('gr_lay_kdeleted', { k: x.l })); }
+  if (x.own) {                                        // eigene Taste: Rückfrage im Knopf (kein Browser-Fenster, das in der HA-App nicht erscheint)
+    const bt = btn || document.querySelector(`.layk[data-k="${CSS.escape(x.k)}"] .lkx`); if (!bt) return;
+    Felder.sure(bt, t('qt_del_q', { n: x.l }), () => { x.del = true; const g = layFind(x.k); if (g) g.keys = g.keys.filter(k => k !== x.k); laySay(t('gr_lay_kdeleted', { k: x.l })); layDraw(); }); return; }
   else { x.hide = !x.hide; LAY.focus = `.layk[data-k="${x.k}"] .lkx`; laySay(t(x.hide ? 'gr_lay_khidden' : 'gr_lay_kshown', { k: x.l })); }
   layDraw();
 }

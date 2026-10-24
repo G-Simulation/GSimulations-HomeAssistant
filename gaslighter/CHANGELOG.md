@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.21
+- **Aufklapp-Menüs mit Shoelace (MIT, lokal eingebunden):** Art, Sensoren (Protokolle und Live), Sensoren je Verlauf-Zeile und „＋ Rubrik“ schließen bei Klick daneben und mit Esc, werden nicht abgeschnitten, bleiben beim Ankreuzen offen.
+- Ausgeblendete/leere Bereiche liegen außerhalb des Rasters – das Raster ordnet nicht mehr bei jeder Kleinigkeit neu (offene Menüs blieben vorher nicht offen).
+- Eigene Tasten löschen: Rückfrage im Knopf („Sicher?“) statt Browser-Fenster.
+- Schnellwahl: neue Taste „Tür“ unter „Woher“; die Taste unter „Was“ heißt „Türenknallen“.
+
 ## 1.85.20
 - **Live-Tabelle „Ereignisse heute“ fasst zusammen wie Protokolle:** Notizen, die Störung dazu und Sensor-Ereignisse eines Ereignisses sind eine Zeile mit Werten für das Ganze (Quellen, Art, Was vorkam, Dauer, Spitze, Notizen). Klick klappt auf, Doppelklick öffnet die Detailansicht der Gruppe. Gilt in der Ansicht „Gruppen“ (Umschalter in Protokolle).
 

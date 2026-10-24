@@ -2300,16 +2300,22 @@ function artMsBuild() {
     items.push(['vib', '🫨 ' + t('sens_vib')], ['tilt', '📐 ' + t('sens_tilt')], ['cam', '🏃 ' + t('sens_cam')]);
   }
   for (const k of [...ARTSEL]) if (!items.some(i => i[0] === k)) ARTSEL.delete(k);
-  const sig = JSON.stringify([items, [...ARTSEL]]); if (box.dataset.sig === sig) return; box.dataset.sig = sig;
-  const wasOpen = box.querySelector('details') && box.querySelector('details').open;
+  const sig = JSON.stringify([items, [...ARTSEL]]); if (box.dataset.sig === sig) return;
+  const wasOpen = slOpen(box);
   const lbl = !ARTSEL.size ? t('art_all') : ARTSEL.size === 1 ? (items.find(i => ARTSEL.has(i[0])) || ['', ''])[1] : t('art_n', { n: ARTSEL.size });
-  box.innerHTML = `<details class="sfltd"${wasOpen ? ' open' : ''}><summary class="chip${ARTSEL.size ? ' pri' : ''}">${esc(lbl)} ▾</summary><div class="sfltl">
-    <div class="sfltb"><button type="button" class="chip" data-a="none">${esc(t('art_all'))}</button></div>
-    ${items.map(([k, l]) => `<label><input type="checkbox" data-k="${esc(k)}"${ARTSEL.has(k) ? ' checked' : ''}> ${esc(l)}</label>`).join('')}</div></details>`;
+  if (wasOpen && box.dataset.isig === JSON.stringify(items)) {          // offen: nur Häkchen und Beschriftung, das Menü bleibt offen
+    box.dataset.sig = sig; box.querySelectorAll('input[data-k]').forEach(c => { c.checked = ARTSEL.has(c.dataset.k); });
+    const tb = box.querySelector('button[slot=trigger]'); tb.textContent = lbl + ' ▾'; tb.classList.toggle('pri', !!ARTSEL.size); return; }
+  box.dataset.sig = sig; box.dataset.isig = JSON.stringify(items);
+  box.innerHTML = slDrop(`class="chip${ARTSEL.size ? ' pri' : ''}">${esc(lbl)} ▾`, `<div class="sfltb"><button type="button" class="chip" data-a="none">${esc(t('art_all'))}</button></div>
+    ${items.map(([k, l]) => `<label><input type="checkbox" data-k="${esc(k)}"${ARTSEL.has(k) ? ' checked' : ''}> ${esc(l)}</label>`).join('')}`, wasOpen); slKeep(box, wasOpen);
   box.querySelectorAll('input[data-k]').forEach(c => c.onchange = () => { c.checked ? ARTSEL.add(c.dataset.k) : ARTSEL.delete(c.dataset.k); artApply(); });
   box.querySelector('button[data-a=none]').onclick = () => { ARTSEL.clear(); artApply(); };
 }
-document.addEventListener('click', e => { for (const id of ['artms', 'sflt']) { const b = $(id), d = b && b.querySelector('details[open]'); if (d && !b.contains(e.target)) d.open = false; } });
+/* ab 1.85.21: Aufklapp-Menüs über Shoelace (sl-dropdown, MIT): schließt bei Klick daneben und mit Esc, liegt über allem (hoist), Tastatur/Screenreader */
+function slDrop(trig, panel, open, cls) { return `<sl-dropdown class="sfltd ${cls || ''}" placement="bottom-start" distance="4" hoist stay-open-on-select${open ? ' open' : ''}><button type="button" slot="trigger" ${trig}</button><div class="sfltl">${panel}</div></sl-dropdown>`; }
+function slOpen(box) { const x = box && box.querySelector('sl-dropdown'); return !!(x && x.open); }
+function slKeep(box, was) { if (!was) return; const x = box.querySelector('sl-dropdown'); if (x) customElements.whenDefined('sl-dropdown').then(() => requestAnimationFrame(() => x.show())); }   // nach Neuaufbau offen lassen
 function shideSave() { try { localStorage.setItem('gl_shide', JSON.stringify([...SHIDE])); } catch (e) { } }
 const sensKey = x => x.kind === 'ha' ? 'ha:' + x.name : x.kind;
 const sensIcon = k => k === 'vib' ? '🫨' : k === 'tilt' ? '📐' : k === 'cam' ? '🏃' : '📡';
@@ -2325,10 +2331,9 @@ function sfltBuild() {
   for (const box of [$('sflt'), $('lsflt')]) {
     if (!box) continue;
     const sig = JSON.stringify([items, [...SHIDE], lang]); if (box.dataset.sig === sig) continue; box.dataset.sig = sig;
-    const on = items.filter(i => !SHIDE.has(i[0])).length, wasOpen = box.querySelector('details') && box.querySelector('details').open;
-    box.innerHTML = `<details class="sfltd"${wasOpen ? ' open' : ''}><summary class="chip">📡 ${esc(t('sf_btn'))} <small>${on}/${items.length}</small></summary><div class="sfltl">
-    <div class="sfltb"><button type="button" class="chip" data-a="all">${esc(t('sf_all'))}</button><button type="button" class="chip" data-a="none">${esc(t('sf_none'))}</button></div>
-    ${items.map(([k, l]) => `<label><input type="checkbox" data-k="${esc(k)}"${SHIDE.has(k) ? '' : ' checked'}> ${esc(l)}</label>`).join('')}</div></details>`;
+    const on = items.filter(i => !SHIDE.has(i[0])).length, wasOpen = slOpen(box);
+    box.innerHTML = slDrop(`class="chip">📡 ${esc(t('sf_btn'))} <small>${on}/${items.length}</small>`, `<div class="sfltb"><button type="button" class="chip" data-a="all">${esc(t('sf_all'))}</button><button type="button" class="chip" data-a="none">${esc(t('sf_none'))}</button></div>
+    ${items.map(([k, l]) => `<label><input type="checkbox" data-k="${esc(k)}"${SHIDE.has(k) ? '' : ' checked'}> ${esc(l)}</label>`).join('')}`, wasOpen); slKeep(box, wasOpen);
     const apply = () => { shideSave(); EVSIG = ''; renderEvents(); if (NV.open && typeof renderNight === 'function' && NV.data) renderNight(); dtLoad(DT, true); levRender(); sfltBuild(); };
     box.querySelectorAll('input[data-k]').forEach(c => c.onchange = () => { c.checked ? SHIDE.delete(c.dataset.k) : SHIDE.add(c.dataset.k); apply(); });
     box.querySelectorAll('button[data-a]').forEach(b => b.onclick = () => { for (const [k] of items) b.dataset.a === 'all' ? SHIDE.delete(k) : SHIDE.add(k); apply(); });
@@ -2412,7 +2417,7 @@ function dashSave(v) {
 }
 const dashName = (v, p) => (DASH.st[v] && DASH.st[v].ttl && DASH.st[v].ttl[p.id]) || (p.title != null ? p.title : t(p.t));
 function dashTitleApply(v, p, b) {                     // Überschrift: eigene (✎) vor der eingebauten; Sprachwechsel nur ohne eigene
-  b = b || (DASH.grids[v] && DASH.grids[v].el.querySelector(`:scope > .grid-stack-item[gs-id="${CSS.escape(p.id)}"] .ptitle`)); if (!b) return;
+  if (!b) { const it = dashItem(v, p.id); b = it && it.querySelector('.ptitle'); } if (!b) return;
   const own = DASH.st[v] && DASH.st[v].ttl && DASH.st[v].ttl[p.id];
   if (!own && p.title == null) b.dataset.i = p.t; else delete b.dataset.i;
   b.textContent = dashName(v, p);
@@ -2466,7 +2471,11 @@ function dashNextNode(v, id) {                        // leer gewesener Bereich 
   for (const p of defs.slice(i + 1)) { const n = g.engine.nodes.find(x => x.id === p.id); if (n) return n; }
   return null;
 }
-function dashItem(v, id) { const g = DASH.grids[v]; return g && g.el.querySelector(`:scope > .grid-stack-item[gs-id="${CSS.escape(id)}"]`); }
+function dashItem(v, id) { const g = DASH.grids[v]; return g && (g.el.querySelector(`:scope > .grid-stack-item[gs-id="${CSS.escape(id)}"]`) || dashStash(g).querySelector(`:scope > .grid-stack-item[gs-id="${CSS.escape(id)}"]`)); }
+/* ab 1.85.21: ausgeblendete/leere Bereiche liegen außerhalb des Rasters – sonst stimmt die Reihenfolge für GridStack nie und es sortiert bei jeder
+   Änderung alle Bereiche neu (nimmt sie dabei kurz aus der Seite, offene Menüs gehen zu) */
+function dashStash(g) { if (!g._stash || !g._stash.isConnected) { g._stash = el('div', { className: 'dashstash' }); g._stash.hidden = true; g.el.after(g._stash); } return g._stash; }
+const dashAll = g => [...g.el.querySelectorAll(':scope > .grid-stack-item'), ...dashStash(g).children];
 function dashCol(v, id) {
   const it = dashItem(v, id), pn = it && it.querySelector('.pnl'), st = DASH.st[v]; if (!pn) return;
   if (pn.classList.contains('pquiet') && !pn.classList.contains('pcolx')) { const o = pn.classList.toggle('pqopen'); pn.querySelector('.pcol').textContent = o ? '▾' : '▸'; dashResized(); dashRefresh(); return; }
@@ -2544,7 +2553,7 @@ function dashAddPanel(v, p) {
   (DASH.def[v] = DASH.def[v] || []).push(p);
   const items = []; dashMk(v, p, st, lay, g.el, items); if (!items.length) { DASH.def[v].pop(); return; }
   const [, it, pn] = items[0]; if (!lay[p.id]) it.setAttribute('gs-y', '9999');
-  if (st.off.includes(p.id)) it.style.display = 'none'; else g.makeWidget(it);
+  if (st.off.includes(p.id)) { it.style.display = 'none'; dashStash(g).appendChild(it); } else g.makeWidget(it);
   DASH.ro.observe(pn); dashApply(v); dashBar(v); dashSlotUse(v, it);
 }
 /* ab 1.85.4: freie Stelle im Raster (Layout anpassen): „＋ Bereich hier“ öffnet die Auswahl, der neue Bereich kommt genau dorthin */
@@ -2583,7 +2592,7 @@ function dashInit() {
   if (typeof GridStack === 'undefined' || DASH.inited) return; DASH.inited = true;
   const defs = dashDefs();
   if (!$('dashlive')) { const l = el('div', { id: 'dashlive', className: 'sr' }); l.setAttribute('aria-live', 'polite'); document.body.appendChild(l); }
-  DASH.ro = new ResizeObserver(ents => { const gs = new Set(); for (const e of ents) { const it = e.target.closest('.grid-stack-item'), g = it && it.gridstackNode && it.gridstackNode.grid; if (g) gs.add(g); } gs.forEach(dashEq); });
+  DASH.ro = new ResizeObserver(ents => { const gs = new Set(); for (const e of ents) { const it = e.target.closest('.grid-stack-item'), g = it && it.gridstackNode && it.gridstackNode.grid; if (g) gs.add(g); } gs.forEach(g => dashEq(g, false)); });
   for (const [v, list] of Object.entries(defs)) {
     const host = v === 'live' ? $('liveview') : $('nightview'), first = list.map(p => p.nodes[0]).find(Boolean); if (!first) continue;
     const st = DASH.st[v] = dashLoadSt(v); st.col = st.col || {}; st.off = st.off || list.filter(p => p.off).map(p => p.id); st.vis = st.vis || {}; st.ttl = st.ttl || {};
@@ -2631,20 +2640,20 @@ function dashInit() {
 function pg_cleanup(host) { const pg = host.querySelector('.pgrid'); if (pg && !pg.children.length) pg.remove(); }
 function dashApply(v) {
   const g = DASH.grids[v], st = DASH.st[v]; if (!g) return;
-  g.el.querySelectorAll(':scope > .grid-stack-item').forEach(it => { const id = it.getAttribute('gs-id'), pn = it.querySelector('.pnl');
+  dashAll(g).forEach(it => { const id = it.getAttribute('gs-id'), pn = it.querySelector('.pnl');
     pn.classList.toggle('pcolx', !!st.col[id]); pn.querySelector('.pcol').textContent = st.col[id] || (pn.classList.contains('pquiet') && !pn.classList.contains('pqopen')) ? '▸' : '▾';
     pn.querySelector('.pcol').setAttribute('aria-expanded', st.col[id] ? 'false' : 'true');
     const vb = pn.querySelector('.pvis'); if (vb) { vb.classList.toggle('on', !!st.vis[id]); vb.setAttribute('aria-pressed', st.vis[id] ? 'true' : 'false'); }
     const emp = !DASH.edit && pn.classList.contains('phe') && pn.classList.contains('pempty');   // leer (kein Video, keine Sensoren): ohne Lücke weg, Platz gemerkt
     const off = st.off.includes(id) || emp;
-    if (off && it.gridstackNode) { if (emp) { it.dataset.ex = it.gridstackNode.x; it.dataset.ey = it.gridstackNode.y; } else { delete it.dataset.ex; delete it.dataset.ey; } g.removeWidget(it, false, false); it.style.display = 'none'; }
-    else if (!off && !it.gridstackNode) { it.style.display = ''; if (it.dataset.ey != null) { const nx = dashNextNode(v, id); it.setAttribute('gs-y', nx ? nx.y : 9999); it.setAttribute('gs-x', nx ? nx.x : 0); delete it.dataset.ex; delete it.dataset.ey; } else { it.setAttribute('gs-y', '9999'); it.removeAttribute('gs-x'); } g.makeWidget(it); }   // wieder eingeblendet: unten anfügen (leer gewesene an ihren Platz)
+    if (off && it.gridstackNode) { if (emp) { it.dataset.ex = it.gridstackNode.x; it.dataset.ey = it.gridstackNode.y; } else { delete it.dataset.ex; delete it.dataset.ey; } g.removeWidget(it, false, false); it.style.display = 'none'; dashStash(g).appendChild(it); }
+    else if (!off && !it.gridstackNode) { g.el.appendChild(it); it.style.display = ''; if (it.dataset.ey != null) { const nx = dashNextNode(v, id); it.setAttribute('gs-y', nx ? nx.y : 9999); it.setAttribute('gs-x', nx ? nx.x : 0); delete it.dataset.ex; delete it.dataset.ey; } else { it.setAttribute('gs-y', '9999'); it.removeAttribute('gs-x'); } g.makeWidget(it); }   // wieder eingeblendet: unten anfügen (leer gewesene an ihren Platz)
     if (off) it.removeAttribute('tabindex'); else if (DASH.edit) it.tabIndex = 0; else it.removeAttribute('tabindex');
   });
   dashEq(g);
 }
 /* ab 1.85.2: Bereiche nebeneinander (gleiche Zeile) so hoch wie der höchste; Inhalt bestimmt weiter die eigene Höhe */
-function dashEq(g) {
+function dashEq(g, pack) {                             // pack=false: nur Höhen (Inhalt geändert) – nicht neu ordnen, sonst nimmt GridStack offene Menüs kurz aus der Seite
   if (!g || !g.el) return;
   const v = g.el.dataset.view, col = g.getColumn(), st = DASH.st[v];
   if (col === 12 && g._col && g._col !== 12 && st && st.lay) {      // vom Handy zurück: gespeicherte PC-Anordnung (GridStack rechnet sonst aus der Liste zurück)
@@ -2654,7 +2663,7 @@ function dashEq(g) {
   g._col = col;
   const its = g.getGridItems().filter(it => it.style.display !== 'none' && it.gridstackNode);
   its.forEach(it => { const p = it.querySelector('.pnl'); if (p) p.style.minHeight = ''; g.resizeToContent(it); });
-  if (col === 12) g.compact('list');                      // GridStack „list“: in Reihenfolge auffüllen – halbe Bereiche nebeneinander, Rest der Zeile frei, nichts springt nach oben
+  if (col === 12 && pack !== false) g.compact('list');                      // GridStack „list“: in Reihenfolge auffüllen – halbe Bereiche nebeneinander, Rest der Zeile frei, nichts springt nach oben
   if (col === 12) {                                  // gleiche Zeile: der kürzere Inhalt wird so hoch wie der höchste, GridStack passt die Zelle an (sizeToContent)
     const rows = {}; its.forEach(it => { const n = it.gridstackNode; (rows[n.y] = rows[n.y] || []).push(it); });
     for (const r of Object.values(rows)) {
@@ -3252,7 +3261,7 @@ function ntaBind() {
   $('ntax').onclick = () => $('ntadlg').close();
 }
 /* ================= Notizen zu Zeitpunkten im Clip ================= */
-let NOTE_TAGS = { src: ['oben', 'unten', 'nebenan', 'treppenhaus', 'draussen', 'unklar'], kind: ['klopfen', 'schritte', 'musik', 'stimmen', 'tuer', 'moebel', 'bohren', 'hund'],
+let NOTE_TAGS = { src: ['oben', 'unten', 'nebenan', 'treppenhaus', 'tuer_o', 'draussen', 'unklar'], kind: ['klopfen', 'schritte', 'musik', 'stimmen', 'tuer', 'moebel', 'bohren', 'hund'],
   lvl: ['leicht', 'deutlich', 'stark'], eff: ['aufgewacht', 'kind_geweckt', 'kein_schlaf', 'gestoert'], act: ['geklingelt', 'angesprochen', 'verwaltung', 'polizei'], misc: ['zeuge', 'serie'] };
 const NT_GCOL = { src: '#0ca678', kind: '#e0314b', lvl: '#f08c00', eff: '#7048e8', act: '#1c7ed6', misc: '#868e96' };
 function ntGroup(tag) { if (NTS.grp && NTS.grp[tag]) return NTS.grp[tag]; for (const g in NOTE_TAGS) if (NOTE_TAGS[g].includes(tag)) return g; return NTS.own[tag] != null || String(tag).startsWith('g:') ? 'own' : 'misc'; }
@@ -6238,10 +6247,11 @@ function dtRowsRender(S) {
     let hsB = null;                                   // ab 1.85.17: welche Sensoren diese Zeile zeigt (Pegelspur, Lautstärke, Spektrogramm)
     if (hsN.length) {
       const hid = new Set(row.hs || []), on = hsN.filter(n => !hid.has(n)).length;
-      hsB = el('details', { className: 'sfltd ndrhs' }); const sfw = el('span', { className: 'sflt' }); sfw.appendChild(hsB);
-      hsB.innerHTML = `<summary class="chip" title="${esc(t('dt_hs_tip'))}">📡 ${esc(t('dt_hs'))} <small>${on}/${hsN.length}</small></summary><div class="sfltl">` + hsN.map(n => `<label><input type="checkbox" data-n="${esc(n)}"${hid.has(n) ? '' : ' checked'}> <i class="ndsw" style="background:${esc(sensCol((rd.ha || []).find(a => a[2] === n)))}"></i> ${esc(n)}</label>`).join('') + '</div>';
+      const sfw = el('span', { className: 'sflt' });
+      sfw.innerHTML = slDrop(`class="chip" title="${esc(t('dt_hs_tip'))}">📡 ${esc(t('dt_hs'))} <small>${on}/${hsN.length}</small>`, hsN.map(n => `<label><input type="checkbox" data-n="${esc(n)}"${hid.has(n) ? '' : ' checked'}> <i class="ndsw" style="background:${esc(sensCol((rd.ha || []).find(a => a[2] === n)))}"></i> ${esc(n)}</label>`).join(''), false, 'ndrhs');
+      hsB = sfw.querySelector('sl-dropdown');
       hsB.querySelectorAll('input').forEach(c => c.onchange = () => { const h = new Set(row.hs || []); c.checked ? h.delete(c.dataset.n) : h.add(c.dataset.n); row.hs = [...h]; if (!row.hs.length) delete row.hs; dtRowsSave(S.rows);
-        const sb = S.subs.find(x => x.row === row); if (sb) { sb.hs = new Set(row.hs || []); if (sb.data) dtDraw(sb); } hsB.querySelector('summary small').textContent = hsN.filter(n => !(row.hs || []).includes(n)).length + '/' + hsN.length; });
+        const sb = S.subs.find(x => x.row === row); if (sb) { sb.hs = new Set(row.hs || []); if (sb.data) dtDraw(sb); } hsB.querySelector('button[slot=trigger] small').textContent = hsN.filter(n => !(row.hs || []).includes(n)).length + '/' + hsN.length; });
       hsB = sfw;
     }
     hd.append(ss, ms, ...(lt ? [lt] : []), ...(hsB ? [hsB] : []), el('span', { className: 'ndrgap' }), mvb, lb);
@@ -7698,8 +7708,8 @@ function fclDraw() {
   box.querySelectorAll('.layk').forEach(chip => {
     const x = d.keys[chip.dataset.k], nb = chip.querySelector('.lkn');
     nb.onclick = () => { if (!FCL.dragged) fclRename(chip, x); };
-    nb.onkeydown = e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); fclKeyX(x); } else fclMoveKey(e, x); };
-    chip.querySelector('.lkx').onclick = () => fclKeyX(x);
+    nb.onkeydown = e => { if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); fclKeyX(x, chip.querySelector('.lkx')); } else fclMoveKey(e, x); };
+    chip.querySelector('.lkx').onclick = ev => fclKeyX(x, ev.currentTarget);
   });
   box.querySelector('.lga').onclick = ev => Felder.addMenu(ev.currentTarget, ty => {   // Klick öffnet die Typauswahl: Tasten → neue Rubrik, sonst neues Feld
     if (ty === 'pills') { fclAddGroup(); return; }
@@ -7708,8 +7718,10 @@ function fclDraw() {
     const f = $('fnpbody').querySelector(`.fbblk[data-b="${CSS.escape(b.id)}"] .fil_l`); if (f) { f.focus(); f.select(); f.scrollIntoView({ block: 'center' }); } });
   if (FCL.focus) { const f = box.querySelector(FCL.focus); FCL.focus = null; if (f) { f.focus(); if (f.classList.contains('lgn')) f.select(); } }
 }
-function fclKeyX(x) {                                  // eigene Taste löschen, eingebaute ein-/ausblenden
-  if (x.own) { if (!pwin().confirm(t('qt_del_q', { n: x.l }))) return; x.del = true; const g = fclFind(x.k); if (g) g.keys = g.keys.filter(k => k !== x.k); fclSay(t('fc_lay_kdeleted', { k: x.l })); }
+function fclKeyX(x, btn) {                                  // eigene Taste löschen, eingebaute ein-/ausblenden
+  if (x.own) {                                        // eigene Taste: Rückfrage im Knopf (kein Browser-Fenster, das in der HA-App nicht erscheint)
+    const bt = btn || document.querySelector(`.layk[data-k="${CSS.escape(x.k)}"] .lkx`); if (!bt) return;
+    Felder.sure(bt, t('qt_del_q', { n: x.l }), () => { x.del = true; const g = fclFind(x.k); if (g) g.keys = g.keys.filter(k => k !== x.k); fclSay(t('fc_lay_kdeleted', { k: x.l })); fclDraw(); }); return; }
   else { x.hide = !x.hide; FCL.focus = `.layk[data-k="${x.k}"] .lkx`; fclSay(t(x.hide ? 'fc_lay_khidden' : 'fc_lay_kshown', { k: x.l })); }
   fclDraw();
 }

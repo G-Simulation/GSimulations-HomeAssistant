@@ -1504,3 +1504,10 @@ button.sure{background:var(--bad,var(--red,#c92a2a))!important;border-color:var(
 .grpdlg .df{display:flex;gap:8px;align-items:center}
 @media(max-width:600px){.grpdlg .grpit{grid-template-columns:24px 1fr auto;}.grpdlg .grpit small{grid-column:2/3}.grpdlg .grpit .grpw{grid-column:2/-1}}
 .art.grpmix{font-weight:400;color:var(--mut)}
+/* Shoelace-Aufklapp-Menü (sl-dropdown): unsere Liste ist der Inhalt, die Bibliothek positioniert, schließt bei Klick daneben/Esc */
+sl-dropdown.sfltd{display:inline-block}
+sl-dropdown.sfltd::part(panel){max-height:min(60vh,420px)}
+sl-dropdown.sfltd .sfltl{position:static!important;inset:auto!important;display:block;min-width:240px;max-height:min(60vh,420px);overflow:auto;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:10px;padding:8px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+sl-dropdown.sfltd .sfltl label{display:flex;gap:6px;align-items:center;white-space:nowrap;cursor:pointer;padding:3px 2px}
+/* „＋ Rubrik“-Typauswahl im Shoelace-Menü */
+sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}

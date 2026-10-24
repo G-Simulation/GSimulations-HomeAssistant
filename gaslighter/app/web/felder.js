@@ -309,23 +309,21 @@ window.Felder = (() => {
     });
   }
   /* „＋ Rubrik“ mit Typauswahl: Tasten (Rubrik) oder ein Feldtyp – gleicher Knopf, gleiche Leiste danach */
-  function addMenu(btn, pick) {                       // „＋ Rubrik“: Klick öffnet die Typauswahl (Tasten oder ein Feldtyp)
-    const doc = btn.ownerDocument, old = doc.querySelector('.fbaddm'); if (old) { old.remove(); if (old._for === btn) { btn.setAttribute('aria-expanded', 'false'); return; } }
-    const m = doc.createElement('div'); m.className = 'fbaddm'; m.setAttribute('role', 'menu'); m._for = btn;
+  function addMenu(btn, pick) {                       // „＋ Rubrik“: Klick öffnet die Typauswahl – Shoelace sl-dropdown (schließt bei Klick daneben und Esc, liegt über allem)
+    if (btn.closest('sl-dropdown')) return;            // schon umgebaut: das Menü öffnet die Bibliothek selbst
+    const doc = btn.ownerDocument, dd = doc.createElement('sl-dropdown');
+    dd.setAttribute('placement', 'bottom-start'); dd.setAttribute('distance', '4'); dd.setAttribute('hoist', ''); dd.className = 'fbaddd';
+    btn.replaceWith(dd); btn.slot = 'trigger'; dd.appendChild(btn);
+    const m = doc.createElement('div'); m.className = 'fbaddm'; m.setAttribute('role', 'menu');
     m.innerHTML = [['pills', t('fb_type_pills')]].concat(TYPES.map(x => [x, t('fb_type_' + x)])).map(([v, l]) => `<button type="button" role="menuitem" data-ty="${v}">${e(l)}</button>`).join('');
-    doc.body.appendChild(m); btn.setAttribute('aria-expanded', 'true');   // über der ganzen Seite: wird von keinem Bereich abgeschnitten
-    const win = doc.defaultView || window, place = () => { const r = btn.getBoundingClientRect(), vh = win.innerHeight, below = vh - r.bottom - 8, above = r.top - 8, up = below < 240 && above > below;
-      m.style.left = Math.max(8, Math.min(r.left, win.innerWidth - m.offsetWidth - 8)) + 'px'; m.style.maxHeight = Math.max(160, up ? above : below) + 'px';
-      if (up) { m.style.top = ''; m.style.bottom = (vh - r.top + 4) + 'px'; } else { m.style.bottom = ''; m.style.top = (r.bottom + 4) + 'px'; } };
-    place(); win.addEventListener('resize', place); win.addEventListener('scroll', place, true);
-    const close = () => { m.remove(); btn.setAttribute('aria-expanded', 'false'); doc.removeEventListener('pointerdown', out, true); win.removeEventListener('resize', place); win.removeEventListener('scroll', place, true); };
-    const out = ev => { if (!m.contains(ev.target) && ev.target !== btn) close(); };
-    doc.addEventListener('pointerdown', out, true);
+    dd.appendChild(m);
     const its = [...m.querySelectorAll('button')];
-    its.forEach((x, i) => { x.onclick = () => { close(); pick(x.dataset.ty); };
-      x.onkeydown = ev => { if (ev.key === 'Escape') { ev.preventDefault(); close(); btn.focus(); } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); its[(i + (ev.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length].focus(); } }; });
-    its[0].focus();
+    its.forEach((x, i) => { x.onclick = () => { dd.hide(); pick(x.dataset.ty); };
+      x.onkeydown = ev => { if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); its[(i + (ev.key === 'ArrowDown' ? 1 : its.length - 1)) % its.length].focus(); } }; });
+    dd.addEventListener('sl-after-show', () => its[0].focus());
+    requestAnimationFrame(() => dd.show());
   }
+
   function addDef(d, ty) { if (d.blocks.filter(x => !x.del).length >= S.max) return null; const b = newDef(ty); d.blocks.push(b); return b; }
   return { sure, addMenu, addDef, inlineEdit, kindsActive, kindsShown, kindOf, kindChip, kindPick, kindsEditor, TYPES, ROLES, S, setup, load, isId, byId, active, visible, isEmpty, fmt, compact, render, countShow, check, chart, editor, strip, newDef, tplBox, readNum };
 })();

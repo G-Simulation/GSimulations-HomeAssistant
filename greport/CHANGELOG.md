@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.9
+- **„＋ Rubrik“ mit Shoelace (MIT, lokal eingebunden):** Typauswahl schließt bei Klick daneben und mit Esc, wird nicht abgeschnitten.
+- **Tasten in einer Rubrik entfernen** geht jetzt auch in der Home-Assistant-App: Rückfrage im Knopf („Sicher?“) statt Browser-Fenster.
+- Schnellwahl: neue Taste „Tür“ unter „Woher“; die Taste unter „Was“ heißt „Türenknallen“ („Tür knallt“ in Dokumenten erkennt beides).
+
 ## 1.12.8
 - Auch in der Feldliste: „＋ Rubrik“ öffnet beim Klick die Typauswahl (statt Auswahlliste + „Hinzufügen“) – überall gleich.
 

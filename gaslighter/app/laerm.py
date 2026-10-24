@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.20"
+VERSION = "1.85.21"
 
 # =====================================================================
 # Einstellungen
@@ -6478,7 +6478,7 @@ def src_name(src):
 NOTES_LOCK = threading.RLock()
 NOTES = {"data": None}
 NOTE_TAGS = {   # Schnell-Tags: Gruppe -> Schluessel (Beschriftung im Browser)
-    "src": ["oben", "unten", "nebenan", "treppenhaus", "draussen", "unklar"],
+    "src": ["oben", "unten", "nebenan", "treppenhaus", "tuer_o", "draussen", "unklar"],
     "kind": ["klopfen", "schritte", "musik", "stimmen", "tuer", "moebel", "bohren", "hund"],
     "lvl": ["leicht", "deutlich", "stark"],
     "eff": ["aufgewacht", "kind_geweckt", "kein_schlaf", "gestoert"],
@@ -7636,7 +7636,7 @@ def notes_csv(q):
     return ("﻿" + buf.getvalue()).encode("utf-8")
 
 
-NOTE_TAG_DE = {"oben": "oben", "unten": "unten", "nebenan": "nebenan", "treppenhaus": "Treppenhaus", "draussen": "draußen/Straße", "unklar": "Herkunft unklar",
+NOTE_TAG_DE = {"oben": "oben", "unten": "unten", "nebenan": "nebenan", "treppenhaus": "Treppenhaus", "tuer_o": "Tür", "draussen": "draußen/Straße", "unklar": "Herkunft unklar",
                "klopfen": "Klopfen/Hämmern", "schritte": "Schritte/Trampeln", "musik": "Musik/Bass", "stimmen": "Stimmen/Schreien", "tuer": "Türenknallen",
                "moebel": "Möbelrücken", "bohren": "Bohren", "hund": "Hund", "leicht": "leicht", "deutlich": "deutlich", "stark": "stark",
                "aufgewacht": "aufgewacht", "kind_geweckt": "Kind geweckt", "kein_schlaf": "Einschlafen unmöglich", "gestoert": "Arbeit/Gespräch gestört",
@@ -13756,7 +13756,7 @@ class BaseHandler(BaseHTTPRequestHandler):
         self.do_GET()
 
 
-STATIC = {"app.js", "hadash-ui.js", "felder.js", "app.css", "i18n.js", "qrcode.js", "druck.js", "uplot.min.js", "uplot.min.css", "ag-grid-community.min.js", "gridstack-all.js", "gridstack.min.css", "handbuch.js", "hb_inhalt.js"}   # uPlot (MIT, github.com/leeoniya/uPlot): Kurven und Balken
+STATIC = {"app.js", "hadash-ui.js", "felder.js", "app.css", "i18n.js", "qrcode.js", "druck.js", "uplot.min.js", "uplot.min.css", "ag-grid-community.min.js", "gridstack-all.js", "gridstack.min.css", "shoelace-ui.js", "shoelace-ui.css", "handbuch.js", "hb_inhalt.js"}   # uPlot (MIT, github.com/leeoniya/uPlot): Kurven und Balken
 
 
 # =====================================================================
