@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.30"
+VERSION = "1.85.31"
 
 # =====================================================================
 # Einstellungen
@@ -5467,7 +5467,7 @@ def nl_examples():
     def sim(pr, ps):
         return max([lernen.score(p_, pr.get("band"), pr.get("emb")) for p_ in ps] or [0.0])
 
-    # 1) Sensoren: Einsatz eines Sensors bis 2 s vor/nach Beginn des Kerns einer Störung
+    # 1) Sensoren: Einsatz eines Sensors bis 2,5 s vor Beginn bis 2,5 s nach Ende einer Störung
     now = int(time.time() * 1000)
     rs = sorted((r for r in keyed if ms_of(r.get("start")) is not None), key=lambda r: ms_of(r.get("start")))
     rst = [ms_of(r.get("start")) for r in rs]
@@ -5486,7 +5486,8 @@ def nl_examples():
             if r["k"] in sens_k:
                 continue
             c = core_of(r)
-            if c and c[4] + c[1] - 2000 <= sa <= c[4] + c[1] + 2000:
+            ra = c[4] if c else None                   # Beginn laut Protokoll (der Kern zählt ab Anfang der Grafik, die früher beginnen kann)
+            if c and ra - 2500 <= sa <= ra + int((fnum(r.get("dauer_s")) or 0) * 1000) + 2500:
                 sens_k[r["k"]] = nm; sens_p.setdefault(nm, []).append(c[3])
                 out.append(("s:" + r["k"], c[0], c[1], c[2], clean_label_name(nm)))
                 break

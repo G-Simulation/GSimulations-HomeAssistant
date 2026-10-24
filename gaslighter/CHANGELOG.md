@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.31
+
+- Lernen aus Notizen: Ein Sensor gehört zu einer Störung, wenn er zwischen 2,5 s vor ihrem Beginn und 2,5 s nach ihrem Ende ausgelöst hat. Gemessen wird an den Zeiten im Protokoll statt am Kern der Grafik.
+
 ## 1.85.30
 
 - Lernen aus Notizen: Kurze Schläge (oft nur 20 ms) und Störungen ohne Kern wurden übersprungen. Jetzt zählt ±250 ms um den Schlag, wie beim Vergleich. Dadurch finden auch die Sensor-Beispiele (Briefkasten) ihre Störung.
