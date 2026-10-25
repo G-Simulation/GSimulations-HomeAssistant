@@ -5267,10 +5267,58 @@ function perSet(p, quiet) {
   $('ndate').hidden = NV.per === 'free'; $('nfree').hidden = NV.per !== 'free';
   if (!quiet) loadNight();
 }
+
+/* ab 1.85.37: Vorausladen – der Zeitraum davor und danach (Protokolle: ‹ ›, Live: zurückgespult) liegt schon bereit, Umschalten ohne weißes Warten.
+   Nur lesende Abfragen (Bericht, Ereignisse, Verlauf); jede Antwort höchstens 2 Minuten (laufender Tag 20 s) aufgehoben. */
+const PFC = { c: new Map(), rec: null, on: true };
+const PF_RE = /^(night|nights|events|daytrack|runtime|sclanes)\?/;
+const _fetch0 = window.fetch.bind(window);
+window.fetch = function (u, o) {
+  const url = typeof u === 'string' ? u : '';
+  if (!url || !PF_RE.test(url) || (o && o.method && o.method !== 'GET')) return _fetch0(u, o);
+  if (PFC.rec) PFC.rec.add(url);
+  const e = PFC.c.get(url), now = Date.now();
+  if (e && now - e.t < e.ttl) { PFC.c.delete(url); return e.p.then(x => new Response(x.body, { status: x.status, headers: { 'Content-Type': x.ct } })); }   // einmal benutzen, danach wieder frisch vom Server
+  return _fetch0(u, o);
+};
+function pfGet(url, ttl) {                             // im Hintergrund laden und aufheben
+  if (PFC.c.has(url)) return;
+  const p = _fetch0(url, { cache: 'no-store' }).then(async r => ({ status: r.status, ct: r.headers.get('Content-Type') || 'application/json', body: await r.text() }));
+  p.catch(() => PFC.c.delete(url));
+  PFC.c.set(url, { t: Date.now(), ttl, p });
+  if (PFC.c.size > 40) PFC.c.delete(PFC.c.keys().next().value);
+}
+function pfShift(url, days, ms) {                     // gleiche Abfrage, um n Tage (oder ms) verschoben – Schreibweise der Werte bleibt gleich
+  let any = false;
+  const fm = /[?&]from=(\d{10,})(?:&|$)/.exec(url), cal = (v, n) => { const d = new Date(+v); d.setDate(d.getDate() + n); return d.getTime(); };
+  const out = url.replace(/([?&](?:date|from|to)=)([^&]*)/g, (m, k, raw) => {
+    if (days && fm && k.endsWith('to=') && /^\d{10,}$/.test(raw) && +raw > Date.now() - 300000) { any = true; return k + String(cal(cal(fm[1], days), Math.abs(days))); }   // laufender Zeitraum endet „jetzt“: davor ganz
+    const enc = /%/.test(raw), v = enc ? decodeURIComponent(raw) : raw;
+    if (/^\d{4}-\d{2}-\d{2}/.test(v)) { if (!days) return m; const d = parseDay(v.slice(0, 10)); d.setDate(d.getDate() + days); const nv = isoDay(d) + v.slice(10); any = true; return k + (enc ? encodeURIComponent(nv) : nv); }
+    if (/^\d{10,}$/.test(v)) { any = true; if (ms != null) return k + String(+v + ms); const d = new Date(+v); d.setDate(d.getDate() + days); return k + String(d.getTime()); }   // Kalendertage (Zeitumstellung)
+    return m;
+  });
+  return any ? out : null;
+}
+function pfNeighbors(urls, days, msStep, isFuture) {   // davor (−) und danach (+), nicht in die Zukunft
+  setTimeout(() => {
+    for (const k of [-1, 1]) {
+      if (k > 0 && isFuture()) continue;
+      for (const u of urls) { const v = pfShift(u, days ? k * days : 0, msStep ? k * msStep : null); if (v && v !== u) pfGet(v, 120000); }
+    }
+  }, 1500);
+}
+function pfProt() {                                   // Protokolle: Tag/Woche/Monat davor und danach
+  const urls = [...(PFC.rec || [])]; PFC.rec = null; if (!urls.length || !NV.open) return;
+  const n = NV.per === '7' ? 7 : NV.per === '30' ? 30 : NV.per === 'free' ? Math.round((parseDay(NV.to) - parseDay(NV.from)) / 864e5) + 1 : 1;
+  const lim = NV.per === 'win' ? nightDefault() : isoDay(new Date());
+  pfNeighbors(urls, n, 0, () => { const d = parseDay(NV.per === 'free' ? NV.to : NV.date); d.setDate(d.getDate() + n); return isoDay(d) > lim; });
+}
 async function loadNight() {
   const ds = NV.date, src = NV.src, rg = perRange(), key = JSON.stringify([ds, src, rg, NV.per, PV.cur, NV.art]);
   const fq = '&src=' + encodeURIComponent(src) + '&list=' + encodeURIComponent(PV.cur || '') + '&art=' + encodeURIComponent(NV.art || '') + (rg ? '&from=' + rg[0] + '&to=' + rg[1] : '');
   const fresh = key !== NV.dkey;                     // anderer Zeitraum/Filter: sofort Ladehinweis über allen Bereichen
+  PFC.rec = new Set(); clearTimeout(PFC.tm); PFC.tm = setTimeout(pfProt, 6000);   // Abfragen dieses Zeitraums merken, danach Nachbarn vorausladen
   if (fresh) { busy(PROT_AREAS, true); busy(EV_AREAS, true); EVWAIT = true; }
   try {
     const [n, w] = await Promise.all([
@@ -5851,7 +5899,15 @@ async function dtLoad(S, keep) {
       if (view.span === 86400) { S.from = parseDay(today).getTime(); S.to = S.from + 86400000; }
       else { S.to = now; S.from = now - view.span * 1000; }
     }
-    q = 'daytrack?src=' + encodeURIComponent(S.src) + '&date=' + today + '&free=1&from=' + Math.round(S.from) + '&to=' + Math.round(S.to);
+    if (S.zoom) {                                    // ab 1.85.37: zurückgespult – davor und danach gleich mitladen, Verschieben ohne neues Warten
+      const sp = S.to - S.from;
+      if (S.have && S.data && S.have[3] === S.src && S.from >= S.have[0] && S.to <= S.have[1] && sp >= S.have[2] * 0.6 && sp <= S.have[2] * 1.6) {
+        S.data = Object.assign({}, S.data, { from: S.from, to: S.to }); dtRender(S); return; }
+      const qa = Math.round(S.from - sp), qb = Math.round(Math.min(now, S.to + sp));
+      S.want = [qa, qb, sp, S.src];
+      q = 'daytrack?src=' + encodeURIComponent(S.src) + '&date=' + today + '&free=1&from=' + qa + '&to=' + qb;
+    } else { S.want = null; S.have = null;
+      q = 'daytrack?src=' + encodeURIComponent(S.src) + '&date=' + today + '&free=1&from=' + Math.round(S.from) + '&to=' + Math.round(S.to); }
   } else {
     const date = NV.date; if (!date) return;
     if (!keep || S.date !== date) { S.from = S.to = null; }
@@ -5865,13 +5921,14 @@ async function dtLoad(S, keep) {
     q = 'daytrack?src=' + encodeURIComponent(S.src) + '&date=' + date + '&free=1&from=' + wf + '&to=' + wt;
   }
   const cv = $(S.el.cv); if (!cv) return;
-  q += '&n=' + Math.max(100, Math.round((cv.clientWidth || 800) / (S === LDT && view.mode === 'wave' ? 3 : 1)));
+  q += '&n=' + Math.max(100, Math.round((cv.clientWidth || 800) / (S === LDT && view.mode === 'wave' ? 3 : 1) * (S === LDT && S.want ? 3 : 1)));
   if (S.busy) { S.pend = true; return; }             // nur eine Abfrage gleichzeitig, danach sofort die neueste
   S.busy = true; S.pend = false; dtBusy(S, true);
   const id = ++S.req, f0 = S.from, t0_ = S.to;
   try {
     const r = await (await fetch(q, { cache: 'no-store' })).json();
-    if (id === S.req) { if (S.zoom && (S.from !== f0 || S.to !== t0_) && r && r.has) { r.from = S.from; r.to = S.to; } S.data = r; dtRender(S); }
+    if (id === S.req) { const wnt = S === LDT ? S.want : null; if (wnt && r && r.has) { S.have = wnt; r.from = S.from; r.to = S.to; } else if (S === LDT) S.have = null;
+      if (S.zoom && (S.from !== f0 || S.to !== t0_) && r && r.has) { r.from = S.from; r.to = S.to; } S.data = r; dtRender(S); }
     if (S === LDT) ldDown(f0, t0_);
   } catch (e) { }
   finally { S.busy = false; if (S.pend) { S.pend = false; dtLoad(S, true); } else dtBusy(S, false); }
@@ -6326,6 +6383,11 @@ async function dtLoadAll1(S) {
   const LS = SOURCES.concat(FORMER.filter(f => (S.rows || dtRows([])).some(r => r.src === f.id)));   // ehemalige Geräte nur, wenn eine Zeile sie zeigt
   try { res = await Promise.all(LS.map(s => fetch(q(s.id), { cache: 'no-store' }).then(x => x.json()).catch(() => null))); } catch (e) { return; }
   if (id !== S.req || date !== S.date || dkey !== NV.dkey) return;   // inzwischen anderer Tag/Zeitraum: verwerfen (der neue lädt schon)
+  if (S.from != null) setTimeout(() => {               // ab 1.85.37: Ausschnitt davor/danach (◀ ▶, je 80 %) schon laden
+    const [b0, b1] = dtBase(S), sp = wt - wf, now = nowServer(), bl = b1 > now && now > b0 ? now : b1;
+    for (const k of [-1, 1]) { const fu = clamp(wf + k * sp * 0.8, b0, Math.max(b0, bl - sp)), f = Math.round(fu), t2 = Math.round(fu + sp); if (f === wf) continue;
+      for (const s of LS) pfGet(q(s.id).replace('&from=' + wf + '&to=' + wt, '&from=' + f + '&to=' + t2), 120000); }
+  }, 800);
   const [cf, ct] = dtWin(S);
   if (cf !== wf || ct !== wt) res.forEach(r => { if (r && r.has) { r.from = cf; r.to = ct; } });   // inzwischen weiter gezoomt: im aktuellen Ausschnitt zeigen, genauer kommt gleich
   const by = {}; LS.forEach((s, i) => { by[s.id] = res[i]; });

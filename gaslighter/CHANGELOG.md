@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.85.37
+
+- **Vorausladen:**
+  - Protokolle: Der Zeitraum davor und danach (‹ ›) wird im Hintergrund schon geladen: Bericht, Ereignisse, Verlauf und Aufzeichnung. Umschalten ohne weißes Warten. Auch über die Zeitumstellung, und vom laufenden Tag zurück.
+  - Verlauf (◀ ▶): Der Ausschnitt davor und danach liegt bereit.
+  - Live, zurückgespult: Es wird je ein Fenster davor und danach mitgeladen. Verschieben zeichnet sofort, ohne neue Abfrage.
+- **Mausrad:** Es zoomt in den Graphen jetzt standardmäßig ohne Strg. Umstellbar unter Einstellungen → „Mausrad im Diagramm“.
+
 ## 1.85.36
 
 - Tagesgraph: Das Spektrum wird als ein Bild gezeichnet, statt Spalte für Spalte. Vorher waren es rund 1300 Einzelbilder je Zeile und je Mausbewegung, gemessen 113 ms je Zeichnen.

@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.36"
+VERSION = "1.85.37"
 
 # =====================================================================
 # Einstellungen
@@ -51,7 +51,7 @@ DEFAULTS = {
     "mic_port": "", "classify": True, "ki_embed": False, "ki_min": 25, "ki_bg": True, "ki_short": True, "ki_short_ms": 150, "ki_damp": "", "ki_learn_fix": True, "ki_learn_min": 75,
     "clip_dir": "", "video_width": 640, "video_fps": 5, "video_crf": 30,
     "quiet_from": "22:00", "quiet_to": "06:00", "quiet_sunday": True, "art_silent": "", "mirror_dir": "", "mirror_time": "03:30", "mirror_offload": False,
-    "wheel_zoom": "ctrl", "auto_thr": "thr", "tip_mode": "hover",
+    "wheel_zoom": "always", "auto_thr": "thr", "tip_mode": "hover",
 }
 SPEC = {
     # ("num", min, max, Aufloesung): Kommazahlen, auf die Aufloesung gerundet
