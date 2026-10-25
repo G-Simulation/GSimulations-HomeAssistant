@@ -1,5 +1,5 @@
 name: "GLighter"
-version: "1.85.37"
+version: "1.85.38"
 slug: gaslighter
 description: "Lärmprotokoll: misst Lärm rund um die Uhr und protokolliert Störungen manipulationssicher – ohne Tonaufnahme / Noise log: measures noise 24/7 and logs disturbances tamper-evident – no audio recording"
 url: "https://www.gsimulations.de/gaslighter/"
@@ -8,6 +8,7 @@ arch: [amd64, aarch64]
 # erfolgreich war und das Paket auf ghcr.io öffentlich ist – sonst kann Home Assistant die App nicht installieren.
 # image: "ghcr.io/g-simulation/{arch}-gaslighter"
 init: false
+timeout: 40
 startup: application
 boot: auto
 # Home Assistant startet das Add-on neu, falls es unerwartet beendet wird (Schalter „Watchdog“ auf der Add-on-Seite)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.38
+
+- **Kürzere Pause beim Update:** Die alte Fassung gibt den Datenordner jetzt frei, bevor sie die letzte Meldung schickt. Home Assistant wartet bis zu 40 s auf das saubere Beenden, vorher waren es 10 s. Bisher wurde die alte Fassung oft vorher hart beendet. Dann hat die neue bis zu ~1,5 Minuten nicht aufgenommen, bis die Sperre als veraltet galt.
+- Ist der Datenordner gesperrt, wird der Inhalt einer Anfrage trotzdem gelesen. Sonst schlug die nächste Anfrage auf derselben Verbindung fehl („Unsupported method“).
+
 ## 1.85.37
 
 - **Vorausladen:**

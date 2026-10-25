@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.37"
+VERSION = "1.85.38"
 
 # =====================================================================
 # Einstellungen
@@ -10096,8 +10096,8 @@ def main():
                 art_write()                          # noch nicht gespeicherte Einordnungen sichern
         except Exception:
             pass
+        lock_release()                               # ab 1.85.38: vor MQTT freigeben – die neue Fassung startet dann sofort
         pub(f"{TOPIC}/status", "offline", True)
-        lock_release()
         log("Beendet")
         sys.exit(0)
     signal.signal(signal.SIGTERM, shutdown)
@@ -14718,6 +14718,14 @@ class Handler(BaseHandler):
     def do_POST(self):
         VER["data"] += 1                                # jede Änderung über die Oberfläche: Ereignisliste neu berechnen
         if LOCK["blocked"]:                             # Datenordner gesperrt: nichts annehmen, nichts schreiben
+            try:                                        # ab 1.85.38: Inhalt trotzdem lesen, sonst hält die Verbindung ihn für die nächste Anfrage
+                n_ = int(self.headers.get("Content-Length") or 0)
+                if 0 < n_ <= 1 << 20:
+                    self.rfile.read(n_)
+                elif n_:
+                    self.close_connection = True
+            except (ValueError, OSError):
+                self.close_connection = True
             return self.send(423, "application/json", json.dumps({"ok": False, "error": "locked", "blocked": LOCK["blocked"]}).encode())
         if self.path.split("?")[0].rstrip("/").endswith("/restore"):
             return self.restore_upload()
