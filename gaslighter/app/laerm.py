@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.40"
+VERSION = "1.85.41"
 
 # =====================================================================
 # Einstellungen
@@ -6424,6 +6424,38 @@ def day_frames(sid, t_from, t_to):
     return [out[k] for k in sorted(out)]
 
 
+CACHE_SZ = {}            # ab 1.85.41: Größe je Eintrag der großen Zwischenspeicher (Bytes)
+
+
+def _nbytes(x, depth=0):
+    if isinstance(x, np.ndarray):
+        return int(x.nbytes)
+    if depth > 3:
+        return 0
+    if isinstance(x, dict):
+        return sum(_nbytes(v, depth + 1) for v in x.values())
+    if isinstance(x, (list, tuple)):
+        return sum(_nbytes(v, depth + 1) for v in x)
+    return 0
+
+
+def cache_put(cache, key, val, max_mb):
+    """Eintrag ablegen (zuletzt benutzt = hinten) und die ältesten entfernen, bis höchstens max_mb belegt sind (mind. einer bleibt)."""
+    sz = CACHE_SZ.setdefault(id(cache), {})
+    cache.pop(key, None); cache[key] = val; sz[key] = _nbytes(val)
+    while len(cache) > 1 and sum(sz.get(k, 0) for k in cache) > max_mb * 1048576:
+        k0 = next(iter(cache)); cache.pop(k0, None); sz.pop(k0, None)
+    for k in [k for k in sz if k not in cache]:
+        sz.pop(k, None)
+
+
+def cache_touch(cache, key):
+    """Zuletzt benutzt nach hinten (LRU)."""
+    v = cache.pop(key, None)
+    if v is not None:
+        cache[key] = v
+
+
 SPEC_CACHE = {}
 
 
@@ -6433,11 +6465,10 @@ def spec_load_cached(sid, day):
     key = tuple((f, os.path.getsize(f)) for f in fs if os.path.exists(f))
     c = SPEC_CACHE.get((sid, day))
     if c and c[0] == key:
+        cache_touch(SPEC_CACHE, (sid, day))
         return c[1]
     v = spec_load(sid, day)
-    if len(SPEC_CACHE) > 6:
-        SPEC_CACHE.pop(next(iter(SPEC_CACHE)))
-    SPEC_CACHE[(sid, day)] = (key, v)
+    cache_put(SPEC_CACHE, (sid, day), (key, v), 60)
     return v
 
 
@@ -10487,9 +10518,7 @@ def spec_load(sid, day):
             dts = np.frombuffer(raw[i:i + w * n], dtype="<u4" if w == 4 else "<u2").astype(np.int64); i += w * n
             dl = np.frombuffer(raw[i:i + nb * n], dtype=np.int8).reshape(nb, n).T.astype(np.int16); i += nb * n
             T.append(t0 + np.cumsum(dts) - dts[0]); B.append(np.cumsum(dl, axis=0).astype(np.uint8))
-        if len(SPEC_LTS_CACHE) > 8:
-            SPEC_LTS_CACHE.pop(next(iter(SPEC_LTS_CACHE)))
-        SPEC_LTS_CACHE[p] = (psz, list(T), list(B))
+        cache_put(SPEC_LTS_CACHE, p, (psz, list(T), list(B)), 60)
     for f in sorted(glob.glob(os.path.join(day_dir(), f"{day}_{glob.escape(sid)}_[0-9][0-9].ltp"))):
         ts, bands = spec_read_part(f)
         if len(ts):
@@ -10921,6 +10950,7 @@ def day_load(path):
     with DAY_LOCK:
         c = DAY_CACHE.get(path)
         if c and c[0] == size:
+            cache_touch(DAY_CACHE, path)
             return c[1]
     d = None
     if c and c[0] < size:                              # nur die neuen Bloecke (je Minute ein gzip-Block)
@@ -10943,9 +10973,7 @@ def day_load(path):
     if len(d["t"]) > 1 and np.any(np.diff(d["t"]) < 0):
         o = np.argsort(d["t"], kind="stable"); d = {k: v[o] for k, v in d.items()}
     with DAY_LOCK:
-        if len(DAY_CACHE) > 8 and path not in DAY_CACHE:
-            DAY_CACHE.pop(next(iter(DAY_CACHE)))
-        DAY_CACHE[path] = (size, d)
+        cache_put(DAY_CACHE, path, (size, d), 160)       # ab 1.85.41: nach Größe begrenzt (ein Tag ~50 MB), nicht nach Anzahl
     return d
 
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.41
+
+- **Speicher:** Die Zwischenspeicher der Tagesaufzeichnung und der Spektren sind jetzt nach Größe begrenzt (160 / 60 / 60 MB), nicht mehr nach Anzahl. Verdrängt wird, was am längsten nicht gebraucht wurde. Gemessen: Nach dem Lernen aus Notizen lagen 8 ganze Tage im Speicher, Tagesaufzeichnung 450 MB plus Spektren 270 MB, zusammen 1,3 GB.
+
 ## 1.85.40
 
 - Fehlersuche Speicher: Neue Abfrage `memdiag` zeigt, wie viel Speicher die einzelnen Zwischenspeicher belegen. Sie liest nur, es wird nichts geändert.
