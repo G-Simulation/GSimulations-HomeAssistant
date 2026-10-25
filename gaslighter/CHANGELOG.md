@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.85.32
+
+- **Aufgeklappte Ereignisse** sind flacher, einzeilig und eingerückt. Die Startzeit steht dort nur als Uhrzeit. Was die Gruppe schon zeigt, fällt in den aufgeklappten Zeilen weg: gleiche Quelle, „0 von n Sensoren“, „Unbekannt ×1“. Die Kopfzeile der Gruppe zeigt die Anzahl der Einträge. Klick, Doppelklick, Filter, ⋮ und Häkchen bleiben.
+- „Sonstiges“ entfällt, wenn ein Profil erkannt wurde (z. B. 🧩 Klopfen/Hämmern 82 %).
+- Der runde ＋-Knopf zeigte zwei übereinanderliegende Pluszeichen. Jetzt ist es eines.
+- Texte in ganzen Sätzen und mit Einzahl/Mehrzahl, zum Beispiel „1 Beispiel“ und „1 Sensor-Ereignis“. Leere Angaben wie „0 Vorschläge“ entfallen.
+- Sensor-Zusammenfassung (Ansicht und Lärmprotokoll): „Bei 8 von 1423 prüfbaren Störungen hat gleichzeitig ein Sensor ausgelöst, bei 1415 nicht. Rein zufällig wären etwa 7,9 solche Treffer zu erwarten.“ Liegt das Ergebnis nicht über dem Zufall, steht das jetzt dabei.
+
 ## 1.85.31
 
 - Lernen aus Notizen: Ein Sensor gehört zu einer Störung, wenn er zwischen 2,5 s vor ihrem Beginn und 2,5 s nach ihrem Ende ausgelöst hat. Gemessen wird an den Zeiten im Protokoll statt am Kern der Grafik.

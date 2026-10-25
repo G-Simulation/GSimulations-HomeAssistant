@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.31"
+VERSION = "1.85.32"
 
 # =====================================================================
 # Einstellungen
@@ -2019,6 +2019,22 @@ def sensor_events(src, a_ms, b_ms):
 # „nur festhalten“/„als Ereignis“ und die Handys als Bewegungsmelder. Nur Anzeige und Export – Störungen,
 # Tagesaufzeichnung, Prüfsummen und ha_zustand.csv bleiben unverändert. Einstellungen in data/bestaetigung.json.
 # =====================================================================
+def bc_sum_de(sm_):
+    """Zusammenfassung der Sensor-Bestätigung in ganzen Sätzen (ab 1.85.32); leere Teile fallen weg."""
+    pl = lambda n, a, b: a if n == 1 else b
+    x = f"Bei {sm_['ok']} von {sm_['chk']} prüfbaren Störungen hat gleichzeitig ein Sensor ausgelöst, bei {sm_['no']} nicht."
+    if sm_.get("nb"):
+        x += f" {sm_['nb']} {pl(sm_['nb'], 'Störung war', 'Störungen waren')} nicht prüfbar."
+    if sm_.get("own"):
+        x += f" {sm_['own']} {pl(sm_['own'], 'Störung kam', 'Störungen kamen')} vermutlich von der aufzeichnenden Person selbst."
+    if sm_.get("exp") is not None and sm_.get("chk"):
+        e = sm_["exp"]
+        x += " Rein zufällig wäre so gut wie kein Treffer zu erwarten." if e < 0.1 else f" Rein zufällig wären etwa {str(round(e, 1)).replace('.', ',')} solche Treffer zu erwarten."
+        if e >= 0.5 and sm_["ok"] <= e * 1.5 + 1:
+            x += " Das ist nicht mehr, als der Zufall ergeben würde; die Sensoren bestätigen diese Störungen also nicht."
+    return x
+
+
 BC_FILE = os.path.join(DATA_DIR, "bestaetigung.json")
 BC_LOCK = threading.Lock()
 
@@ -8700,9 +8716,7 @@ def protocol_html(q):
         log("Laermprotokoll: Sensor-Bestätigung", e); bcr_p = {}
     if bcr_p:
         sm_ = BC.summary([v["sum"] for v in bcr_p.values()])
-        o.append('<h2>Zeitgleiche Sensorereignisse</h2><p>' + h(f"{sm_['n']} Störungen: {sm_['ok']} zeitgleich von Sensoren registriert, {sm_['no']} ohne Sensorereignis, "
-                 f"{sm_['nb']} nicht prüfbar, {sm_['own']} vermutlich eigene Quelle. Bestätigungsquote {sm_['ok']} von {sm_['chk']} prüfbaren Störungen."
-                 + ((" Durch Zufall wären weniger als 0,1 Treffer zu erwarten." if sm_["exp"] < 0.1 else f" Durch Zufall wären etwa {str(sm_['exp']).replace('.', ',')} Treffer zu erwarten.") if sm_.get("exp") is not None and sm_["chk"] else "")) + '</p>'
+        o.append('<h2>Zeitgleiche Sensorereignisse</h2><p>' + h(bc_sum_de(sm_)) + '</p>'
                  + '<p class="small">' + h(BC_METHOD[0].format(v=BC.VERSION) + bc_clock_note(True)) + '</p>')
     fnby_p = {}                                       # zugeordnete Notizen (ab 1.83): unter der Störung (andere Geräte derselben Störung: beim führenden)
     for k_, lst_ in fn_for_events(allk, d0, d1, src)[0].items():
