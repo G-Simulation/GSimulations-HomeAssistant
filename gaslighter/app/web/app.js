@@ -5915,10 +5915,21 @@ function specCols(r) {
 function drawSpecInto(c, r, X, y0, hgt, L, pw, d) {
   const sc = specCols(r); if (!sc) return false;
   const step = r.step || (r.to - r.from) / 1200, w1 = Math.max(1, X(r.from + step) - X(r.from)) + 0.6;
-  const tc = document.createElement('canvas'); tc.width = 1; tc.height = sc.nb; const tx = tc.getContext('2d'), img = tx.createImageData(1, sc.nb);
+  const cols = sc.cols, n = cols.length; if (!n) return false;
+  if (!sc.tc) {                                       // ab 1.85.35: alle Spalten einmal in ein Bild, dann je zusammenhängendem Abschnitt ein drawImage (vorher je Spalte)
+    const tc = document.createElement('canvas'); tc.width = n; tc.height = sc.nb; const tx = tc.getContext('2d'), img = tx.createImageData(n, sc.nb);
+    for (let i = 0; i < n; i++) { const px = cols[i][1]; for (let k = 0; k < sc.nb; k++) { const o = 4 * k, q = 4 * (k * n + i); img.data[q] = px[o]; img.data[q + 1] = px[o + 1]; img.data[q + 2] = px[o + 2]; img.data[q + 3] = 255; } }
+    tx.putImageData(img, 0, 0); sc.tc = tc;
+  }
   c.save(); c.beginPath(); c.rect(L, y0, pw, hgt); c.clip(); c.imageSmoothingEnabled = true;
-  const cols = sc.cols, mw = Math.max(w1, X(r.from + 125) - X(r.from) + 0.6);   // höchstens bis zur nächsten Spalte (Lücke nur bei echter Pause)
-  cols.forEach(([t2, px], i) => { const nx = i + 1 < cols.length ? X(cols[i + 1][0]) - X(t2) + 0.6 : w1; img.data.set(px); tx.putImageData(img, 0, 0); c.drawImage(tc, X(t2), y0, Math.max(w1, Math.min(nx, mw * 2.5)), hgt); });
+  const gap = Math.max(step * 2.5, 2500);                // längere Lücke = echte Pause: dort nichts zeichnen
+  let i0 = 0;
+  for (let i = 1; i <= n; i++) {
+    if (i < n && cols[i][0] - cols[i - 1][0] <= gap) continue;
+    const xa = X(cols[i0][0]), xb = X(cols[i - 1][0] + step);
+    if (xb >= L && xa <= L + pw) c.drawImage(sc.tc, i0, 0, i - i0, sc.nb, xa, y0, Math.max(w1, xb - xa + 0.6), hgt);
+    i0 = i;
+  }
   c.restore(); return true;
 }
 /* Klick auf das KI-Symbol im Verlauf: kleines Fenster mit „hervorheben“ (nur Anzeige, pro Browser) */

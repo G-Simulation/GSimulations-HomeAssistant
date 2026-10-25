@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.36
+
+- Tagesgraph: Das Spektrum wird als ein Bild gezeichnet, statt Spalte für Spalte. Vorher waren es rund 1300 Einzelbilder je Zeile und je Mausbewegung, gemessen 113 ms je Zeichnen.
+- Zwischenspeicher der Ereignisliste: höchstens 6 Ergebnisse, nach 2 Minuten ohne Nutzung freigegeben. Ein Ergebnis kann viele MB groß sein.
+
 ## 1.85.35
 
 **Schneller, auch bei sehr vielen Störungen.**

@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.35"
+VERSION = "1.85.36"
 
 # =====================================================================
 # Einstellungen
@@ -12662,11 +12662,15 @@ def events_summary(src="all", n=200, plist="", rng=None, art=""):
     with EVS_LOCK:
         e = EVS_CACHE.get(key)
         if e is None:
-            e = EVS_CACHE[key] = {"lock": threading.Lock(), "ver": None, "t": 0, "res": None}
-            if len(EVS_CACHE) > 24:
-                for k in list(EVS_CACHE)[:8]:
-                    if k != key:
-                        EVS_CACHE.pop(k, None)
+            e = EVS_CACHE[key] = {"lock": threading.Lock(), "ver": None, "t": time.time(), "res": None}
+            now_ = time.time()                        # klein halten: ein Ergebnis kann viele MB groß sein
+            for k in [k for k, v in EVS_CACHE.items() if k != key and now_ - v["t"] > 120 and not v["lock"].locked()]:
+                EVS_CACHE.pop(k, None)
+            while len(EVS_CACHE) > 6:
+                k = next((k for k, v in EVS_CACHE.items() if k != key and not v["lock"].locked()), None)
+                if k is None:
+                    break
+                EVS_CACHE.pop(k, None)
     with e["lock"]:                                   # gleiche Anfrage läuft schon: warten und deren Ergebnis nehmen
         if e["res"] is not None and e["ver"] == ver and time.time() - e["t"] < EVS_TTL:
             return e["res"]
