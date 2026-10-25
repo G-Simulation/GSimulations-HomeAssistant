@@ -5003,13 +5003,25 @@ function previewThr(base) {
   if (m === 'bounded') x = clamp(x, num('min_db'), Math.max(num('min_db') + 1, num('thr_max_db')));
   return x;
 }
-async function openSettings() {
+async function openSettings() {                         // ab 1.85.34: sofort öffnen (zuletzt geladene Werte), frische Werte kommen im Hintergrund nach
+  if (openSettings.busy) return; openSettings.busy = true;
   $('smsg').textContent = ''; $('calmsg').textContent = t('calhint');
+  const tmo = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+  const take = r => { if (r.pro && r.pro.state) { PRO = r.pro; proBanner(); }
+    MIRROR_ST = r.mirror || null; SRC = r.sources || []; CUR = r.settings; SCHED = r.schedule || []; SRC_DET = r.src_details || []; DEF_SRC = r.default_source || ''; };
+  const show = () => { initSTabs(); buildForm(CUR); buildSources(); applySTab(); if (!$('dlg').open) $('dlg').showModal(); };
   try {
-    const r = await (await fetch('settings', { cache: 'no-store' })).json();
-    if (r.pro && r.pro.state) { PRO = r.pro; proBanner(); }
-    MIRROR_ST = r.mirror || null; SRC = r.sources || []; CUR = r.settings; SCHED = r.schedule || []; SRC_DET = r.src_details || []; DEF_SRC = r.default_source || ''; initSTabs(); buildForm(CUR); await loadSources(); await plFetch(); buildSources(); applySTab(); $('dlg').showModal();
-  } catch (e) { $('smsg').textContent = t('saveerr'); }
+    const fresh = tmo(fetch('settings', { cache: 'no-store' }).then(x => x.json()), 20000);
+    if (CUR) { show(); $('smsg').textContent = t('set_loading'); }   // schon geladen: gleich zeigen
+    let r = null; try { r = await fresh; } catch (e) { r = null; }
+    if (r) { take(r); if (!formDirty) { const sc = $('dlg').querySelector('.sbody, form') || null, y = sc ? sc.scrollTop : 0; show(); if (sc) sc.scrollTop = y; } }
+    else if (!CUR) throw new Error('no settings');
+    await tmo(loadSources(), 8000).catch(() => 0); await tmo(plFetch(), 8000).catch(() => 0);
+    if (!formDirty) buildSources();
+    if (!$('dlg').open) show();
+    $('smsg').textContent = r ? '' : t('set_stale');
+  } catch (e) { console.error(e); toast(t('set_open_err')); }
+  finally { openSettings.busy = false; }
 }
 async function saveSettings() {
   $('smsg').textContent = t('saving'); $('ssave').disabled = true;

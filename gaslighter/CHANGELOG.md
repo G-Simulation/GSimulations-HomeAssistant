@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.34
+
+- Einstellungen öffnen sofort mit den zuletzt geladenen Werten. Die aktuellen Werte kommen im Hintergrund nach („Aktuelle Werte werden geladen …“), auch während einer Störung, wenn der Server beschäftigt ist. Hast du schon etwas geändert, wird nichts überschrieben.
+- Die Liste der Audio-Eingänge (pactl) wird 30 s zwischengespeichert und im Hintergrund erneuert. Die Einstellungen warten nicht mehr darauf.
+- Kann gar nichts geladen werden, erscheint eine Meldung, statt dass nichts passiert.
+
 ## 1.85.33
 
 - Tabellen: Der ＋ links erscheint nur noch, wenn es ausgeblendete Angaben zum Aufklappen gibt. Zeilen ohne solche Angaben, zum Beispiel Sensor-Ereignisse, klappen nicht mehr leer auf. Leere Werte wie „–“ zählen nicht als Angabe.

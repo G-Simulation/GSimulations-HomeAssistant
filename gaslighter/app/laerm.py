@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.33"
+VERSION = "1.85.34"
 
 # =====================================================================
 # Einstellungen
@@ -491,7 +491,45 @@ def run(cmd, timeout=5):
         return 1, str(e)
 
 
+PA_CACHE = {}           # ab 1.85.34: pactl-Antworten (Audio-Eingänge) zwischenspeichern – die Einstellungen öffnen nie wartend auf pactl
+PA_LOCK = threading.Lock()
+
+
+def pa_cached(key, fn, ttl=30.0):
+    """Ergebnis von fn() aus dem Zwischenspeicher; ist es älter als ttl, wird im Hintergrund neu gefragt (es wird nie gewartet,
+    außer beim allerersten Mal)."""
+    now = time.time()
+    with PA_LOCK:
+        e = PA_CACHE.get(key)
+        if e and (now - e[0] < ttl or e[2]):
+            return e[1]
+        if e:
+            e[2] = True                                # läuft schon jemand: alten Wert geben
+
+    def upd():
+        try:
+            v = fn()
+        except Exception as ex:
+            log("pactl:", ex); v = None
+        with PA_LOCK:
+            old = PA_CACHE.get(key)
+            PA_CACHE[key] = [time.time(), v if v is not None else (old[1] if old else None), False]
+    if e:
+        threading.Thread(target=upd, daemon=True).start()
+        return e[1]
+    upd()
+    return PA_CACHE[key][1]
+
+
 def list_sources():
+    return pa_cached("ls", _list_sources)
+
+
+def source_details():
+    return pa_cached("sd", _source_details)
+
+
+def _list_sources():
     code, out = run(["pactl", "list", "sources", "short"])
     src = []
     if code == 0:
@@ -503,7 +541,7 @@ def list_sources():
     return src, default.strip() if code == 0 else ""
 
 
-def source_details():
+def _source_details():
     """Pulse-Quellen mit Buchsen (Ports): [{name, desc, mute, volume, ports:[{name, desc, avail}], active}]"""
     code, out = run(["pactl", "list", "sources"])
     res, cur, in_ports = [], None, False
@@ -664,6 +702,8 @@ def apply_volume():
     time.sleep(0.3)
     apply_mixer(vol)                                   # Regler auf der Soundkarte (bis 100 %), darueber digital
     DIAG["t"] = 0                                      # Diagnose sofort neu einlesen
+    with PA_LOCK:
+        PA_CACHE.clear()                               # Eingänge geändert: beim nächsten Mal neu fragen
 
 
 
