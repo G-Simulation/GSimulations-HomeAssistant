@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.40
+
+- Fehlersuche Speicher: Neue Abfrage `memdiag` zeigt, wie viel Speicher die einzelnen Zwischenspeicher belegen. Sie liest nur, es wird nichts geändert.
+
 ## 1.85.39
 
 - **Speicher:** Nach großen Auswertungen (Ereignisliste, Lernen aus Notizen, Neu untersuchen) wird freigegebener Speicher an das System zurückgegeben. Jede Minute, aufgeräumt wird alle 5 Minuten. Weniger Verschnitt bei vielen Threads (MALLOC_ARENA_MAX=2). Alle 30 Minuten steht der Speicherstand im Protokoll. Vorher blieb GLighter nach solchen Spitzen bei ~1,4 GB.

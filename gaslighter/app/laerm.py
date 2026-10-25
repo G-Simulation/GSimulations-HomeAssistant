@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.39"
+VERSION = "1.85.40"
 
 # =====================================================================
 # Einstellungen
@@ -13562,6 +13562,48 @@ def mem_trim():
         pass
 
 
+def _deep(o, seen, depth=0):
+    """Grobe Größe in Bytes (numpy: nbytes), begrenzt tief."""
+    if id(o) in seen or depth > 6:
+        return 0
+    seen.add(id(o))
+    if isinstance(o, np.ndarray):
+        return int(o.nbytes)
+    n = sys.getsizeof(o)
+    if isinstance(o, dict):
+        for k, v in list(o.items())[:200000]:
+            n += _deep(k, seen, depth + 1) + _deep(v, seen, depth + 1)
+    elif isinstance(o, (list, tuple, set, frozenset)):
+        for v in list(o)[:200000]:
+            n += _deep(v, seen, depth + 1)
+    return n
+
+
+def mem_diag():
+    out = {"rss_mb": mem_rss_mb(), "threads": threading.active_count()}
+    names = ["DAY_CACHE", "SPEC_CACHE", "SPEC_LTS_CACHE", "FP_CACHE", "LEVEL_CACHE", "PROTO_CACHE", "EVS_CACHE", "LOG_CACHE", "ART", "LABELS",
+             "PROF", "KL", "STEM_IDX", "EVMETA", "GR_CACHE", "HA_HIST", "HA_VOL", "RAISE_CACHE", "FN_PUB", "PA_CACHE", "STAT", "TILES", "LIVE_ART", "LAYOUT", "NOTES", "SCAN", "NL"]
+    sz = {}
+    for nm in names:
+        o = globals().get(nm)
+        if o is None:
+            continue
+        try:
+            sz[nm] = round(_deep(o, set()) / 1048576, 1)
+        except Exception as e:
+            sz[nm] = str(e)[:40]
+    out["mb"] = dict(sorted(sz.items(), key=lambda x: -(x[1] if isinstance(x[1], float) else 0)))
+    try:
+        with SRC_LOCK:
+            rs = list(RUNNERS.values())
+        out["runners"] = {r.id: round(sum(_deep(getattr(r, a_), set()) for a_ in ("spur", "hist", "ring", "recs") if hasattr(r, a_)) / 1048576, 1) for r in rs}
+    except Exception as e:
+        out["runners"] = str(e)[:60]
+    cnt = collections.Counter(type(o).__name__ for o in gc.get_objects())
+    out["objects"] = cnt.most_common(12)
+    return out
+
+
 def mem_watch():
     """ab 1.85.39: jede Minute Speicher zurückgeben, alle 5 min aufräumen, alle 30 min den Stand ins Protokoll."""
     n = 0
@@ -14434,6 +14476,8 @@ class Handler(BaseHandler):
                     n = 200
                 return self.js(events_summary((q.get("src") or ["all"])[0], n, re.sub(r"[^a-z0-9_]", "", (q.get("list") or [""])[0])[:24],
                                               range_param(q), (q.get("art") or [""])[0][:2000]))
+            if name == "memdiag":                         # ab 1.85.40: Speicher je Zwischenspeicher (nur lesen, zur Fehlersuche)
+                return self.js(mem_diag())
             if name == "diag":
                 return self.js({"text": diag_text(), "version": VERSION, "settings": public_settings()})
             if name == "settings":
