@@ -7,4 +7,5 @@ if bashio::services.available "mqtt"; then
 else
   bashio::log.warning "Kein MQTT-Broker gefunden (Mosquitto installieren) - laeuft ohne Sensoren."
 fi
+export MALLOC_ARENA_MAX=2   # weniger Speicher-Verschnitt bei vielen Threads (ab 1.85.39)
 exec python3 -u /app/aufnahme.py

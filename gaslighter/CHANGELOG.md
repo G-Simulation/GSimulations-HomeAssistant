@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.39
+
+- **Speicher:** Nach großen Auswertungen (Ereignisliste, Lernen aus Notizen, Neu untersuchen) wird freigegebener Speicher an das System zurückgegeben. Jede Minute, aufgeräumt wird alle 5 Minuten. Weniger Verschnitt bei vielen Threads (MALLOC_ARENA_MAX=2). Alle 30 Minuten steht der Speicherstand im Protokoll. Vorher blieb GLighter nach solchen Spitzen bei ~1,4 GB.
+
 ## 1.85.38
 
 - **Kürzere Pause beim Update:** Die alte Fassung gibt den Datenordner jetzt frei, bevor sie die letzte Meldung schickt. Home Assistant wartet bis zu 40 s auf das saubere Beenden, vorher waren es 10 s. Bisher wurde die alte Fassung oft vorher hart beendet. Dann hat die neue bis zu ~1,5 Minuten nicht aufgenommen, bis die Sperre als veraltet galt.

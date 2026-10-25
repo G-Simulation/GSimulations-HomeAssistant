@@ -25,6 +25,7 @@ import numpy as np
 import queue
 import itertools
 import bisect
+import gc
 try:
     from scipy import signal as sps          # fuer den Brummfilter
 except Exception:                            # pragma: no cover
@@ -34,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.38"
+VERSION = "1.85.39"
 
 # =====================================================================
 # Einstellungen
@@ -5496,7 +5497,7 @@ def scan_run(t_from, t_to, name, events, areas):
                 scan_save(sid, day, sorted(keep + res, key=lambda x: x[0]))
                 SCAN["areas"] += len(res)
             SCAN["done"] += 20
-        SCAN.update(state="done")
+        SCAN.update(state="done"); gc.collect(); mem_trim()
         log(f"Neu untersucht: {SCAN['events']} Stoerungen zugeordnet, {SCAN['areas']} Bereiche markiert")
     except Exception as e:
         SCAN.update(state="done", msg="error: " + str(e)[:200])
@@ -5725,6 +5726,7 @@ def note_learn(rescan=True, force=False):
         labels_save()
     PROTO_CACHE.clear()
     NL.update(n=n, at=dt.datetime.now().astimezone().isoformat(timespec="seconds"), last=time.time())
+    gc.collect(); mem_trim()
     log(f"Aus Notizen gelernt: {n} Beispiele")
     res = {"ok": True, "n": n, "kinds": sorted({x[4] for x in ex})}
     sig = hashlib.sha1(json.dumps(sorted([nk, st, a, b, nm] for st, xs in want.items() for nk, a, b, nm in xs), ensure_ascii=False).encode()).hexdigest()
@@ -10073,6 +10075,7 @@ def main():
     threading.Thread(target=ha_watch, daemon=True).start()
     threading.Thread(target=gr_hello, daemon=True).start()
     threading.Thread(target=tiles_watch, daemon=True).start()
+    threading.Thread(target=mem_watch, daemon=True).start()
     threading.Thread(target=kl_worker, daemon=True).start()        # ab 1.84.0: aus eigenen Korrekturen der Geräuschart lernen (nur Vorschläge)
     nl_soon(900)                                     # ab 1.85.27: nach dem Start einmal aus Notizen lernen (auch GReport-Notizen)
     if classify is not None:
@@ -13540,6 +13543,38 @@ def tiles_publish(force=False):
         return n
     finally:
         TILES["busy"].release()
+
+
+def mem_rss_mb():
+    try:
+        with open("/proc/self/statm") as f:
+            return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") // (1 << 20)
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def mem_trim():
+    """Freigegebenen Speicher an das System zurückgeben (glibc behält ihn sonst nach großen Auswertungen)."""
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
+
+def mem_watch():
+    """ab 1.85.39: jede Minute Speicher zurückgeben, alle 5 min aufräumen, alle 30 min den Stand ins Protokoll."""
+    n = 0
+    while True:
+        time.sleep(60); n += 1
+        try:
+            if n % 5 == 0:
+                gc.collect()
+            mem_trim()
+            if n % 30 == 0:
+                log(f"Speicher: {mem_rss_mb()} MB")
+        except Exception:
+            pass
 
 
 def tiles_watch():
