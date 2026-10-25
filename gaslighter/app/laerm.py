@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.34"
+VERSION = "1.85.35"
 
 # =====================================================================
 # Einstellungen
@@ -1133,10 +1133,27 @@ def pro_write(d):
     with open(tmp, "w") as f:
         json.dump(d, f, indent=1); f.flush(); os.fsync(f.fileno())
     os.replace(tmp, PRO_FILE)
-    PRO_CACHE["t"] = 0.0
+    PRO_CACHE["t"] = 0.0; PRO_CACHE["st"] = None     # neu: gleich und wartend neu prüfen
 
 
-def pro_state():
+def pro_state(wait=False):
+    """ab 1.85.35: veralteter Stand wird sofort zurückgegeben und im Hintergrund erneuert – die Aufnahme fragt das je Block."""
+    st0 = PRO_CACHE["st"]
+    if st0 is not None and time.time() - PRO_CACHE["t"] >= 60 and not wait:
+        if not PRO_CACHE.get("busy"):
+            PRO_CACHE["busy"] = True
+
+            def upd():
+                try:
+                    pro_state(True)
+                finally:
+                    PRO_CACHE["busy"] = False
+            threading.Thread(target=upd, daemon=True).start()
+        return st0
+    return _pro_state()
+
+
+def _pro_state():
     with PRO_LOCK:
         if PRO_CACHE["st"] is not None and time.time() - PRO_CACHE["t"] < 60:
             return PRO_CACHE["st"]
@@ -1411,19 +1428,26 @@ def load_ha_rules():
             pass
 
 
+HA_WLOCK = threading.Lock()
+
+
 def save_ha_rules(rules):
-    with HA_LOCK:
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
+    with HA_LOCK:                                     # ab 1.85.35: unter der Sperre nur Speicher, Dateien danach (die Aufnahme fragt die Regeln je Block)
         HA_RULES[:] = clean_rules(rules)
-        tmp = HA_FILE + ".tmp"
-        with open(tmp, "w") as f:
-            json.dump({"rules": HA_RULES, "v140": True}, f, indent=1); f.flush(); os.fsync(f.fileno())
-        os.replace(tmp, HA_FILE)
+        txt = json.dumps({"rules": HA_RULES, "v140": True}, indent=1)
         for k in list(HA_STATE):
             if not any(r["id"] == k for r in HA_RULES):
                 HA_STATE.pop(k, None)
         live = {r["id"] for r in HA_RULES if r["enabled"] and r.get("mode") == "raise"}
-        for k in [k for k in RAISE_OPEN if k not in live]:
-            o = RAISE_OPEN[k]; raise_track({"id": k, "src": o[3]}, o[1], 0)
+        ends = [(k, RAISE_OPEN[k]) for k in RAISE_OPEN if k not in live]
+    with HA_WLOCK:
+        tmp = HA_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            f.write(txt); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, HA_FILE)
+    for k, o in ends:
+        raise_track({"id": k, "src": o[3]}, o[1], 0)
     log("Pause-Regeln (Home Assistant):", json.dumps(HA_RULES, ensure_ascii=False))
     return HA_RULES
 
@@ -1553,21 +1577,32 @@ def raise_track(r, label, db):
         log("Anhebung nicht festgehalten:", e)
 
 
+RAISE_CACHE = {"key": None, "rows": []}
+
+
 def raise_intervals(t_from, t_to):
     """[[a ms, b ms, Name, dB, Gerät]] der Zeiträume mit angehobener Schwelle (auch der laufenden)."""
-    out = []
-    try:
-        with open(raise_path(), newline="", encoding="utf-8", errors="replace") as fh:
-            for x in csv.DictReader(fh):
-                a, b = ms_of(x.get("beginn")), ms_of(x.get("ende"))
-                if a is None or b is None or b < t_from or a > t_to:
-                    continue
-                try:
-                    out.append([a, b, x.get("name") or "", float(x.get("anhebung_db") or 0), x.get("geraet") or "all"])
-                except ValueError:
-                    pass
+    try:                                              # ab 1.85.35: Datei nur neu lesen, wenn sie sich geändert hat
+        st = os.stat(raise_path()); key = (st.st_mtime_ns, st.st_size)
     except OSError:
-        pass
+        key = None
+    if RAISE_CACHE["key"] != key:
+        rows = []
+        if key is not None:
+            try:
+                with open(raise_path(), newline="", encoding="utf-8", errors="replace") as fh:
+                    for x in csv.DictReader(fh):
+                        a, b = ms_of(x.get("beginn")), ms_of(x.get("ende"))
+                        if a is None or b is None:
+                            continue
+                        try:
+                            rows.append([a, b, x.get("name") or "", float(x.get("anhebung_db") or 0), x.get("geraet") or "all"])
+                        except ValueError:
+                            pass
+            except OSError:
+                pass
+        RAISE_CACHE.update(key=key, rows=rows)
+    out = [list(x) for x in RAISE_CACHE["rows"] if not (x[1] < t_from or x[0] > t_to)]
     now = int(time.time() * 1000)
     for o in list(RAISE_OPEN.values()):
         if o[0] <= t_to:
@@ -1616,6 +1651,9 @@ def _ha_ts(x):
         return None
 
 
+VOL_LAST = {}
+
+
 def ha_watch():
     """Alle 5 s die Zustaende abfragen und den Pausezustand je Regel fuehren (mit Nachlauf und Hoechstdauer)."""
     was = {}; last_full = 0.0
@@ -1651,8 +1689,9 @@ def ha_watch():
                 val, name, err = None, prev.get("name") or r["entity"], str(e)[:120]
                 HA_INFO.update(ok=False, error=err, checked=now)
             act = rule_match(r["states"], val)
-            if act and (vol != prev.get("vol") or mute != prev.get("mute") or not prev.get("active")) and (vol is not None or mute is not None):
-                ha_vol_add(r, r["label"] or name, vol, mute)        # Lautstaerke des Fernsehers mitschreiben (nur wenn an)
+            if act and VOL_LAST.get(r["id"]) != (vol, mute) and (vol is not None or mute is not None):
+                ha_vol_add(r, r["label"] or name, vol, mute)        # Lautstaerke des Fernsehers mitschreiben (nur wenn an und geändert)
+            VOL_LAST[r["id"]] = (vol, mute) if act else None        # ab 1.85.35: nicht bei jeder Abfrage neu (Regel über Höchstdauer)
             if r.get("mode") in ("note", "event"):               # nur festhalten / als Ereignis: kein Nachlauf, keine Hoechstdauer, keine Pause
                 with HA_LOCK:
                     HA_STATE[r["id"]] = {"state": val, "name": name, "active": act, "capped": False, "since": prev.get("since") if (act and prev.get("active")) else (now if act else None),
@@ -1676,11 +1715,12 @@ def ha_watch():
                 ons = (ons + [on_at])[-20:]
                 if since:
                     since = min(since, on_at)
+            pro_ = pro_ok() if r.get("mode") == "raise" else False      # ab 1.85.35: Lizenzprüfung nicht unter der Sperre (die Aufnahme fragt sie je Block)
             with HA_LOCK:
                 HA_STATE[r["id"]] = {"state": val, "name": name, "active": act and not capped, "capped": capped, "since": since,
                                      "until": until, "hold": hold, "err": err, "checked": now, "vol": vol, "mute": mute, "ons": ons}
                 if r.get("mode") == "raise":
-                    HA_STATE[r["id"]]["raise"] = raise_amount(r, HA_STATE[r["id"]]) if pro_ok() else 0.0
+                    HA_STATE[r["id"]]["raise"] = raise_amount(r, HA_STATE[r["id"]]) if pro_ else 0.0
             label = r["label"] or name
             if r.get("mode") == "raise":
                 raise_track(r, label, HA_STATE[r["id"]]["raise"])
@@ -2086,6 +2126,7 @@ def bc_cfg():
 
 def bc_save(d):
     """Einstellungen übernehmen: {"on": bool, "sens": {Kennung: {type, pre, post, lock, role, off}}}. Fehlende Sensoren behalten ihre Einstellung."""
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     d = d if isinstance(d, dict) else {}
     with BC_LOCK:
         cur = bc_cfg()
@@ -2453,6 +2494,7 @@ def na_ovr():
 
 def na_save(key, val):
     """Wahl von Hand speichern (val: Schlüssel, None = gelöst) oder entfernen (val = "auto")."""
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with NA_LOCK:
         o = na_load()
         if val == "auto":
@@ -2990,6 +3032,15 @@ def hadash_apply(data):
 
 
 def ha_entities():
+    """ab 1.85.35: höchstens einmal je Minute bei Home Assistant nachfragen (die ganze Liste ist groß), Fehler nicht merken."""
+    r = pa_cached("ents", _ha_entities, 60.0)
+    if not r.get("ok"):
+        with PA_LOCK:
+            PA_CACHE.pop("ents", None)
+    return r
+
+
+def _ha_entities():
     try:
         lst = ha_get("/states", timeout=8)
     except Exception as e:
@@ -3821,6 +3872,7 @@ def migrate_log():
 
 
 LOG_CACHE = {"key": None, "rows": []}
+VER = {"art": 0, "data": 0}  # ab 1.85.35: Zähler für Änderungen (KI-Einordnung, jede Änderung über die Oberfläche) – Zwischenspeicher der Ereignisliste
 
 
 def read_log():
@@ -3889,20 +3941,27 @@ def art_all():
 ART_TIMER = {"t": None}
 
 
+ART_WLOCK = threading.Lock()
+
+
 def art_write():
+    """ab 1.85.35: Abbild unter der Sperre (schnell), Schreiben außerhalb – sonst warten alle Anfragen, solange die große Datei geschrieben wird."""
     with ART_LOCK:
         ART_TIMER["t"] = None
         if ART["data"] is None:
             return
+        txt = json.dumps(art_all(), ensure_ascii=False, separators=(",", ":"))
+    with ART_WLOCK:
         os.makedirs(os.path.dirname(art_path()), exist_ok=True)
         tmp = art_path() + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(art_all(), f, ensure_ascii=False, separators=(",", ":"))
+            f.write(txt)
         os.replace(tmp, art_path())
 
 
 def art_save(now=False):
     """Einordnungen speichern - gesammelt nach 3 s (bei vielen Stoerungen hintereinander nicht jedes Mal die ganze Datei)."""
+    VER["art"] += 1                                   # ab 1.85.35: Ereignisliste neu berechnen
     if now:
         return art_write()
     with ART_LOCK:
@@ -4396,6 +4455,7 @@ def labels_all():
 
 
 def labels_save():
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with LABELS_LOCK:
         os.makedirs(os.path.dirname(labels_path()), exist_ok=True)
         tmp = labels_path() + ".tmp"
@@ -4435,13 +4495,19 @@ def _event_data(row, n):
     return g, ki_load(event_stem(row, n)), gf
 
 
+STEM_IDX = {"key": None, "m": {}}
+
+
 def label_protos():
     """Merkmale aller Beispiele, nach Namen gruppiert: benannte Bereiche in Ereignissen und Beispiele aus „Profil aufnehmen“.
     Jedes Beispiel kennt sein Geraet (sid), damit beim Vergleich Beispiele aus demselben Raum staerker zaehlen."""
-    rows = read_log(); keys = row_keys(rows)
-    by_stem = {}
-    for r, k in zip(rows, keys):
-        by_stem.setdefault(event_stem(r, int(k.rsplit("|", 1)[1] or 0)), (r, int(k.rsplit("|", 1)[1] or 0)))
+    rows = read_log()
+    if STEM_IDX["key"] != LOG_CACHE["key"]:           # ab 1.85.35: Zuordnung Name → Eintrag nur neu, wenn sich log.csv geändert hat
+        by_stem = {}
+        for r, k in zip(rows, row_keys(rows)):
+            by_stem.setdefault(event_stem(r, int(k.rsplit("|", 1)[1] or 0)), (r, int(k.rsplit("|", 1)[1] or 0)))
+        STEM_IDX.update(key=LOG_CACHE["key"], m=by_stem)
+    by_stem = STEM_IDX["m"]
     out = {}
     for stem, e in list(labels_all().items()):
         ls = e.get("l") or []
@@ -4622,6 +4688,7 @@ def profiles_all():
 
 
 def profiles_save():
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with PROF_LOCK:
         os.makedirs(os.path.dirname(profiles_path()), exist_ok=True)
         tmp = profiles_path() + ".tmp"
@@ -5365,6 +5432,7 @@ def scan_day(sid, day, protos, t_from, t_to):
         k1 = int(np.searchsorted(ts, ts[k0] + hour))
         k1e = min(len(ts), int(np.searchsorted(ts, ts[min(k1, len(ts) - 1)] + 15000)))
         out += scan_chunk(ts[k0:k1e], L[k0:k1e], BG[k0:k1e], T[k0:k1e], ps_, fp_)
+        time.sleep(0.01)
         if k1 >= len(ts):
             break
         k0 = k1
@@ -5409,6 +5477,8 @@ def scan_run(t_from, t_to, name, events, areas):
         for r in rows:                                # 1) Stoerungen
             if SCAN.get("cancel"):
                 break
+            if SCAN["done"] % 20 == 0:
+                time.sleep(0.02)                      # ab 1.85.35: anderen Arbeiten (Anfragen, Aufnahme) Luft lassen
             if r.get("datei"):
                 res = prof_assign(r["datei"], r.get("quelle_id") or "main", protos=allp)
                 if res and (not name or res[0] == name):
@@ -5419,6 +5489,7 @@ def scan_run(t_from, t_to, name, events, areas):
                 break
             day0 = int(dt.datetime.fromisoformat(day).timestamp() * 1000)
             f0, f1 = max(t_from, day0), min(t_to, day0 + 86400000)
+            time.sleep(0.2)
             res = scan_day(sid, day, protos, f0, f1)
             if res is not None:
                 keep = [x for x in scan_load(sid, day) if not (x[1] > f0 and x[0] < f1 and x[2] in protos)]
@@ -5629,7 +5700,7 @@ def nl_examples():
     return out
 
 
-def note_learn(rescan=True):
+def note_learn(rescan=True, force=False):
     """Beispiele aus Notizen in die Profile übernehmen (alte aus Notizen werden ersetzt), dann alles rückwirkend neu untersuchen."""
     ex = nl_examples(); rej = nl_rej()
     want = {}
@@ -5656,6 +5727,20 @@ def note_learn(rescan=True):
     NL.update(n=n, at=dt.datetime.now().astimezone().isoformat(timespec="seconds"), last=time.time())
     log(f"Aus Notizen gelernt: {n} Beispiele")
     res = {"ok": True, "n": n, "kinds": sorted({x[4] for x in ex})}
+    sig = hashlib.sha1(json.dumps(sorted([nk, st, a, b, nm] for st, xs in want.items() for nk, a, b, nm in xs), ensure_ascii=False).encode()).hexdigest()
+    old = read_json(nl_rej_path()) if os.path.exists(nl_rej_path()) else {}
+    if isinstance(old, dict) and old.get("sig") == sig and not force:
+        rescan = False                                # ab 1.85.35: gleiche Beispiele wie beim letzten Mal – nicht alles neu untersuchen
+        res["same"] = True
+    else:
+        try:
+            d_ = old if isinstance(old, dict) else {}
+            d_["sig"] = sig
+            with open(nl_rej_path() + ".tmp", "w", encoding="utf-8") as f:
+                json.dump(d_, f)
+            os.replace(nl_rej_path() + ".tmp", nl_rej_path())
+        except OSError:
+            pass
     if rescan and n:
         rows = read_log()
         t0 = min((ms_of(r.get("start")) or int(time.time() * 1000)) for r in rows) if rows else int(time.time() * 1000) - 86400000
@@ -7170,6 +7255,7 @@ def notes_all():
 
 
 def notes_save():
+    VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with NOTES_LOCK:
         f = notes_path(); os.makedirs(os.path.dirname(f), exist_ok=True)
         tmp = f + ".tmp"
@@ -7331,22 +7417,28 @@ def fnote_public(x):
                 date=ta.strftime("%Y-%m-%d") if ta else "", rz=bool(ta and is_quiet_time(ta)), free=True)
 
 
+FN_PUB = {"key": None, "lst": [], "a": [], "span": 0}
+
+
 def fnotes_in(t_from, t_to, src="all"):
     """Freie Notizen, die den Zeitraum [t_from, t_to] (ms) beruehren; Geraet passt oder Notiz gilt fuer alle.
     Mit Pro kommen die Notizen aus GReport dazu (falls installiert)."""
-    out = []
-    with NOTES_LOCK:
-        for x in notes_all().get("free") or []:
-            p = fnote_public(x)
-            if p["a"] is None:
-                continue
-            if p["a"] <= t_to and p["b"] >= t_from and (src == "all" or x.get("src", "all") in ("all", src)):
-                out.append(p)
-    for x in gr_notes():
-        if x["a"] <= t_to and x["b"] >= t_from and (src == "all" or x.get("src", "all") in ("all", src)):
-            out.append(x)
-    out.sort(key=lambda p: p["a"])
-    return out
+    grl = gr_notes()
+    key = (VER["data"], id(grl), len(grl))
+    c = FN_PUB
+    if c["key"] != key:                               # ab 1.85.35: einmal aufbereiten und nach Beginn sortieren, nicht bei jeder Störung neu
+        lst = []
+        with NOTES_LOCK:
+            for x in notes_all().get("free") or []:
+                p = fnote_public(x)
+                if p["a"] is not None:
+                    lst.append(p)
+        lst += [x for x in grl if x.get("a") is not None]
+        lst.sort(key=lambda p: p["a"])
+        c.update(key=key, lst=lst, a=[p["a"] for p in lst], span=max([max(0, (p["b"] or p["a"]) - p["a"]) for p in lst] or [0]))
+    lst, A = c["lst"], c["a"]
+    i0 = bisect.bisect_left(A, t_from - c["span"]); i1 = bisect.bisect_right(A, t_to)
+    return [dict(p) for p in lst[i0:i1] if p["b"] >= t_from and (src == "all" or p.get("src", "all") in ("all", src))]
 
 
 # ---------------------------------------------------------------------
@@ -12551,7 +12643,39 @@ def _fnotes_asg(fnl, rows):
     return [dict(n, asg=fn_asg_public(n, m.get(na_key(n)))) for n in fnl]
 
 
+EVS_CACHE = {}           # ab 1.85.35: Ergebnis der Ereignisliste je Anfrage (bei ~50 000 Störungen dauert eine Berechnung Sekunden)
+EVS_LOCK = threading.Lock()
+EVS_TTL = 20.0           # Sensoren, Home Assistant und GReport-Notizen ändern sich ohne Zähler: spätestens so oft neu
+
+
 def events_summary(src="all", n=200, plist="", rng=None, art=""):
+    """Wie _events_summary, aber zwischengespeichert: neu berechnet, wenn sich log.csv, die KI-Einordnung, die Ereignis-Daten
+    oder irgendetwas über die Oberfläche geändert hat, sonst spätestens nach EVS_TTL. Gleichzeitige gleiche Anfragen rechnen einmal."""
+    read_log()
+    try:
+        em = os.path.getsize(evmeta_path())
+    except OSError:
+        em = -1
+    rk = (rng[0].isoformat(), rng[1].isoformat()) if rng else None
+    key = (src, n, plist, rk, art)
+    ver = (LOG_CACHE["key"], VER["art"], VER["data"], em, CFG.get("group_pause_s"), CFG.get("grp_tail_s"), CFG.get("fn_pick"))
+    with EVS_LOCK:
+        e = EVS_CACHE.get(key)
+        if e is None:
+            e = EVS_CACHE[key] = {"lock": threading.Lock(), "ver": None, "t": 0, "res": None}
+            if len(EVS_CACHE) > 24:
+                for k in list(EVS_CACHE)[:8]:
+                    if k != key:
+                        EVS_CACHE.pop(k, None)
+    with e["lock"]:                                   # gleiche Anfrage läuft schon: warten und deren Ergebnis nehmen
+        if e["res"] is not None and e["ver"] == ver and time.time() - e["t"] < EVS_TTL:
+            return e["res"]
+        res = _events_summary(src, n, plist, rng, art)
+        e.update(res=res, ver=ver, t=time.time())
+        return res
+
+
+def _events_summary(src="all", n=200, plist="", rng=None, art=""):
     allrows = read_log()
     keyed = [dict(r, k=k) for r, k in zip(allrows, row_keys(allrows))]
     keyed_all = keyed
@@ -13506,7 +13630,7 @@ def art_confirm(key, group="", undo=False):
 # =====================================================================
 KL = {"sig": None, "sug": {}, "pc": {}, "n": 0, "done": 0, "ev": threading.Event()}
 KL_MAX_EV = 3000                                          # so viele neueste Störungen werden verglichen
-KL_BUDGET_S = 6.0                                          # Rechenzeit je Durchgang (danach kurze Pause)
+KL_BUDGET_S = 1.0                                          # Rechenzeit je Durchgang (danach Pause) – ab 1.85.35 kürzer, damit Anfragen nicht warten
 
 
 def kl_on():
@@ -13624,7 +13748,7 @@ def kl_worker():
             more = kl_step()
         except Exception as e:
             log("Korrekturen lernen:", e)
-        KL["ev"].wait(1.0 if more else 30.0); KL["ev"].clear()
+        KL["ev"].wait(3.0 if more else 30.0); KL["ev"].clear()
 
 
 def art_text(af, de=True):
@@ -14588,6 +14712,7 @@ class Handler(BaseHandler):
             return self.fail(e)
 
     def do_POST(self):
+        VER["data"] += 1                                # jede Änderung über die Oberfläche: Ereignisliste neu berechnen
         if LOCK["blocked"]:                             # Datenordner gesperrt: nichts annehmen, nichts schreiben
             return self.send(423, "application/json", json.dumps({"ok": False, "error": "locked", "blocked": LOCK["blocked"]}).encode())
         if self.path.split("?")[0].rstrip("/").endswith("/restore"):
@@ -14739,8 +14864,8 @@ class Handler(BaseHandler):
                                 TEACH["state"] = "done"
                         return self.js(teach_status())
                     return self.js({"ok": False, "error": "bad action"}, 400)
-                if data.get("action") == "notes":      # aus Notizen lernen, dann alles neu untersuchen
-                    return self.js(note_learn())
+                if data.get("action") == "notes":      # aus Notizen lernen, dann alles neu untersuchen (von Hand: immer)
+                    return self.js(note_learn(force=True))
                 if data.get("action") == "cancel":
                     SCAN["cancel"] = True
                     return self.js({"ok": True})

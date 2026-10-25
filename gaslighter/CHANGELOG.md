@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.85.35
+
+**Schneller, auch bei sehr vielen Störungen.**
+
+Server:
+- Die Ereignisliste wird zwischengespeichert und nur neu berechnet, wenn sich etwas ändert: neue Störung, KI-Einordnung, Notiz, Einstellung oder spätestens nach 20 s. Gleiche Anfragen gleichzeitig rechnen nur einmal. Vorher wurden bei jeder Abfrage alle ~50 000 Störungen neu durchgerechnet.
+- Freie Notizen werden einmal aufbereitet und nach Zeit gesucht, statt für jede Störung alle Notizen durchzugehen.
+- Die KI-Datei wird außerhalb der Sperre geschrieben. Anfragen warten nicht mehr darauf.
+- Hintergrundarbeiten lassen Anfragen und Aufnahme Luft: „Aus Korrekturen lernen“ 1 s statt 6 s am Stück, dann Pause. „Neu untersuchen“ macht regelmäßig kurze Pausen.
+- Lernen aus Notizen untersucht nach einem Neustart nicht mehr alles neu, wenn sich die Beispiele nicht geändert haben.
+- Home-Assistant-Geräteliste höchstens einmal je Minute abfragen.
+- Die Lizenzprüfung läuft im Hintergrund statt in der Aufnahme und nicht mehr unter der Sperre der Regeln.
+- Die Regeldatei wird außerhalb der Sperre geschrieben.
+- Zeiträume „Schwelle angehoben“ werden nur neu gelesen, wenn sich die Datei ändert.
+- Die Lautstärke wird nur mitgeschrieben, wenn sie sich ändert. Vorher kam bei einer Regel über ihrer Höchstdauer alle 5 s eine Zeile dazu.
+
+Oberfläche:
+- Der Tagesgraph zeichnet zehntausende markierte Bereiche zusammengefasst und nur die sichtbaren. Bei Mausbewegung wird höchstens einmal je Bild neu gezeichnet.
+- Die Live-Tabelle rechnet nur neu, wenn sich Daten, Bereich oder Filter geändert haben. Das Zusammenfassen von Ereignissen wächst nicht mehr quadratisch mit der Zahl der Einträge.
+- Hinter offenen Fenstern (z. B. Einstellungen) wird nur noch etwa einmal je Sekunde gezeichnet.
+- Die Einstellungen werden nur dann ein zweites Mal aufgebaut, wenn sich die Werte geändert haben.
+- Die Abfrage der Sicherung endet, wenn das Fenster zu ist.
+- Wird das Fenster während des Einpegelns geschlossen, endet das Einpegeln jetzt.
+- Pillen in zusammengefassten Zeilen werden in einem Durchgang gemessen.
+
+Filter:
+- „👁 Anzeigen“ (früher „Sensoren“) blendet Störungen je Gerät aus, z. B. „Server-Mikrofon – Störungen“. Mit der Taste „📡 nur Sensoren“ bleiben nur die Sensor-Ereignisse.
+- In zusammengefassten Ereignissen stehen nur noch die sichtbaren Einträge. Bleibt einer übrig, steht er allein.
+- „5 Einträge (4 Störungen, 1 Notiz)“: mit Einzahl/Mehrzahl, leere Teile entfallen.
+
 ## 1.85.34
 
 - Einstellungen öffnen sofort mit den zuletzt geladenen Werten. Die aktuellen Werte kommen im Hintergrund nach („Aktuelle Werte werden geladen …“), auch während einer Störung, wenn der Server beschäftigt ist. Hast du schon etwas geändert, wird nichts überschrieben.
