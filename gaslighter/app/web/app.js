@@ -2106,18 +2106,20 @@ function glGrid(box, o) {
     return true;
   };
   const flat = rows => { const out = []; G.byId.clear();
-    const add = (d, pid) => { if (pid) d._pid = pid; out.push(d); G.byId.set(String(d.id), d); if (G.det.has(String(d.id))) out.push({ _det: 1, id: 'd:' + d.id, _ofd: d }); for (const k of d._children || []) add(k, String(d.id)); };
+    const add = (d, pid) => { if (pid) d._pid = pid; out.push(d); G.byId.set(String(d.id), d); if (G.det.has(String(d.id)) && G.hasDet(d)) out.push({ _det: 1, id: 'd:' + d.id, _ofd: d }); for (const k of d._children || []) add(k, String(d.id)); };
     for (const d of rows) add(d, null);
     for (const k of [...G.det]) if (!G.byId.has(k)) G.det.delete(k);
     return out; };
+  const hEmpty = h => h === '' || h == null || (!/<(button|input|img|svg|audio|video)/.test(String(h)) && /^[\s–\-·]*$/.test(String(h).replace(/<[^>]*>/g, '')));
+  G.hasDet = d => G.cols.some(c => G.hid.has(c.f) && vis0(c) && !hEmpty(c.html ? c.html(d) : d[c.f]));   // ab 1.85.33: nur aufklappen, wenn es etwas zu zeigen gibt
   const detBody = d => { const wrap = document.createElement('div'); wrap.className = 'gdet';
-    for (const c of G.cols) if (G.hid.has(c.f) && vis0(c)) { const h = c.html ? c.html(d) : esc(d[c.f]); if (h === '' || h == null) continue;
+    for (const c of G.cols) if (G.hid.has(c.f) && vis0(c)) { const h = c.html ? c.html(d) : esc(d[c.f]); if (hEmpty(h)) continue;
       const r = document.createElement('div'); r.className = 'gdl'; r.dataset.c = c.f; r.innerHTML = `<b>${esc(c.title || '')}</b><span class="gc ${c.cls || ''}">${h}</span>`; wrap.appendChild(r); }
     wrap.onclick = e => { const r = e.target.closest('.gdl'), c = r && G.cols.find(x => x.f === r.dataset.c); if (c && c.click) c.click(e, d, r); };
     return wrap; };
   class PH { init() { this.e = el('span', { className: 'glph', textContent: G.ph }); G.phEls.add(this.e); } getGui() { return this.e; } destroy() { G.phEls.delete(this.e); } }
   const togCol = { colId: '_rc', headerName: t('g_more'), headerClass: 'ghid', width: 32, minWidth: 32, maxWidth: 32, resizable: false, sortable: false, suppressMovable: true, lockPosition: 'left', cellClass: 'rcol', initialHide: true,
-    cellRenderer: p => { const d = p.data; if (!d || d._det) return ''; const on = G.det.has(String(d.id)), b = el('button', { type: 'button', className: 'gtg' + (on ? ' on' : ''), textContent: on ? '−' : '+' });
+    cellRenderer: p => { const d = p.data; if (!d || d._det || !G.hasDet(d)) return ''; const on = G.det.has(String(d.id)), b = el('button', { type: 'button', className: 'gtg' + (on ? ' on' : ''), textContent: on ? '−' : '+' });
       b.setAttribute('aria-expanded', on ? 'true' : 'false'); b.setAttribute('aria-label', t(on ? 'g_less' : 'g_more')); b.tabIndex = -1; return b; },
   };
   const saved = (() => { try { return o.key ? JSON.parse(localStorage.getItem(o.key) || 'null') : null; } catch (e) { return null; } })();
@@ -2166,7 +2168,7 @@ function glGrid(box, o) {
       ns.length = 0; ns.push(...out); },
     onRowClicked: p => { const d = p.data, e = p.event; if (!d || d._det || !e) return;   // Klick in eine Spalte mit eigener Aktion (Auswahl, ⋮, ▶, ＋) – sonst Aktion der Zeile
       const cell = e.target.closest && e.target.closest('.ag-cell'), cid = cell && cell.getAttribute('col-id');
-      if (cid === '_rc') { G.toggleDet(d); return; }
+      if (cid === '_rc') { if (G.hasDet(d)) G.toggleDet(d); return; }
       const ack = e.target.closest && e.target.closest('.artck');   // Geräuschart: Klick auf das Kästchen bestätigt oder korrigiert (statt die Störung zu öffnen)
       if (ack) { const r = evByK(ack.dataset.k) || d.r; const b = ack.getBoundingClientRect(); artConfirmPop(r, b.left, b.bottom + 4); return; }
       const c = cid && G.cols.find(x => x.f === cid);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.33
+
+- Tabellen: Der ＋ links erscheint nur noch, wenn es ausgeblendete Angaben zum Aufklappen gibt. Zeilen ohne solche Angaben, zum Beispiel Sensor-Ereignisse, klappen nicht mehr leer auf. Leere Werte wie „–“ zählen nicht als Angabe.
+
 ## 1.85.32
 
 - **Aufgeklappte Ereignisse** sind flacher, einzeilig und eingerückt. Die Startzeit steht dort nur als Uhrzeit. Was die Gruppe schon zeigt, fällt in den aufgeklappten Zeilen weg: gleiche Quelle, „0 von n Sensoren“, „Unbekannt ×1“. Die Kopfzeile der Gruppe zeigt die Anzahl der Einträge. Klick, Doppelklick, Filter, ⋮ und Häkchen bleiben.
