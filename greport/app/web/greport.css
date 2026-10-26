@@ -537,3 +537,6 @@ button.sure{background:var(--bad,var(--red,#c92a2a))!important;border-color:var(
 .capture.lay .savebar{display:none!important}
 /* „＋ Rubrik“-Typauswahl im Shoelace-Menü */
 sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
+/* ab 1.12.10: Countdown „Von selbst speichern“ – Füllbalken von links nach rechts auf der Taste */
+#fnpsave.counting{position:relative;overflow:hidden;animation:none}
+#fnpsave.counting::before{content:"";position:absolute;inset:0;width:var(--p,0%);background:rgba(255,255,255,.28);transition:width .1s linear;pointer-events:none}

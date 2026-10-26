@@ -1771,7 +1771,7 @@ function slPaint(id, from, to, L, R, ax) {
   host.setAttribute('aria-label', t('sl_a', { a: hms(from).slice(0, 5), b: hms(to).slice(0, 5) }) + ' ' + say.join('; ') + '.');
 }
 const fnShow = () => !SHIDE.has('_fn') && (!ARTSEL.size || ARTSEL.has('_notes') || ARTSEL.has('_fn'));
-const fnText = n => `${n.gr ? '<span class="art grsrc" title="' + esc(t('gr_from_tip')) + '">GReport</span>' : ''}${n.kind_l ? `<span class="fbkind sm" style="--kc:${esc(/^#[0-9a-f]{6}$/i.test(n.kind_c || '') ? n.kind_c : '#5f6b78')}"${n.noassign ? ` title="${esc(t('fk_noassign'))}"` : ''}>${n.kind_i ? esc(n.kind_i) + ' ' : ''}${esc(n.kind_l)}</span>` : ''}${(n.tags || []).map(ntTag).join('')}${n.text ? `<span class="ntt" title="${esc(n.text)}">${esc(n.text)}</span>` : ''}${n.witness ? `<span class="ntw">👤 ${esc(n.witness)}</span>` : ''}${fbx(n)}`;
+const fnText = n => `${n.gr ? '<span class="art grsrc" title="' + esc(t('gr_from_tip')) + '">GReport</span>' : ''}${n.kind_l ? `<span class="fbkind sm" style="--kc:${esc(/^#[0-9a-f]{6}$/i.test(n.kind_c || '') ? n.kind_c : '#5f6b78')}"${n.noassign ? ` title="${esc(t('fk_noassign'))}"` : ''}>${n.kind_i ? esc(n.kind_i) + ' ' : ''}${esc(n.kind_l)}</span>` : ''}${n.notime ? `<span class="art mut" title="${esc(t('fk_notime_l'))}">${esc(t('fk_notime'))}</span>` : ''}${(n.tags || []).map(ntTag).join('')}${n.text ? `<span class="ntt" title="${esc(n.text)}">${esc(n.text)}</span>` : ''}${n.witness ? `<span class="ntw">👤 ${esc(n.witness)}</span>` : ''}${fbx(n)}`;
 function evRows(evs, sv, grpMode) {
   const G = EV.grps || {}, out = [], seen = new Map();
   const one = r => ({ _t: 'ev', _hid: !!r.__hid, id: ek(r), r, start: new Date(r.start).getTime(), src: evSrcName(r), tags: evTags(r), dur: +r.dauer_s || 0, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs });
@@ -1786,7 +1786,7 @@ function evRows(evs, sv, grpMode) {
     } else out.push(one(r));
   }
   const fnV = fnShow(); for (const [n, ev, dms] of fnLink(EV.fnotes, EV.events, EV)) {
-    out.push({ _t: 'note', _hid: !fnV, id: 'n:' + n.id, n, ev, dms, start: n.a, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null });
+    out.push({ _t: 'note', _hid: !fnV, id: 'n:' + n.id, n, ev, dms, start: n.a, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), tags: ['📝 ' + t('fn_row')].concat(n.kind_l ? [(n.kind_i ? n.kind_i + ' ' : '') + n.kind_l] : []), dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null });
     if (ev) for (const d of out) if (d._t === 'ev' && d.r === ev) (d.fn = d.fn || []).push([n, dms]);   // auch an der Störung sichtbar, mit Abstand
   }
   for (const x of sv) out.push({ _t: 'sens', _hid: !!x.__hid, id: 's:' + x.key, x, start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak != null ? x.peak : null });
@@ -6925,7 +6925,7 @@ function levRender(force) {
   const rows = evs.map(r => ({ _hid: evSrcHid(r), id: 'e' + (r.k || r.start), k: r.k || '', start: new Date(r.start).getTime(), src: r.quelle || (SOURCES.find(x => x.id === (r.quelle_id || 'main')) || {}).name || r.quelle_id || '', r,
     tags: [].concat((r.mf || []).map(id => '⊘ ' + mfInfo(id).name), r.prof ? ['🧩 ' + r.prof] : [], (r.labels || []).map(n => '🏷 ' + n)), dur: r.dauer_s, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs, nt: r.notes ? '📝 ' + r.notes : '' }))
     .concat(fnLink(j.fnotes, j.events, j).map(([n, ev, dms]) => ({ _hid: !fnShow(), id: 'n' + n.id, k: '', start: n.a, fdms: dms, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), fn: n, fev: ev,
-      tags: ['📝 ' + t('fn_row')], dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null, nt: '📝 ' + [n.text, ...(n.tags || []).map(x => ntLabel(x)), n.witness ? '👤 ' + n.witness : '', ...fbList(n)].filter(Boolean).join(' · ') + (ev ? ' · 🔗 ' + t('fn_link', { c: clockOf(ev.start) }) : '') })))
+      tags: ['📝 ' + t('fn_row')].concat(n.kind_l ? [(n.kind_i ? n.kind_i + ' ' : '') + n.kind_l] : []), dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null, nt: '📝 ' + [n.text, ...(n.tags || []).map(x => ntLabel(x)), n.witness ? '👤 ' + n.witness : '', ...fbList(n)].filter(Boolean).join(' · ') + (ev ? ' · 🔗 ' + t('fn_link', { c: clockOf(ev.start) }) : '') })))
     .concat(sens.map(x => ({ _hid: SHIDE.has(sensKey(x)), id: 's' + x.key, k: '', start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', x, tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak, nt: x.note ? '📝 ' + x.note : '' })));
   const win = LEV.vis ? levWin() : null;
   if (win) {                                          // nur was im sichtbaren Bereich liegt (auch teilweise)

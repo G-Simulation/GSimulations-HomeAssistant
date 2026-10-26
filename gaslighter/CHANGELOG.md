@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.42
+
+- Notizen ohne Zeitpunkt aus GReport (z. B. Art „Erinnerung“) fehlten in GLighter ganz: in Protokolle, Live und im Filter. Sie erscheinen jetzt mit dem Zeitpunkt, zu dem sie notiert wurden, mit dem Hinweis „ohne Zeitpunkt“, und werden keiner Störung zugeordnet.
+- Die Notiz-Art (z. B. ⏰ Erinnerung) steht jetzt im Art-Filter der Tabellen und lässt sich dort ein- und ausblenden.
+
 ## 1.85.41
 
 - **Speicher:** Die Zwischenspeicher der Tagesaufzeichnung und der Spektren sind jetzt nach Größe begrenzt (160 / 60 / 60 MB), nicht mehr nach Anzahl. Verdrängt wird, was am längsten nicht gebraucht wurde. Gemessen: Nach dem Lernen aus Notizen lagen 8 ganze Tage im Speicher, Tagesaufzeichnung 450 MB plus Spektren 270 MB, zusammen 1,3 GB.

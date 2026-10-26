@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 import lizenz  # noqa: E402
 import felder  # noqa: E402
 
-VERSION = "1.12.9"
+VERSION = "1.12.10"
 BRAND = "GReport"
 OPTIONS = os.environ.get("GR_OPTIONS", "/data/options.json")
 PRIV = os.environ.get("GR_PRIVATE", "/data")                    # nur für GReport (Pro-Schlüssel)
@@ -694,7 +694,7 @@ def mqtt_groups():
 # =====================================================================
 # Anzeige: Datum und Uhrzeit (gilt in der App und im Export)
 # =====================================================================
-PREF_DEF = {"date": "dmy4", "time": "hms", "rel": True, "wd": False, "gl": True, "tips": True, "tipmode": "hover", "width": "wide", "dens": "normal"}   # tipmode: hover = nur beim Zeigen auf den Bereich, always, off   # width: wide = ganze Breite, narrow = schmale Spalte
+PREF_DEF = {"date": "dmy4", "time": "hms", "rel": True, "wd": False, "gl": True, "tips": True, "tipmode": "hover", "width": "wide", "dens": "normal", "autosave": 0}   # autosave: Sekunden bis zum Speichern von selbst, sobald alle Pflichtfelder gesetzt sind (0 = aus)   # tipmode: hover = nur beim Zeigen auf den Bereich, always, off   # width: wide = ganze Breite, narrow = schmale Spalte
 WIDTHS = ("wide", "narrow")   # tips: Hinweise in der App zeigen   # gl: Notizen an GLighter weitergeben
 DATE_FMTS = ("dmy4", "dmy2", "wdm", "iso", "long")
 TIME_FMTS = ("hms", "hm", "h12")
@@ -747,6 +747,8 @@ def prefs():
     for k in ("rel", "wd", "gl", "tips"):
         if isinstance(d.get(k), bool):
             out[k] = d[k]
+    if isinstance(d.get("autosave"), (int, float)) and not isinstance(d.get("autosave"), bool):
+        out["autosave"] = max(0, min(60, int(d["autosave"])))
     for k in ("sechide", "sechide_pop"):                 # Schnell-Schalter ● / ○ je Ansicht (fehlt sechide_pop: wie angedockt)
         if isinstance(d.get(k), list):
             out[k] = cap_keys(d[k])
@@ -802,6 +804,8 @@ def prefs_set(d):
     for k in ("rel", "wd", "gl", "tips"):
         if isinstance(d.get(k), bool):
             cur[k] = d[k]
+    if isinstance(d.get("autosave"), (int, float)) and not isinstance(d.get("autosave"), bool):
+        cur["autosave"] = max(0, min(60, int(d["autosave"])))
     drop = []
     for k in ("sechide", "sechide_pop"):
         if k in d:

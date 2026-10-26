@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.10
+
+- **Von selbst speichern** (Anzeige → „Von selbst speichern“, 3/5/8/12 s, Standard aus): Sobald alle Pflichtfelder gesetzt sind, zählt die Taste „Speichern“ sichtbar herunter und speichert dann. Text tippen oder ein freiwilliges Feld wählen startet den Countdown neu, Klick auf die Taste speichert sofort. Nur bei neuen Notizen, nie beim Ändern. Ohne ein einziges Pflichtfeld passiert nichts.
+
 ## 1.12.9
 - **„＋ Rubrik“ mit Shoelace (MIT, lokal eingebunden):** Typauswahl schließt bei Klick daneben und mit Esc, wird nicht abgeschnitten.
 - **Tasten in einer Rubrik entfernen** geht jetzt auch in der Home-Assistant-App: Rückfrage im Knopf („Sicher?“) statt Browser-Fenster.

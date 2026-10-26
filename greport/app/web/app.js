@@ -348,6 +348,31 @@ function reqCheck() {                                 // alle Pflicht-Gruppen ge
   const all = req.length > 0 && req.every(g => have.has(g)), was = pn.classList.contains('alldone');
   pn.classList.toggle('alldone', all);
   if (all && !was) { const m = $('fnpmsg'); if (m && !m.textContent) { m.className = 'msg'; m.textContent = '✓ ' + t('gr_req_done'); setTimeout(() => { if (m.textContent === '✓ ' + t('gr_req_done')) m.textContent = ''; }, 3000); } }
+  autoSaveCheck();
+}
+/* ab 1.12.10: Speichern von selbst – sobald alles Pflichtige gesetzt ist (Tasten-Rubriken, Pflichtfelder, Pflicht-Text/-Zeuge), läuft ein kurzer
+   Countdown auf der Taste „Speichern“. Jede weitere Eingabe (Text tippen, freiwilliges Feld wählen) startet ihn neu; Klick auf die Taste speichert sofort.
+   Nur bei neuen Notizen, nicht beim Ändern. Einstellung „Anzeige → Von selbst speichern“ (0 = aus). */
+const ASV = { tm: 0, tick: 0, until: 0 };
+function autoAllReq() {
+  const req = [...(NTS.req || [])], have = new Set([...FNP.tags].map(ntGroup));
+  if (!req.every(g => have.has(g))) return false;
+  const c = Felder.check(FNP.fv, $('fnpbody'), viewBlocks()), g = k => FB.sec[k] || {};
+  if (c.bad.length || c.miss.length) return false;
+  if (!viewHid('txt') && g('txt').req && !$('fnptext').value.trim()) return false;
+  if (!bndOf('witness') && !viewHid('wit') && g('wit').req && !$('fnpwit').value.trim()) return false;
+  const anyReq = req.length || viewBlocks().some(b => b.req && b.type !== 'counter') || g('txt').req || g('wit').req;
+  return !!anyReq;                                    // ohne ein einziges Pflichtfeld nie von selbst speichern
+}
+function autoSaveStop() { clearTimeout(ASV.tm); clearInterval(ASV.tick); ASV.tm = ASV.tick = 0; ASV.until = 0; const b = $('fnpsave'); if (b) { b.classList.remove('counting'); b.textContent = t(FNP.edit ? 'gr_change' : 'save'); b.style.removeProperty('--p'); } }
+function autoSaveCheck() {
+  const secs = +(PF.autosave || 0); if (!secs || FNP.edit || !$('fnpanel')) { autoSaveStop(); return; }
+  if (!autoAllReq()) { autoSaveStop(); return; }
+  autoSaveStop();
+  const b = $('fnpsave'), t0 = Date.now(); ASV.until = t0 + secs * 1000; b.classList.add('counting');
+  const upd = () => { const left = Math.max(0, ASV.until - Date.now()); b.textContent = t('save') + ' · ' + Math.ceil(left / 1000); b.style.setProperty('--p', (100 * (1 - left / (secs * 1000))).toFixed(1) + '%'); };
+  upd(); ASV.tick = setInterval(upd, 100);
+  ASV.tm = setTimeout(() => { autoSaveStop(); if (autoAllReq()) fnpSave(); }, secs * 1000);
 }
 function witList() {                                   // Pro: gespeicherte Personen zum Antippen (mehrere Zeugen)
   const box = $('fnpwitl'); if (!box) return; box.innerHTML = '';
@@ -387,6 +412,7 @@ function timeEdit(open) {
   if (open && !$('fnpfromi').value) $('fnpfromi').value = dtl(new Date(fnpAt()));
 }
 async function fnpSave() {
+  autoSaveStop();
   const fixed = FNP.fixed && $('fnpfromi').value, tv = $('fnptoi').value, run = $('fnprun').checked, ed = FNP.edit;
   if (!fbReqOk()) return;
   const body = { action: ed ? 'edit' : 'add', id: ed ? ed.id : '', from: fixed ? inIso($('fnpfromi').value, ed && ed.from) : ed ? (ed.from || dto(new Date(ed.a))) : dto(new Date(nowMs())), to: tv ? inIso(tv, ed && ed.to) : run ? dto(new Date(nowMs())) : '',
@@ -536,6 +562,7 @@ function initFnp() {
   $('fnpwit').addEventListener('input', () => { if ($('fnpwit').value.trim()) fnpStart(); });
   $('fnprun').onchange = () => { fnpStart(); fnpShow(); };
   $('fnpsave').onclick = fnpSave; $('fnpcancel').onclick = fnpReset;
+  for (const ev of ['input', 'change']) $('fnpanel').addEventListener(ev, () => { if (ASV.until) autoSaveCheck(); }, true);   // Eingabe während des Countdowns: neu starten
   enterSave($('fnptext'), fnpSave);
   $('fnptimebtn').onclick = () => timeEdit($('fnpext').hidden);
   const manual = () => { FNP.manual = true; FNP.timeTouched = true; FNP.approx = false; FNP.pend = null; };   // von Hand gesetzt: hat Vorrang vor Zeit-Tasten
@@ -1134,13 +1161,14 @@ function prefOpen() {
   ds.innerHTML = ''; for (const f of ['dmy4', 'dmy2', 'wdm', 'iso', 'long']) option(ds, f, fDate(ex, Object.assign({}, PF, { date: f, wd: false })));
   ts.innerHTML = ''; for (const f of ['hms', 'hm', 'h12']) option(ts, f, fTime(ex, Object.assign({}, PF, { time: f })));
   ds.value = PF.date; ts.value = PF.time; document.getElementById('pfrel').checked = PF.rel; document.getElementById('pfwd').checked = PF.wd;
+  document.getElementById('pfauto').value = String(PF.autosave || 0);
   document.getElementById('pftipmode').value = tipMode();
   document.getElementById('pftipsr').onclick = () => { TIPX.clear(); try { localStorage.removeItem('gr_tipx'); } catch (e) { } tipsDraw(); toast('✓ ' + t('gr_p_tips_done')); };
   const upd = () => { const p = prefRead(); document.getElementById('pfex').textContent = fDate(ex, p) + ', ' + fTime(ex, p); };
   for (const x of [ds, ts, document.getElementById('pfrel'), document.getElementById('pfwd')]) x.onchange = upd;
   upd(); document.getElementById('prefdlg').showModal();
 }
-const prefRead = () => ({ date: document.getElementById('pfdate').value, time: document.getElementById('pftime').value, rel: document.getElementById('pfrel').checked, wd: document.getElementById('pfwd').checked, tipmode: document.getElementById('pftipmode').value, tips: document.getElementById('pftipmode').value !== 'off' });
+const prefRead = () => ({ date: document.getElementById('pfdate').value, time: document.getElementById('pftime').value, rel: document.getElementById('pfrel').checked, wd: document.getElementById('pfwd').checked, autosave: +document.getElementById('pfauto').value || 0, tipmode: document.getElementById('pftipmode').value, tips: document.getElementById('pftipmode').value !== 'off' });
 /* ---------- Textdatei & Import/Export (Pro) ---------- */
 const TXT = { st: null, content: null };
 const txtErr = e => { const k = 'gr_err_' + String(e || 'x').replace(/\W/g, '_'); const v = t(k); return v === k ? t('gr_err_x') + (e ? ' (' + e + ')' : '') : v; };

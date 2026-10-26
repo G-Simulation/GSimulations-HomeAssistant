@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.41"
+VERSION = "1.85.42"
 
 # =====================================================================
 # Einstellungen
@@ -7532,13 +7532,16 @@ def gr_notes():
                     tags.append(t_)
                 elif isinstance(own.get(t_), dict):
                     tags.append("g:" + str(own[t_].get("l") or t_)[:30])
-            rec = {"id": str(x.get("id") or "")[:20], "from": x.get("from"), "to": x.get("to") or "", "src": re.sub(r"[^a-z0-9_]", "", str(x.get("src") or "all"))[:16] or "all",
+            notime = bool(x.get("notime")) or not x.get("from")      # ab 1.85.42: Notiz ohne Zeitpunkt (z. B. Erinnerung): Zeitpunkt = wann notiert, nie einer Störung zugeordnet
+            rec = {"id": str(x.get("id") or "")[:20], "from": x.get("from") or (x.get("at") or x.get("ts") or "") if notime else x.get("from"), "to": "" if notime else (x.get("to") or ""), "src": re.sub(r"[^a-z0-9_]", "", str(x.get("src") or "all"))[:16] or "all",
                    "text": clean_text(x.get("text")), "tags": tags, "witness": clean_text(x.get("witness"), 200), "ts": x.get("ts"), "gr": True}
             kd = felder.kind_of(gkinds, str(x.get("kind") or ""))
             if kd:
                 rec["kind_l"] = kd["l"]; rec["kind_c"] = kd.get("col") or ""; rec["kind_i"] = kd.get("ico") or ""
                 if kd.get("noassign"):
                     rec["noassign"] = True
+            if notime:
+                rec["notime"] = True; rec["noassign"] = True
             if isinstance(x.get("fields"), dict) and x["fields"]:      # eigene Felder aus GReport: fertig als Text („Name: Wert“)
                 fx = felder.compact(gdefs, x["fields"], CFG.get("language") != "en")
                 if fx:
