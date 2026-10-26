@@ -1257,6 +1257,7 @@ function updateStatus() {
   else if (st.ha_hold) { txt = t('ha_pill', { l: st.ha_hold.label }); p.classList.add('w'); }
   else if (st.ha_quiet) { txt = t('ha_qpill', { l: st.ha_quiet.label }); p.classList.add('w'); }
   else if (st.ha_raise && st.listening && txt === t('quiet')) { txt = t('ha_rpill', { l: st.ha_raise.label, d: fmtDb(st.ha_raise.db) }); }
+  else if (st.sustained != null && st.listening && txt === t('quiet')) { txt = t('sus_pill', { d: fdb(st.sustained) }); }   // ab 1.85.44: Dauerpegel (Fernseher, Radio, Laptop)
   else if (st.forced) { txt = t('outside_forced'); p.classList.add('man'); }
   else if (!st.listening) { txt = t('outside'); p.classList.add('w'); }
   const clk = !!st.forced || (!st.listening && !st.paused && txt === t('outside'));
@@ -4668,7 +4669,7 @@ const FORM = [
     ['bg_stat', 'sel', BG_STATS, { quiet: 'o_quiet', median: 'o_median', min: 'o_min', mean: 'o_mean', max: 'o_max' }, null, null, ['dynamic', 'bounded']],
     ['rise_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
     ['fall_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
-    ['min_event_ms', 'num', 0, 2000, 20], ['short_ms', 'num', 0, 500, 10], ['short_over_db', 'num', 0, 30, 0.5]]],
+    ['min_event_ms', 'num', 0, 2000, 20], ['short_ms', 'num', 0, 500, 10], ['short_over_db', 'num', 0, 30, 0.5], ['sus_on', 'chk'], ['sus_s', 'num', 5, 600, 5, 'sus_on'], ['sus_over_db', 'num', 1, 30, 0.5, 'sus_on'], ['sus_max_db', 'num', 5, 60, 1, 'sus_on']]],
   ['s_ki', [['classify', 'chk'], ['ki_min', 'num', 5, 90, 1, 'classify'], ['ki_bg', 'chk', 'classify'], ['ki_short', 'chk', 'classify'], ['ki_short_ms', 'num', 20, 1000, 10, 'ki_short'], ['ki_damp', 'text', 'classify'], ['ki_learn_fix', 'chk', 'classify'], ['ki_learn_min', 'num', 60, 98, 1, 'ki_learn_fix'], ['ki_notes', 'chk'], ['ki_embed', 'chk'], ['fp_store', 'chk']]],
   ['s_quiet', [['quiet_from', 'time'], ['quiet_to', 'time'], ['quiet_sunday', 'chk']]],
   ['s_rec', [['ctx_s', 'num', 0, 120, 1], ['day_layers', 'chk'], ['day_spec', 'chk'], ['co_record', 'chk']]],
@@ -4705,7 +4706,7 @@ function fillPorts(sel, dev, val) {
 }
 /* Pro Geraet einstellbare Werte (wie PER_KEYS im Server) */
 const PER = ['thr_mode', 'offset_db', 'thr_fixed_db', 'min_db', 'thr_max_db', 'bg_window', 'bg_unit', 'bg_stat', 'rise_s', 'fall_s',
-  'min_event_ms', 'short_ms', 'short_over_db', 'pre_roll_s', 'post_roll_s', 'max_clip_s', 'active_from', 'active_to', 'save_audio', 'audio_novoice', 'day_track', 'day_layers', 'day_spec', 'fp_store'];
+  'min_event_ms', 'short_ms', 'short_over_db', 'sus_on', 'sus_s', 'sus_over_db', 'sus_max_db', 'pre_roll_s', 'post_roll_s', 'max_clip_s', 'active_from', 'active_to', 'save_audio', 'audio_novoice', 'day_track', 'day_layers', 'day_spec', 'fp_store'];
 const GLOBAL_ONLY = ['mirror_dir', 'mirror_time', 'mirror_offload', 'retention_days', 'auto_delete', 'classify', 'ki_min', 'ki_bg', 'ki_short', 'ki_short_ms', 'ki_damp', 'ki_learn_fix', 'ki_learn_min', 'ki_embed', 'ctx_s', 'co_record', 'group_pause_s', 'fn_pre_min', 'fn_post_min', 'fn_gr_pre_min', 'fn_gr_post_min', 'clip_dir', 'video_width', 'video_fps', 'video_crf', 'quiet_from', 'quiet_to', 'quiet_sunday'];
 let DEV = '';                                  // '' = Alle Geraete (Standard), sonst Quellen-ID
 function srcById(id) { return SOURCES.find(s => s.id === id); }

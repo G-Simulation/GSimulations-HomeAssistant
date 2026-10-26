@@ -43,7 +43,7 @@ VERSION = "1.85.42"
 DEFAULTS = {
     "device": "default", "mic_volume": 100, "sample_rate": 16000,
     "thr_mode": "bounded", "offset_db": 10, "thr_fixed_db": -60, "min_db": -95, "thr_max_db": -30,
-    "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0, "short_ms": 60, "short_over_db": 6.0,
+    "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0, "short_ms": 60, "short_over_db": 6.0, "sus_on": True, "sus_s": 20, "sus_over_db": 6.0, "sus_max_db": 25.0,
     "pre_roll_s": 5, "post_roll_s": 5, "max_clip_s": 60, "ctx_s": 30, "save_audio": False, "audio_novoice": True,
     "day_track": True, "day_layers": True, "day_spec": True, "co_record": True, "fp_store": True,
     "group_pause_s": 120, "grp_tail_s": 120, "grp_mix": True, "fn_grp": True, "fn_pick": "peak", "ki_notes": True, "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
@@ -60,7 +60,7 @@ SPEC = {
     "thr_mode": ("choice", ["fixed", "dynamic", "bounded"]), "offset_db": ("num", 0.5, 40, 0.1),
     "thr_fixed_db": ("num", -120, 0, 0.1), "min_db": ("num", -120, -10, 0.1), "thr_max_db": ("num", -120, 0, 0.1),
     "bg_window": ("int", 1, 3600), "bg_unit": ("choice", ["s", "min"]), "bg_stat": ("choice", ["median", "quiet", "min", "mean", "max"]),
-    "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000), "short_ms": ("int", 0, 500), "short_over_db": ("num", 0, 30, 0.5),
+    "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000), "short_ms": ("int", 0, 500), "short_over_db": ("num", 0, 30, 0.5), "sus_on": ("bool",), "sus_s": ("int", 5, 600), "sus_over_db": ("num", 1, 30, 0.5), "sus_max_db": ("num", 5, 60, 0.5),
     "pre_roll_s": ("num", 0, 30, 0.1), "post_roll_s": ("num", 0.1, 60, 0.1), "max_clip_s": ("num", 1, 300, 0.5),
     "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "grp_tail_s": ("int", 0, 3600), "grp_mix": ("bool",), "fn_grp": ("bool",), "fn_pick": ("choice", ["peak", "near"]), "ki_notes": ("bool",), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
     "active_from": ("time",), "active_to": ("time",), "mqtt": ("bool",), "output_dir": ("str",),
@@ -75,7 +75,7 @@ RESTART_KEYS = {"device", "sample_rate"}
 RELEARN_KEYS = {"bg_window", "bg_unit", "bg_stat"}
 # Diese Werte koennen pro Geraet (Quelle) eigen eingestellt werden
 PER_KEYS = ["thr_mode", "offset_db", "thr_fixed_db", "min_db", "thr_max_db", "bg_window", "bg_unit", "bg_stat",
-            "rise_s", "fall_s", "min_event_ms", "short_ms", "short_over_db", "pre_roll_s", "post_roll_s", "max_clip_s",
+            "rise_s", "fall_s", "min_event_ms", "short_ms", "short_over_db", "sus_on", "sus_s", "sus_over_db", "sus_max_db", "pre_roll_s", "post_roll_s", "max_clip_s",
             "active_from", "active_to", "save_audio", "audio_novoice", "day_track", "day_layers", "day_spec", "fp_store"]
 
 CFG = {}
@@ -9471,6 +9471,25 @@ class Background:
             tau = c["rise_s"] if self.raw > self.value else c["fall_s"]
             self.value += (self.raw - self.value) * min(1.0, 0.5 / max(0.5, tau))
 
+    def rekey(self):
+        """ab 1.85.44: Einstellungen (Berechnungsart, Fenster) geändert – sofort mit den schon gesammelten Werten neu rechnen,
+        ohne Glättung und ohne Lernpause. Ein kleineres Fenster behält die neuesten Werte."""
+        c = self.cfg()
+        win_s = int(min(MAX_BG_S, c["bg_window"] * (60 if c["bg_unit"] == "min" else 1)))
+        if win_s != self.win_s:
+            per = 10 if win_s <= 600 else 1
+            if per != self.per_s:
+                self.reset(); return
+            old = list(self.vals); self.win_s = win_s
+            self.vals = collections.deque(old[-max(10, win_s * per):], maxlen=max(10, win_s * per))
+        a = np.asarray(list(self.vals) + [(x[0], x[0], x[0], x[1]) for x in self.acc], dtype=np.float64)
+        if not a.size:
+            return
+        st = c["bg_stat"]
+        self.raw = float(np.percentile(a[:, 0], 10) if st == "quiet" else a[:, 3].max() if st == "max" else a[:, 1].min() if st == "min"
+                         else a[:, 2].mean() if st == "mean" else np.median(a[:, 0]))
+        self.value = self.raw
+
     def peak_max(self, skip_last=True):
         """Lautester Pegel (Spitze je 100 ms) im Zeitraum ohne Stoerungen und wie viele Sekunden das abdeckt: (dBFS, s).
         skip_last: der gerade gelernte Block (der ausloesende) zaehlt nicht mit."""
@@ -9630,12 +9649,17 @@ class Runner:
         above = zero_n = nblk = fc = busy_n = calm_n = 0
         hum = None
         sec_max, was_active, was_online = -130.0, None, None
+        sus, sus_q = None, collections.deque(maxlen=200)     # Dauerpegel (ab 1.85.44)
         t = self.topic
         last_ts = 0
         clk = None; clk_st = None
         for blk, bts in self.blocks(rate, block):
             if self.relearn.is_set():
-                self.relearn.clear(); bg.reset()
+                self.relearn.clear()
+                if bg.value is not None and len(bg.vals) >= 10:
+                    bg.rekey()                      # ab 1.85.44: neue Berechnungsart gilt sofort (vorher: neu lernen, dann 5 min Glättung)
+                else:
+                    bg.reset()
             if blk is None:                     # Handy getrennt: offenes Ereignis abschliessen
                 if ev is not None:
                     try:
@@ -9687,6 +9711,33 @@ class Runner:
                     bg.reset()
             if ev is None or bg.value is None or busy_n > 600:
                 bg.add(float(np.median(fl)), peak)
+            # ab 1.85.44: Dauerpegel (Fernseher, Radio, Laptop – auch ohne Gerät in Home Assistant): liegt der Pegel länger als
+            # sus_s fast ohne Pause deutlich über dem ruhigen Hintergrund, wird der typische Pegel dieser Zeit zum Hintergrund.
+            # Obergrenze sus_max_db über dem ruhigen Hintergrund, damit lauter Dauerlärm vom Nachbarn nicht verschwindet.
+            # Nur die Schwelle ändert sich; die Pegel stehen weiter vollständig in der Tagesaufzeichnung.
+            if C.get("sus_on", True) is not False and bg.value is not None:
+                sus_n = max(50, int(float(C.get("sus_s") or 20) * 10))
+                if sus_q.maxlen != sus_n:
+                    sus_q = collections.deque(sus_q, maxlen=sus_n)
+                sus_q.append(float(np.median(fl)))
+                sref = sus["ref"] if sus else bg.value
+                if len(sus_q) >= sus_n and nblk % 5 == 0:
+                    arr = np.asarray(sus_q); over = float(np.mean(arr > sref + float(C.get("sus_over_db") or 6)))
+                    typ = float(np.median(arr))
+                    if sus is None:
+                        if over >= 0.9 and typ - sref <= float(C.get("sus_max_db") or 25):
+                            sus = {"ref": sref, "lvl": typ, "t": time.time()}
+                            log(f"[{self.name}] Dauerpegel erkannt ({typ:.1f} dBFS, ruhiger Hintergrund {sref:.1f}): Schwelle folgt ihm")
+                    elif over < 0.5:
+                        log(f"[{self.name}] Dauerpegel vorbei nach {int(time.time() - sus['t'])} s")
+                        sus = None
+                    else:
+                        sus["lvl"] = typ
+                if sus is not None and bg.value < sus["lvl"]:
+                    bg.value = sus["lvl"]
+            elif sus is not None:
+                sus = None
+            self.status["sustained"] = None if sus is None else round(sus["lvl"], 1)
             base = bg.value
             inh = in_hours(now, C)
             if inh and self.id in FORCE:
