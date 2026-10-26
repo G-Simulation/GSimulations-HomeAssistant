@@ -7631,6 +7631,7 @@ async function fbCount(b, d) {                          // Zähler: jeder Druck 
 }
 async function fbLoad(quiet) {
   try { Felder.load(await (await fetch('felder', { cache: 'no-store' })).json()); } catch (e) { }
+  if (FNP.kind && !Felder.kindOf(FNP.kind)) FNP.kind = ''; if (!FNP.kind) kindDefault(); else kindDraw();
   if (quiet) { for (const b of viewBlocks()) if (b.type === 'counter') Felder.countShow($('fnpbody'), b); return; }
   if (!FCL.on) { fbMount(); secApply(); secDraw(); fnpShow(); }
 }
@@ -7643,7 +7644,17 @@ async function fbTpl(name) {
   if (FCL.on) fclClose(); else capApply();
   fnpTags(); ntsRedraw(); toast('✓ ' + t('fb_tpl_done', { n: t('fb_tpl_' + name) }));
 }
-const FNP = { from: null, tags: new Set(), tick: null, fv: {}, reqWarned: null };
+const FNP = { from: null, tags: new Set(), tick: null, fv: {}, reqWarned: null, kind: '', kindNt: false };
+/* Notiz-Art (ab 1.85.52, wie GReport): Chips über dem Text; eine Art „ohne Zeitpunkt“ (Erinnerung) setzt den Haken mit */
+function kindSet(id, quiet) {
+  const k = Felder.kindOf(id), prev = FNP.kindNt; FNP.kind = k && !k.del ? id : '';
+  FNP.kindNt = !!(k && k.notime);
+  const nt = $('fnpnotime');
+  if (nt) { if (FNP.kindNt) nt.checked = true; else if (prev && nt.checked) nt.checked = false; fnpNotime(); }
+  kindDraw(); if (!quiet) fnpShow();
+}
+function kindDraw() { const b = $('fnpkinds'); if (b) Felder.kindPick(b, FNP.kind, id => kindSet(id)); }
+function kindDefault() { const S = Felder.S; kindSet(S.kind_keep && Felder.kindOf(FNP.kind) ? FNP.kind : (S.kind_def || ''), true); }
 function fnpTags() {
   const box = $('fnptags'); if (!box) return;
   if (FCL.on) { fclDraw(); return; }
@@ -7714,7 +7725,7 @@ function timeEdit(open) {
   $('fnpext').hidden = !open; $('fnptimebtn').setAttribute('aria-expanded', String(open));
   if (open && !$('fnpfromi').value) $('fnpfromi').value = dtl(new Date(FNP.fixed && FNP.from != null ? FNP.from : nowServer()));
 }
-function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; $('fnpnotime').checked = false; fnpNotime(); timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
+function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; $('fnpnotime').checked = false; fnpNotime(); kindDefault(); timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
 function fnpNotime() {                                 // Erinnerung: Zeitfelder aus, Hinweis statt Uhrzeit
   const nt = $('fnpnotime').checked;
   for (const id of ['fnpfromi', 'fnptoi', 'fnpfnow', 'fnptnow', 'fnptclr', 'fnprun']) { const e = $(id); if (e) e.disabled = nt; }
@@ -7729,7 +7740,7 @@ async function fnpSave() {
   if (!fbReqOk()) return;
   const nt = $('fnpnotime').checked, run = !nt && $('fnprun').checked;   // ab 1.85.51: Erinnerung = ohne Zeitpunkt (Zeitpunkt: jetzt), keiner Störung zugeordnet
   const fixed = !nt && FNP.fixed && $('fnpfromi').value, tv = nt ? '' : $('fnptoi').value;      // eigene Zeiten („Zeit ändern“); sonst gilt die Uhrzeit beim Speichern
-  const body = { action: 'add', id: '', from: fixed ? $('fnpfromi').value : dtl(new Date(nowServer())), to: tv || (run ? dtl(new Date(nowServer())) : ''), src: $('fnpsrc').value, text: autoText($('fnptext').value, FNP.tags), typed: !!$('fnptext').value.trim(), tags: [...FNP.tags].concat(witVal().trim() && !FNP.tags.has('zeuge') ? ['zeuge'] : []), witness: witVal(), auto: !nt && !run && !fixed && !tv, notime: nt, fields: fbOut() };
+  const body = { action: 'add', id: '', from: fixed ? $('fnpfromi').value : dtl(new Date(nowServer())), to: tv || (run ? dtl(new Date(nowServer())) : ''), src: $('fnpsrc').value, text: autoText($('fnptext').value, FNP.tags), typed: !!$('fnptext').value.trim(), tags: [...FNP.tags].concat(witVal().trim() && !FNP.tags.has('zeuge') ? ['zeuge'] : []), witness: witVal(), auto: !nt && !run && !fixed && !tv, notime: nt, kind: FNP.kind || '', fields: fbOut() };
   const msg = $('fnpmsg'); msg.className = 'msg fnpmsg';
   try {
     const r = await (await fetch('fnote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
@@ -7785,7 +7796,7 @@ function fclBuild(prof) {
   const keys = {};
   for (const gr of groups) for (const k of gr.keys) keys[k] = { k, l: ntLabel(k), l0: ntLabel(k), own: NTS.own[k] != null, hide: NTS.hide.has(k), hide0: NTS.hide.has(k), g0: gr.g, isNew: false, del: false };
   const secs = capOrder(null, CAP.order || []);
-  const fb = JSON.parse(JSON.stringify({ blocks: FBS.defs, sec: FBS.sec })), hide = new Set(CAP.hide || []);
+  const fb = JSON.parse(JSON.stringify({ blocks: FBS.defs, sec: FBS.sec, kinds: (FBS.kinds || []).filter(k => !k.gr), kind_def: FBS.kind_def || '', kind_keep: !!FBS.kind_keep })), hide = new Set(CAP.hide || []);
   for (const k of Object.keys(SEC_EL)) if (hide.has(k)) (fb.sec[k] = fb.sec[k] || {}).hide = true;     // „zeigen“ der eingebauten Bereiche = cap.hide
   const dock = viewDock(), pop = viewGet('pop');
   FCL.d = { groups, keys, order0: fclFlat(groups).join(), gorder0: groups.map(g => g.g).join(), secs, secs0: secs.join(), clock: CAP.clock, dense: CAP.dense, style: CAP.style,
@@ -7855,9 +7866,10 @@ function fclBar() {
     <div class="layopts">${sel('clock', ['big', 'small', 'off'])}${sel('dense', ['normal', 'compact'])}${sel('style', ['outline', 'filled'])}<button type="button" class="btn" id="fcltpl" aria-expanded="false" aria-controls="fcltplbox">${esc(t('fb_tpl'))}</button></div>
     <div id="fcltplbox" class="fbtplbox" hidden></div>
     <div id="fclfb" class="layfb"></div>
+    <div class="laysecs"><span class="laysl">${esc(t('fk_title'))}</span><small class="layhint">${esc(t('fk_ed_hint'))}</small></div><div id="fclkinds" class="layfb"></div>
     <div class="laybtns"><button type="button" class="btn" id="fclreset">${esc(t('fc_reset'))}</button><span class="grow"></span><button type="button" class="btn" id="fclcancel">${esc(t('cancel'))}</button><button type="button" class="btn primary" id="fcldone">${esc(t('fc_lay_done'))}</button></div>
     <span class="sr" id="fcllive" aria-live="polite"></span>`;
-  fclChips(); fclFb();
+  fclChips(); fclFb(); fclKinds();
   $('fcltpl').onclick = () => { const box = $('fcltplbox'), o = box.hidden; box.hidden = !o; $('fcltpl').setAttribute('aria-expanded', String(o)); if (o) { Felder.tplBox(box, FBS.tpl || 'laerm', fbTpl); const f = box.querySelector('button'); if (f) f.focus(); } };
   bar.querySelectorAll('select[data-o]').forEach(s => s.onchange = () => {   // Vorschau sofort, gespeichert mit „Fertig“
     d[s.dataset.o] = s.value; const pn = $('fnpanel'), m = { clock: 'ck', dense: 'dn', style: 'ts' }[s.dataset.o];
@@ -7896,6 +7908,10 @@ function fclFb(focusId) {                             // Einstellungen je Bereic
   });
   box.querySelectorAll('details.fbed').forEach(x => { if (opened.has(x.dataset.id)) x.open = true; });
   if (focusId) { const r = box.querySelector(`details.fbed[data-id="${CSS.escape(focusId)}"]`); if (r) { r.open = true; const i = r.querySelector('.fe_l'); i.focus(); i.select(); } }
+}
+function fclKinds() {                               // Notiz-Arten verwalten (Vorschau sofort in der Erfassung)
+  const box = $('fclkinds'), d = FCL.d; if (!box || !d) return;
+  Felder.kindsEditor(box, d.fb, { change: () => { const S = Felder.S, keep = S.kinds; S.kinds = d.fb.kinds.filter(k => !k.del).concat(keep.filter(k => k.gr)); kindDraw(); S.kinds = keep; }, say: fclSay });
 }
 function fclPreview() {
   const d = FCL.d; if (!d) return; fbMount(d.fb.blocks, d.fb.sec); secApply(d.secs);

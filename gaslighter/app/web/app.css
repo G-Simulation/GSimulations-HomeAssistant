@@ -1530,3 +1530,10 @@ sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
 .glg .ag-row.gm .kidt{padding-left:22px;font-variant-numeric:tabular-nums;color:var(--mut)}
 .glg .ag-row.gm .kidt::before{content:"";display:inline-block;width:8px;height:1px;background:var(--bd);vertical-align:middle;margin:0 6px 0 -14px}
 .glg .ag-row.grph .gcnt{margin-left:6px;padding:0 6px;border-radius:9px;background:var(--bd);color:var(--fg);font-size:11px;font-weight:600;line-height:18px}
+.fbkinds{display:grid;gap:6px;margin:0 0 6px}.fbkinds[hidden]{display:none}.fbkinds .fbl{font-size:13px;font-weight:600;color:var(--fg)}.fbkinds .fbrow{display:flex;flex-wrap:wrap;gap:6px}
+.fbkind.sm{font-size:12px;padding:0 8px}
+.fbkchip{border-color:color-mix(in srgb,var(--kc) 70%,transparent)!important}
+.fbkchip[aria-pressed="true"]{background:color-mix(in srgb,var(--kc) 22%,transparent)!important;border-color:var(--kc)!important}
+.fbkeds{margin-top:14px}
+.fbkchip[aria-pressed="true"]{color:var(--fg)!important}
+.tag.fbkind{min-height:34px;font-weight:600}.tag.fbkind.on{background:color-mix(in srgb,var(--kc) 28%,transparent)}

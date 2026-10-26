@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.51"
+VERSION = "1.85.52"
 
 # =====================================================================
 # Einstellungen
@@ -3884,7 +3884,7 @@ def migrate_log():
 
 
 LOG_CACHE = {"key": None, "rows": []}
-VER = {"art": 0, "data": 0}  # ab 1.85.35: Zähler für Änderungen (KI-Einordnung, jede Änderung über die Oberfläche) – Zwischenspeicher der Ereignisliste
+VER = {"art": 0, "data": 0, "row": 0}  # ab 1.85.35: Zähler für Änderungen (KI-Einordnung, jede Änderung über die Oberfläche) – Zwischenspeicher der Ereignisliste
 
 
 def read_log():
@@ -4354,6 +4354,7 @@ def plists_all():
 
 
 def plists_save():
+    VER["row"] += 1                                   # ab 1.85.52: fertige Tabellenzeilen neu
     with PLISTS_LOCK:
         f = plists_path(); os.makedirs(os.path.dirname(f), exist_ok=True)
         tmp = f + ".tmp"
@@ -4467,6 +4468,7 @@ def labels_all():
 
 
 def labels_save():
+    VER["row"] += 1                                   # ab 1.85.52: fertige Tabellenzeilen neu
     VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with LABELS_LOCK:
         os.makedirs(os.path.dirname(labels_path()), exist_ok=True)
@@ -4700,6 +4702,7 @@ def profiles_all():
 
 
 def profiles_save():
+    VER["row"] += 1                                   # ab 1.85.52: fertige Tabellenzeilen neu
     VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with PROF_LOCK:
         os.makedirs(os.path.dirname(profiles_path()), exist_ok=True)
@@ -7358,6 +7361,7 @@ def notes_all():
 
 
 def notes_save():
+    VER["row"] += 1                                   # ab 1.85.52: fertige Tabellenzeilen neu
     VER["data"] += 1                                  # Ereignisliste neu berechnen (ab 1.85.35)
     with NOTES_LOCK:
         f = notes_path(); os.makedirs(os.path.dirname(f), exist_ok=True)
@@ -7518,9 +7522,23 @@ def fnote_public(x):
     tb = dt.datetime.fromtimestamp(b / 1000.0).astimezone() if b else None
     out = dict(x, a=a, b=b or a, clock=ta.strftime("%H:%M:%S") if ta else "", clock_to=tb.strftime("%H:%M:%S") if tb else "",
                date=ta.strftime("%Y-%m-%d") if ta else "", rz=bool(ta and is_quiet_time(ta)), free=True)
-    if x.get("kind") == "erinnerung" and not x.get("kind_l"):     # eigene Erinnerung (ab 1.85.51): Art wie bei GReport anzeigen
-        out["kind_l"] = "Reminder" if CFG.get("language") == "en" else "Erinnerung"; out["kind_i"] = "⏰"; out["kind_c"] = ""
+    if x.get("kind") and not x.get("kind_l"):                     # eigene Art (ab 1.85.52) bzw. Erinnerung ohne Art (1.85.51)
+        kd_ = felder.kind_of(KINDS_PUB(), x["kind"])
+        if kd_:
+            out["kind_l"] = kd_["l"]; out["kind_c"] = kd_.get("col") or ""; out["kind_i"] = kd_.get("ico") or ""
+        elif x["kind"] == "erinnerung":
+            out["kind_l"] = "Reminder" if CFG.get("language") == "en" else "Erinnerung"; out["kind_i"] = "⏰"; out["kind_c"] = ""
     return out
+
+
+KPUB = {"t": 0.0, "k": []}
+
+
+def KINDS_PUB():
+    """all_kinds(), höchstens alle 5 s neu – fnote_public läuft je Notiz."""
+    if time.time() - KPUB["t"] > 5:
+        KPUB["k"] = all_kinds(); KPUB["t"] = time.time()
+    return KPUB["k"]
 
 
 FN_PUB = {"key": None, "lst": [], "a": [], "span": 0}
@@ -7958,7 +7976,9 @@ def fnote_change(action, data):
     """add / edit / del einer freien Notiz. Antwort: die Notiz bzw. ok.
     auto (ohne eingegebene Uhrzeit): Zeitpunkt = jetzt bzw. erster Tastendruck; liegt kurz davor eine Stoerung, gilt die Notiz fuer sie."""
     tgt = None
-    notime = data.get("notime") is True                 # ab 1.85.51: Erinnerung – ohne Zeitpunkt, nie einer Störung zugeordnet (wie in GReport)
+    kd = felder.kind_ok(all_kinds(), str(data.get("kind") or "")) if action != "del" else ""     # Notiz-Art (ab 1.85.52)
+    kdef = felder.kind_of(all_kinds(), kd) if kd else None
+    notime = data.get("notime") is True or bool(kdef and kdef.get("notime") and "notime" not in data)   # ab 1.85.51: Erinnerung – ohne Zeitpunkt, nie einer Störung zugeordnet (wie in GReport)
     if notime:
         at = ms_of(str(data.get("from") or "")[:25]) or int(time.time() * 1000)
         data = dict(data, **{"from": dt.datetime.fromtimestamp(at / 1000.0).isoformat(timespec="seconds"), "to": "", "auto": False})
@@ -8004,7 +8024,13 @@ def fnote_change(action, data):
         if fields:
             rec["fields"] = fields
         if notime:
-            rec["notime"] = True; rec["noassign"] = True; rec["kind"] = "erinnerung"
+            rec["notime"] = True; rec["noassign"] = True
+        if kd:
+            rec["kind"] = kd
+            if kdef and kdef.get("noassign"):
+                rec["noassign"] = True
+        elif notime:
+            rec["kind"] = "erinnerung"                   # ohne gewählte Art: feste Kennung (Anzeige „Erinnerung“)
         if action == "add":
             if len(lst) >= FNOTES_MAX:
                 return {"ok": False, "error": "limit"}
@@ -8019,9 +8045,11 @@ def fnote_change(action, data):
                 return {"ok": False, "error": "not found"}
             if "fields" in data and not fields:             # Felder ausdrücklich geleert; ohne „fields“ (Dialog) bleiben sie
                 x.pop("fields", None)
-            if "notime" in data and not notime:              # Erinnerung in eine Notiz mit Zeitpunkt umgewandelt
-                for k_ in ("notime", "noassign", "kind"):
+            if ("notime" in data or "kind" in data) and not notime:   # Erinnerung in eine Notiz mit Zeitpunkt umgewandelt
+                for k_ in ("notime", "noassign"):
                     x.pop(k_, None)
+            if "kind" in data and not kd:
+                x.pop("kind", None)
             x.update(rec, edited=now)
         notes_save()
         return {"ok": True, "note": fnote_public(x), "target": tgt}
@@ -13356,7 +13384,55 @@ def layout_cap_clean(c):
         out["tpl"] = c["tpl"]
     if isinstance(c.get("made"), dict):
         out["made"] = {k: v for k, v in c["made"].items() if isinstance(k, str) and isinstance(v, str)}
+    if "kinds" in c:                                   # Notiz-Arten (ab 1.85.52, wie GReport 1.11): z. B. „Erinnerung“ ohne Zeitpunkt
+        out["kinds"] = felder.clean_kinds(c.get("kinds"), [])
+        out["kind_def"] = felder.kind_ok(out["kinds"], str(c.get("kind_def") or ""))
+        out["kind_keep"] = c.get("kind_keep") is True
     return out
+
+
+def kinds_seed(tpl):
+    """Erste Notiz-Arten (vorher gab es keine): aus der Vorlage, Namen in der Sprache der Einstellung."""
+    de = CFG.get("language") != "en"
+    return [dict(k, l=k["l"] if de else {"Erinnerung": "Reminder", "Idee": "Idea"}.get(k["l"], k["l"])) for k in felder.KIND_TPL.get(tpl or "laerm") or []]
+
+
+def own_kinds():
+    """Eigene Notiz-Arten (Layout → Erfassung); noch nie gesetzt = Vorlage („Erinnerung“)."""
+    with LAYOUT_LOCK:
+        c = layout_cap_clean((layout_all().get("cap") or {}))
+    return (list(c.get("kinds") or []) if "kinds" in c else kinds_seed(c.get("tpl"))), c.get("kind_def") or "", bool(c.get("kind_keep"))
+
+
+def all_kinds():
+    """Eigene Arten plus die aus GReport (wenn verbunden, Kennung noch nicht vorhanden; gr=True) – fürs Anlegen und die Anzeige."""
+    own, _, _ = own_kinds()
+    have = {k["id"] for k in own}
+    try:
+        for k in gr_kinds():
+            if k.get("id") not in have:
+                own.append(dict(k, gr=True)); have.add(k["id"])
+    except Exception:
+        pass
+    return own
+
+
+GRK = {"key": None, "kinds": []}
+
+
+def gr_kinds():
+    """Notiz-Arten aus GReport (felder.json im GReport-Ordner), nur wenn verbunden; nach Änderungsdatum zwischengespeichert."""
+    if not gr_status().get("linked"):
+        return []
+    f = os.path.join(GR_DIR, "felder.json")
+    try:
+        st_ = os.stat(f); key = (st_.st_mtime_ns, st_.st_size)
+    except OSError:
+        return []
+    if GRK["key"] != key:
+        fd = read_json(f)
+        GRK["kinds"] = felder.clean_kinds((fd or {}).get("kinds") if isinstance(fd, dict) else [], []); GRK["key"] = key
+    return [k for k in GRK["kinds"] if not k.get("del")]
 
 
 def layout_cap_pop_clean(c):
@@ -13408,7 +13484,7 @@ def layout_change(data):
         elif rs == "cols":
             d["cols"] = {}; d["tbl"] = {}
         elif rs == "cap":                                  # Standard – eigene Felder (Definitionen) und Vorlage bleiben
-            keep = {k_: v for k_, v in (d.get("cap") or {}).items() if k_ in ("blocks", "tpl", "made")}
+            keep = {k_: v for k_, v in (d.get("cap") or {}).items() if k_ in ("blocks", "tpl", "made", "kinds", "kind_def", "kind_keep")}
             d.pop("cap", None); d.pop("cap_pop", None)          # abgedockt folgt danach wieder
             if keep:
                 d["cap"] = layout_cap_clean(keep)
@@ -13496,8 +13572,10 @@ def felder_state():
         wb = felder.clean_def(d)
         if wb:
             defs.append(wb)
+    kd_, kdef_, kkeep_ = own_kinds()
     out = {"ok": True, "tpl": c.get("tpl") or "laerm", "first": False, "blocks": defs, "sec": c.get("sec") or {}, "max": felder.MAX_ACTIVE,
-           "tpls": list(CAP_TPLS), "counts": {}, "daily": {}, "sug": {}}
+           "tpls": list(CAP_TPLS), "counts": {}, "daily": {}, "sug": {},
+           "kinds": all_kinds(), "kind_def": kdef_, "kind_keep": kkeep_, "kind_n": {}}
     want = [b for b in defs if not b.get("del") and (b["type"] in ("counter", "place") or (b["type"] == "text" and b.get("sug")))]
     if want:
         with NOTES_LOCK:
@@ -14294,9 +14372,23 @@ EVROW_LOCK = threading.Lock()
 EVROW_TTL = 120.0                        # Ton/Video-Dateien kommen ohne Zähler dazu oder weg: spätestens so oft neu
 
 
+def _row_sig(datei):
+    """Was die Einordnung dieser einen Störung ausmacht (art.json, Bestätigung, Lernvorschlag) – nur diese Zeile wird neu, nicht alle."""
+    if not datei:
+        return None
+    with ART_LOCK:
+        e = art_all().get(datei)
+    es = (e.get("g"), e.get("c"), e.get("man"), tuple(e.get("k") or ()), tuple(e.get("p") or ()), e.get("kv")) if isinstance(e, dict) else None
+    b = best_of(datei)
+    bs = (b.get("g"), b.get("ki")) if isinstance(b, dict) else None
+    k_ = KL["sug"].get(datei)
+    return (es, bs, tuple(k_) if k_ else None)
+
+
 def ev_row(r):
-    ver = (VER["art"], VER["data"])             # nicht log.csv: eine neue Störung ändert die fertigen Zeilen der anderen nicht
-    key = (r["k"], r.get("start"), r.get("dauer_s"), r.get("datei"))
+    # ab 1.85.52: nicht mehr der globale Zähler (jede neue Einordnung, jeder POST leerte alles) – je Zeile ihre eigene Einordnung als Schlüssel
+    ver = (VER["row"], CFG.get("classify"), CFG.get("ki_min"), CFG.get("ki_learn_fix"), CFG.get("language"))
+    key = (r["k"], r.get("start"), r.get("dauer_s"), r.get("datei"), _row_sig(r.get("datei") or event_stem(r, int(r["k"].rsplit("|", 1)[1] or 0))))
     now = time.time()
     with EVROW_LOCK:
         if EVROW["ver"] != ver:

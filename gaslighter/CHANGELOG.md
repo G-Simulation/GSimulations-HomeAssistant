@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.52
+
+- **Notiz-Arten wie in GReport:** Über dem Notiztext stehen jetzt die Arten als Chips („⏰ Erinnerung“ ist von Anfang an da). Eine Art „ohne Zeitpunkt“ setzt den Haken mit; die Notiz wird keiner Störung zugeordnet. Eigene Arten (Name, Farbe, Symbol, ohne Zeitpunkt, nicht zuordnen, Vorgabe, Auswahl merken) unter „Layout anpassen“ der Erfassung – wie in GReport. Ist GReport verbunden, erscheinen dessen Arten zusätzlich (ändern dort). Mit Tests.
+- **Ereignisliste:** Der Zeilen-Zwischenspeicher griff kaum, weil jede neue KI-Einordnung und jeder POST alles leerte. Jetzt hat jede Zeile ihre eigene Einordnung als Schlüssel; geleert wird nur bei Änderungen an Notizen, Stichwörtern, Listen oder Profilen.
+
 ## 1.85.51
 
 - **Erinnerung auch in GLighter:** Im Notizbereich unter „🕒 Zeit ändern“ gibt es den Haken „Erinnerung – ohne Zeitpunkt“. Die Notiz bekommt den Zeitpunkt des Speicherns, wird keiner Störung zugeordnet und erscheint mit der Art „⏰ Erinnerung“ in Tabelle, Art-Filter und Protokoll – genau wie Erinnerungen aus GReport. Bisher ging das nur in GReport.

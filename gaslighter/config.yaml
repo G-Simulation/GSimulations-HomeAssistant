@@ -1,5 +1,5 @@
 name: "GLighter"
-version: "1.85.51"
+version: "1.85.52"
 slug: gaslighter
 description: "Lärmprotokoll: misst Lärm rund um die Uhr und protokolliert Störungen manipulationssicher – ohne Tonaufnahme / Noise log: measures noise 24/7 and logs disturbances tamper-evident – no audio recording"
 url: "https://www.gsimulations.de/gaslighter/"
