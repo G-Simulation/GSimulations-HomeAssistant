@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.49
+
+- **Anwesenheit sofort sichtbar:** Eine neue Regel „nur festhalten“/„als Ereignis“ holt beim Anlegen 6 Stunden aus der Home-Assistant-Historie nach. Läuft der Zustand schon (z. B. „zu Hause“ seit Stunden), beginnt der Balken sofort, statt erst beim nächsten Wechsel.
+
 ## 1.85.48
 
 - **Anwesenheit** (Einstellungen → Regeln (Home Assistant), ganz oben): Person oder Handy aus Home Assistant wählen. Solange der Zustand „home“ ist, zeichnet GLighter im Tagesverlauf einen Balken „Zuhause“, jede Störung bekommt den Vermerk in Tabelle und Protokoll, und die Vergangenheit wird aus der Home-Assistant-Historie nachgeholt. So sieht man direkt, ob die Störungen zu- oder abnehmen, wenn man da ist. Technisch eine Regel „nur festhalten“ mit fester Kennung – sie erscheint auch in der Liste und lässt sich dort umbenennen. Keine Automation in Home Assistant nötig.

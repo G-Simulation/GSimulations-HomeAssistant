@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.48"
+VERSION = "1.85.49"
 
 # =====================================================================
 # Einstellungen
@@ -1784,8 +1784,8 @@ def ha_hist_sync(rules):
             t_, on_ = lr.get(r["id"], (None, None))
             HA_SYNC["last"][r["id"]] = max(t_ or 0, now_ms - 6 * 3600 * 1000)
             HA_SYNC["act"][r["id"]] = on_
-    for r in rules:
-        HA_SYNC["last"].setdefault(r["id"], now_ms - 60000); HA_SYNC["act"].setdefault(r["id"], None)
+    for r in rules:                                   # neue Regel (ab 1.85.48): 6 h zurückschauen, damit ein schon laufender Zustand (z. B. „zu Hause“ seit Stunden) sofort als Balken da ist
+        HA_SYNC["last"].setdefault(r["id"], now_ms - 6 * 3600 * 1000); HA_SYNC["act"].setdefault(r["id"], None)
     since = min(HA_SYNC["last"][r["id"]] for r in rules) - 1000
     iso = lambda ms: dt.datetime.fromtimestamp(ms / 1000.0).astimezone().isoformat(timespec="seconds")
     ents = ",".join(sorted({r["entity"] for r in rules}))
@@ -1803,8 +1803,12 @@ def ha_hist_sync(rules):
         last, act0 = HA_SYNC["last"][r["id"]], HA_SYNC["act"][r["id"]]
         for x in by.get(r["entity"], []):
             t_ = ms_of(x.get("last_changed") or x.get("last_updated"))
-            if t_ is None or t_ <= last:
+            if t_ is None:
                 continue
+            if t_ <= last:                                # Zustand zu Beginn des Zeitraums (Wechsel liegt davor): nur zählen, wenn noch nichts festgehalten ist
+                if act0 is not None or x.get("state") in ("unavailable", "unknown", None) or not rule_match(r["states"], x.get("state")):
+                    continue
+                t_ = last + 1
             st_ = x.get("state")
             if st_ in ("unavailable", "unknown", None):
                 ha_avail_add(r, t_, True)                 # nicht erreichbar: eigene Datei (für „nicht beurteilbar“), Zustand bleibt
