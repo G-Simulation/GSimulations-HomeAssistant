@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.49"
+VERSION = "1.85.50"
 
 # =====================================================================
 # Einstellungen
@@ -1853,17 +1853,24 @@ def ha_heal(rules, now_ms):
     for r in rules:
         if r["entity"] not in by:
             continue
-        truth, act0 = [], None
+        truth, act0, init_on = [], None, None
         for x in by[r["entity"]]:
             t_ = ms_of(x.get("last_changed") or x.get("last_updated")); st_ = x.get("state")
             if t_ is None or st_ in ("unavailable", "unknown", None):
                 continue
             act = rule_match(r["states"], st_)
             if act != act0:
-                if act0 is not None or (act and t_ > since + 1000):     # den Anfangszustand (aus) zu Beginn des Fensters nicht als Wechsel zaehlen
+                if act0 is None and act and t_ <= since + 1000:
+                    init_on = (t_, st_)                                  # Zustand war schon zu Beginn des Fensters „an“ (Home Assistant meldet ihn mit der Fensterzeit)
+                elif act0 is not None or act:                            # den Anfangszustand (aus) zu Beginn des Fensters nicht als Wechsel zaehlen
                     truth.append((t_, st_, act))
                 act0 = act
         mine_seq = sorted((round(ms_of(row[0]) / 1000), row[5] == "1") for row in body if len(row) >= 6 and row[1] == r["id"] and (ms_of(row[0]) or 0) >= since)
+        if init_on is not None:                                          # ab 1.85.49: schon laufender Zustand (z. B. „zu Hause“ seit gestern) zaehlt – vorher wurde der Eintrag wieder geloescht
+            before = [row for row in body if len(row) >= 6 and row[1] == r["id"] and 0 < (ms_of(row[0]) or 0) < since]
+            if not (before and before[-1][5] == "1"):                     # nur, wenn nicht schon ein aelterer Eintrag „an“ offen ist
+                t0_ = mine_seq[0][0] * 1000 if mine_seq and mine_seq[0][1] else init_on[0]     # eigener Beginn bleibt stehen (sonst wandert er mit dem Fenster)
+                truth.insert(0, (t0_, init_on[1], True))
         if mine_seq == sorted((round(t_ / 1000), a) for t_, st_, a in truth):
             continue
         body = [row for row in body if not (len(row) >= 6 and row[1] == r["id"] and (ms_of(row[0]) or 0) >= since)]

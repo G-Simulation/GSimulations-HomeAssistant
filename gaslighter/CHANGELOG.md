@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.50
+
+- **Anwesenheit:** War man beim Anlegen schon länger als 24 h zu Hause, löschte der 24-h-Abgleich mit Home Assistant den Balken wieder (Home Assistant meldet einen schon laufenden Zustand mit der Anfangszeit des Abfragefensters, nicht mit der echten Wechselzeit). Jetzt bleibt der eigene Beginn stehen. Mit Test.
+
 ## 1.85.49
 
 - **Anwesenheit sofort sichtbar:** Eine neue Regel „nur festhalten“/„als Ereignis“ holt beim Anlegen 6 Stunden aus der Home-Assistant-Historie nach. Läuft der Zustand schon (z. B. „zu Hause“ seit Stunden), beginnt der Balken sofort, statt erst beim nächsten Wechsel.

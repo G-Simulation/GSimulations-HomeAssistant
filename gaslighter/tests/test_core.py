@@ -137,6 +137,20 @@ class HomeAssistant(unittest.TestCase):
         self.assertEqual(laerm.ha_heal([self.rule], self.now), 0)       # zweiter Lauf: nichts mehr zu tun
         self.assertTrue(os.path.exists(self.f + ".bak"))
 
+    def test_schon_laufender_zustand_bleibt(self):
+        """ab 1.85.49: „zu Hause“ seit gestern – Home Assistant meldet den Anfangszustand mit der Fensterzeit; der eigene Beginn bleibt stehen."""
+        since = self.now - 24 * 3600000; mine = self.now - 6 * 3600000
+        self.write_rows([(mine, True)])                 # vom Historie-Abgleich beim Anlegen der Regel
+        laerm.ha_get = lambda *x, **k: [[{"entity_id": "binary_sensor.x", "state": "on", "last_changed": self.iso(since)}]]
+        self.assertEqual(laerm.ha_heal([self.rule], self.now), 0)       # passt: nichts löschen, nichts verschieben
+        rows = list(csv.DictReader(open(self.f)))
+        self.assertEqual([r["an"] for r in rows], ["1"])
+        self.write_rows([])                                             # noch nichts festgehalten: Beginn = Fensteranfang
+        self.assertEqual(laerm.ha_heal([self.rule], self.now), 1)
+        rows = list(csv.DictReader(open(self.f)))
+        self.assertEqual([r["an"] for r in rows], ["1"])
+        self.assertAlmostEqual(laerm.ms_of(rows[0]["zeit"]) / 1000, since / 1000, delta=2)
+
     def test_intervall_endet_an_luecke(self):
         a = self.now - 5 * 3600000
         self.write_rows([(a, True), (a + 4 * 3600000, False)])         # „Aus“ kam erst nach dem Neustart
