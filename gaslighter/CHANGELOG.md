@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.45
+
+- Versionsangabe im Programm war seit 1.85.43 nicht mitgezogen (zeigte 1.85.42).
+
 ## 1.85.44
 
 - **Dauerpegel erkennen** (Einstellungen → Erkennung, je Gerät, Standard an): Läuft Fernseher, Radio oder Laptop, liegt der Pegel lange fast ohne Pause über dem ruhigen Hintergrund. Nach 20 s wird der typische Pegel dieser Zeit zum Hintergrund, nur was deutlich lauter ist, zählt noch. Geht die Quelle aus, fällt der Hintergrund wie gewohnt in etwa 10 s zurück. Braucht kein Gerät in Home Assistant. Obergrenze 25 dB über dem ruhigen Hintergrund: lauter Dauerlärm vom Nachbarn (z. B. Bass über eine Stunde) wird nicht zum „Hintergrund“ und zählt weiter. Im Live-Bild steht dann „Ruhig · Dauerpegel −50 dBFS“. Die Pegel bleiben vollständig in der Tagesaufzeichnung.
