@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.85.44
+
+- **Dauerpegel erkennen** (Einstellungen → Erkennung, je Gerät, Standard an): Läuft Fernseher, Radio oder Laptop, liegt der Pegel lange fast ohne Pause über dem ruhigen Hintergrund. Nach 20 s wird der typische Pegel dieser Zeit zum Hintergrund, nur was deutlich lauter ist, zählt noch. Geht die Quelle aus, fällt der Hintergrund wie gewohnt in etwa 10 s zurück. Braucht kein Gerät in Home Assistant. Obergrenze 25 dB über dem ruhigen Hintergrund: lauter Dauerlärm vom Nachbarn (z. B. Bass über eine Stunde) wird nicht zum „Hintergrund“ und zählt weiter. Im Live-Bild steht dann „Ruhig · Dauerpegel −50 dBFS“. Die Pegel bleiben vollständig in der Tagesaufzeichnung.
+- **Berechnungsart des Hintergrunds gilt sofort:** Nach dem Umstellen (leiseste Momente, typischer Pegel, …) oder einem anderen Fenster wird mit den schon gesammelten Werten sofort neu gerechnet. Vorher wurde neu gelernt und der Übergang 5 Minuten lang geglättet, im Live-Bild sah man die Änderung erst nach Minuten.
+
+## 1.85.43
+
+- **Erkennung – kurze Ausschläge:** Ausschläge kürzer als 60 ms zählen nur noch, wenn sie mindestens 6 dB über der Schwelle liegen (Einstellungen → Erkennung → „Kurzer Ausschlag bis“ / „Kurzer Ausschlag braucht“, je Gerät einstellbar, 0 = aus). Gemessen an 24 h echter Daten: 1096 von 4065 Störungen waren einzelne 20-ms-Spitzen weniger als 3 dB über der Schwelle, also Mikrofonrauschen. Echtes Klopfen liegt 10 dB und mehr darüber und bleibt. Die Pegel bleiben vollständig in der Tagesaufzeichnung, nur der Eintrag als Störung entfällt.
+- **Live-Tabelle:** Sie holt spätestens alle 30 s neue Einträge, auch Sensor-Ereignisse und Notizen aus GReport, die den Störungszähler nicht verändern. Vorher kamen sie erst mit der nächsten Störung.
+
 ## 1.85.42
 
 - Notizen ohne Zeitpunkt aus GReport (z. B. Art „Erinnerung“) fehlten in GLighter ganz: in Protokolle, Live und im Filter. Sie erscheinen jetzt mit dem Zeitpunkt, zu dem sie notiert wurden, mit dem Hinweis „ohne Zeitpunkt“, und werden keiner Störung zugeordnet.
