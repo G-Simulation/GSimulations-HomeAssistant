@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.47
+
+- **Ereignisliste viel schneller:** Die fertigen Tabellenzeilen werden je Störung zwischengespeichert (bis 5000 Zeilen kosteten je Anfrage 1–12 s, gemessen über die neue Zeitmessung im Protokoll). Neu gerechnet wird nur nach Änderungen (Einordnung, Notizen, Stichwörter) oder spätestens alle 2 Minuten.
+- **Live-Tabelle bei lautem Handy:** Neue Störungen lösen höchstens alle 15 s ein Nachladen aus (vorher 5 s – bei einem Handy mit Störungen im Sekundentakt lief der Server nur noch für die Tabelle).
+
 ## 1.85.46
 
 - **Livespur setzte aus, Rundlauf stockte – Ursache behoben:** Die Tabelle unter dem Live-Bild holte den sichtbaren Zeitraum mit nur einer Minute Vorlauf. Das Livebild lief dem Fenster sofort davon, und solange eine Antwort ausstand, ging jede Sekunde eine neue Anfrage raus. Bei vielen Störungen am Tag dauert eine solche Antwort Sekunden; die Anfragen belegten alle Verbindungen des Browsers (Chrome: 6 je Server), Livespur, Geräteliste und Rundlauf warteten darauf. Jetzt: nie zwei Tabellen-Anfragen zugleich, 5 Minuten Vorlauf, spätestens alle 30 s neu. Auf dem Server rechnen höchstens zwei Ereignislisten gleichzeitig; dauert eine länger als 3 s, steht im Protokoll, welcher Schritt wie lange brauchte.

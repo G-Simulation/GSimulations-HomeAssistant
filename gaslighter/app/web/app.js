@@ -1290,11 +1290,12 @@ function updateStatus() {
   if (st.all_total !== lastCount) { lastCount = st.all_total; evRefreshSoon(); }
 }
 
-/* Neue Störungen: Listen höchstens alle 5 s neu laden und nicht mitten in einer Störung (sonst ruckelt das Live-Bild) */
+/* Neue Störungen: Listen höchstens alle 5 s neu laden (Live-Tabelle: alle 15 s – bei einem lauten Handy kommt sonst alle paar Sekunden eine
+   Anfrage, die auf dem Server Sekunden kostet) und nicht mitten in einer Störung (sonst ruckelt das Live-Bild) */
 const EVR = { t: 0, timer: 0 };
 function evRefreshSoon() {
   clearTimeout(EVR.timer);
-  const wait = Math.max(0, 5000 - (Date.now() - EVR.t)) + (st && st.active && Date.now() - EVR.t < 20000 ? 2000 : 0);
+  const wait = Math.max(0, (NV.open ? 5000 : 15000) - (Date.now() - EVR.t)) + (st && st.active && Date.now() - EVR.t < 20000 ? 2000 : 0);
   EVR.timer = setTimeout(() => { if (st && st.active && Date.now() - EVR.t < 20000) return evRefreshSoon(); EVR.t = Date.now(); loadEvents(); levLoad(); }, wait);
 }
 /* Kacheln (Pegel, Hintergrund, Schwelle, Geraeusch, Ereignisse) fuer ein Geraet */

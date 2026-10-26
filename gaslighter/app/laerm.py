@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.46"
+VERSION = "1.85.47"
 
 # =====================================================================
 # Einstellungen
@@ -14266,7 +14266,30 @@ def muster_preview(d, days=30):
             "examples": [{"start": r["start"], "dev": r.get("quelle") or r.get("quelle_id"), "dur": fnum(r.get("dauer_s")), "pk": fnum(r.get("spitze_dbfs"))} for r in ex[::-1]]}
 
 
+EVROW = {"ver": None, "rows": {}}       # ab 1.85.46: fertige Tabellenzeilen je Störung – bei 5000 Zeilen kostete das Aufbereiten je Anfrage Sekunden
+EVROW_LOCK = threading.Lock()
+EVROW_TTL = 120.0                        # Ton/Video-Dateien kommen ohne Zähler dazu oder weg: spätestens so oft neu
+
+
 def ev_row(r):
+    ver = (VER["art"], VER["data"])             # nicht log.csv: eine neue Störung ändert die fertigen Zeilen der anderen nicht
+    key = (r["k"], r.get("start"), r.get("dauer_s"), r.get("datei"))
+    now = time.time()
+    with EVROW_LOCK:
+        if EVROW["ver"] != ver:
+            EVROW["ver"] = ver; EVROW["rows"].clear()
+        e = EVROW["rows"].get(key)
+        if e is not None and now - e[0] < EVROW_TTL:
+            return dict(e[1])
+    row = _ev_row(r)
+    with EVROW_LOCK:
+        if len(EVROW["rows"]) > 20000:
+            EVROW["rows"].clear()
+        EVROW["rows"][key] = (now, row)
+    return dict(row)
+
+
+def _ev_row(r):
     stem = event_stem(r, int(r["k"].rsplit("|", 1)[1] or 0))
     ls = labels_all().get(stem, {}).get("l") or []
     a_, b_ = row_span(r)
