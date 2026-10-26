@@ -4668,7 +4668,7 @@ const FORM = [
     ['bg_stat', 'sel', BG_STATS, { quiet: 'o_quiet', median: 'o_median', min: 'o_min', mean: 'o_mean', max: 'o_max' }, null, null, ['dynamic', 'bounded']],
     ['rise_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
     ['fall_s', 'num', 0.5, 3600, 0.5, null, ['dynamic', 'bounded']],
-    ['min_event_ms', 'num', 0, 2000, 20]]],
+    ['min_event_ms', 'num', 0, 2000, 20], ['short_ms', 'num', 0, 500, 10], ['short_over_db', 'num', 0, 30, 0.5]]],
   ['s_ki', [['classify', 'chk'], ['ki_min', 'num', 5, 90, 1, 'classify'], ['ki_bg', 'chk', 'classify'], ['ki_short', 'chk', 'classify'], ['ki_short_ms', 'num', 20, 1000, 10, 'ki_short'], ['ki_damp', 'text', 'classify'], ['ki_learn_fix', 'chk', 'classify'], ['ki_learn_min', 'num', 60, 98, 1, 'ki_learn_fix'], ['ki_notes', 'chk'], ['ki_embed', 'chk'], ['fp_store', 'chk']]],
   ['s_quiet', [['quiet_from', 'time'], ['quiet_to', 'time'], ['quiet_sunday', 'chk']]],
   ['s_rec', [['ctx_s', 'num', 0, 120, 1], ['day_layers', 'chk'], ['day_spec', 'chk'], ['co_record', 'chk']]],
@@ -4705,7 +4705,7 @@ function fillPorts(sel, dev, val) {
 }
 /* Pro Geraet einstellbare Werte (wie PER_KEYS im Server) */
 const PER = ['thr_mode', 'offset_db', 'thr_fixed_db', 'min_db', 'thr_max_db', 'bg_window', 'bg_unit', 'bg_stat', 'rise_s', 'fall_s',
-  'min_event_ms', 'pre_roll_s', 'post_roll_s', 'max_clip_s', 'active_from', 'active_to', 'save_audio', 'audio_novoice', 'day_track', 'day_layers', 'day_spec', 'fp_store'];
+  'min_event_ms', 'short_ms', 'short_over_db', 'pre_roll_s', 'post_roll_s', 'max_clip_s', 'active_from', 'active_to', 'save_audio', 'audio_novoice', 'day_track', 'day_layers', 'day_spec', 'fp_store'];
 const GLOBAL_ONLY = ['mirror_dir', 'mirror_time', 'mirror_offload', 'retention_days', 'auto_delete', 'classify', 'ki_min', 'ki_bg', 'ki_short', 'ki_short_ms', 'ki_damp', 'ki_learn_fix', 'ki_learn_min', 'ki_embed', 'ctx_s', 'co_record', 'group_pause_s', 'fn_pre_min', 'fn_post_min', 'fn_gr_pre_min', 'fn_gr_post_min', 'clip_dir', 'video_width', 'video_fps', 'video_crf', 'quiet_from', 'quiet_to', 'quiet_sunday'];
 let DEV = '';                                  // '' = Alle Geraete (Standard), sonst Quellen-ID
 function srcById(id) { return SOURCES.find(s => s.id === id); }
@@ -6899,13 +6899,15 @@ async function levLoad(force) {
   const src = LEV.src === 'sel' ? selSrc : 'all', key = [lastCount, src, fa, fb, LEV.rng].join('|');
   if (!force && key === LEV.key) return; LEV.key = key;
   const id = ++LEV.req; levTitleSet();
-  try { const j = await (await fetch('events?src=' + encodeURIComponent(src) + '&n=' + (win ? 500 : 5000) + '&from=' + dtl(new Date(fa)).slice(0, 16) + '&to=' + dtl(new Date(fb)).slice(0, 16), { cache: 'no-store' })).json(); if (id !== LEV.req) return; LEV.data = j; LEV.fa = fa; LEV.fb = fb; LEV.sig = ''; levRender(); } catch (e) { LEV.key = ''; }
+  try { const j = await (await fetch('events?src=' + encodeURIComponent(src) + '&n=' + (win ? 500 : 5000) + '&from=' + dtl(new Date(fa)).slice(0, 16) + '&to=' + dtl(new Date(fb)).slice(0, 16), { cache: 'no-store' })).json(); if (id !== LEV.req) return; LEV.data = j; LEV.at = Date.now(); LEV.fa = fa; LEV.fb = fb; LEV.sig = ''; levRender(); } catch (e) { LEV.key = ''; }
 }
 function levTick() {                                  // sichtbarer Bereich ändert sich (Live läuft, Zoomen, Verschieben): Tabelle mitführen
   if (NV.open || !$('ldev') || document.hidden) return;
-  if (!LEV.vis) { if (LEV.rng === '24h' || LEV.rng === 'today') levLoad(); return; }   // rollende Zeiträume: neu holen, wenn sich die Minute bzw. der Tag ändert
+  // ab 1.85.43: spätestens alle 30 s neu holen – Sensor-Ereignisse und Notizen aus GReport ändern den Störungszähler nicht (der Server antwortet aus dem Zwischenspeicher)
+  const due = Date.now() - (LEV.at || 0) > 30000;
+  if (!LEV.vis) { if (due || LEV.rng === '24h' || LEV.rng === 'today') levLoad(due); return; }
   const w = levWin(); if (!w) return;
-  if (w[0] < LEV.fa || w[1] > LEV.fb - 30000) levLoad(true); else levRender();
+  if (due || w[0] < LEV.fa || w[1] > LEV.fb - 30000) levLoad(true); else levRender();
 }
 let LTBL = null, LTBL_KEY = '';
 const levGrp = () => { try { return localStorage.getItem('gl_lev_grp') !== 'all'; } catch (e) { return true; } };   // Live-Tabelle: Standard „Ereignisse“ (zusammengefasst)

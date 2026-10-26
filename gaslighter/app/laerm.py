@@ -43,7 +43,7 @@ VERSION = "1.85.42"
 DEFAULTS = {
     "device": "default", "mic_volume": 100, "sample_rate": 16000,
     "thr_mode": "bounded", "offset_db": 10, "thr_fixed_db": -60, "min_db": -95, "thr_max_db": -30,
-    "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0,
+    "bg_window": 60, "bg_unit": "s", "bg_stat": "quiet", "rise_s": 300, "fall_s": 10, "min_event_ms": 0, "short_ms": 60, "short_over_db": 6.0,
     "pre_roll_s": 5, "post_roll_s": 5, "max_clip_s": 60, "ctx_s": 30, "save_audio": False, "audio_novoice": True,
     "day_track": True, "day_layers": True, "day_spec": True, "co_record": True, "fp_store": True,
     "group_pause_s": 120, "grp_tail_s": 120, "grp_mix": True, "fn_grp": True, "fn_pick": "peak", "ki_notes": True, "fn_assign_min": 5, "fn_pre_min": 2, "fn_post_min": 15, "fn_gr_pre_min": 10, "fn_gr_post_min": 30,
@@ -60,7 +60,7 @@ SPEC = {
     "thr_mode": ("choice", ["fixed", "dynamic", "bounded"]), "offset_db": ("num", 0.5, 40, 0.1),
     "thr_fixed_db": ("num", -120, 0, 0.1), "min_db": ("num", -120, -10, 0.1), "thr_max_db": ("num", -120, 0, 0.1),
     "bg_window": ("int", 1, 3600), "bg_unit": ("choice", ["s", "min"]), "bg_stat": ("choice", ["median", "quiet", "min", "mean", "max"]),
-    "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000),
+    "rise_s": ("num", 0.5, 3600, 0.5), "fall_s": ("num", 0.5, 3600, 0.5), "min_event_ms": ("int", 0, 2000), "short_ms": ("int", 0, 500), "short_over_db": ("num", 0, 30, 0.5),
     "pre_roll_s": ("num", 0, 30, 0.1), "post_roll_s": ("num", 0.1, 60, 0.1), "max_clip_s": ("num", 1, 300, 0.5),
     "ctx_s": ("int", 0, 120), "day_track": ("bool",), "day_layers": ("bool",), "day_spec": ("bool",), "co_record": ("bool",), "fp_store": ("bool",), "group_pause_s": ("int", 10, 3600), "grp_tail_s": ("int", 0, 3600), "grp_mix": ("bool",), "fn_grp": ("bool",), "fn_pick": ("choice", ["peak", "near"]), "ki_notes": ("bool",), "fn_assign_min": ("int", 0, 60), "fn_pre_min": ("int", 0, 120), "fn_post_min": ("int", 0, 120), "fn_gr_pre_min": ("int", 0, 120), "fn_gr_post_min": ("int", 0, 120), "save_audio": ("bool",), "audio_novoice": ("bool",), "auto_delete": ("bool",), "retention_days": ("int", 1, 3650),
     "active_from": ("time",), "active_to": ("time",), "mqtt": ("bool",), "output_dir": ("str",),
@@ -75,7 +75,7 @@ RESTART_KEYS = {"device", "sample_rate"}
 RELEARN_KEYS = {"bg_window", "bg_unit", "bg_stat"}
 # Diese Werte koennen pro Geraet (Quelle) eigen eingestellt werden
 PER_KEYS = ["thr_mode", "offset_db", "thr_fixed_db", "min_db", "thr_max_db", "bg_window", "bg_unit", "bg_stat",
-            "rise_s", "fall_s", "min_event_ms", "pre_roll_s", "post_roll_s", "max_clip_s",
+            "rise_s", "fall_s", "min_event_ms", "short_ms", "short_over_db", "pre_roll_s", "post_roll_s", "max_clip_s",
             "active_from", "active_to", "save_audio", "audio_novoice", "day_track", "day_layers", "day_spec", "fp_store"]
 
 CFG = {}
@@ -9756,7 +9756,10 @@ class Runner:
                     too_long = len(ev["blocks"]) - ev["pre_n"] >= int(round(C["max_clip_s"] * 10))
                     done_ = ev["quiet"] >= max(1, int(round(C["post_roll_s"] * 50)))
                 if done_ or too_long:
-                    if ev.get("drop"):
+                    dur_ = ev["last_hit"] - ev["first_hit"] + 0.02                       # ab 1.85.43: sehr kurze Ausschläge knapp über der Schwelle sind Rauschen, kein Klopfen
+                    if dur_ * 1000 < float(C.get("short_ms") or 0) and ev["peak"] - ev["thr"] < float(C.get("short_over_db") or 0) and not ev.get("drop"):
+                        self.__dict__["short_dropped"] = self.__dict__.get("short_dropped", 0) + 1       # nicht gespeichert (Pegel bleiben in der Tagesaufzeichnung)
+                    elif ev.get("drop"):
                         quiet_drop_log(self, ev)
                     elif ev.get("defer") and time.time() - ev["t_wall"] < ev["defer"]:
                         self.__dict__.setdefault("q_pend", []).append(ev)      # noch warten: schaltet gleich eine Regel ein (Sprachassistent)?
