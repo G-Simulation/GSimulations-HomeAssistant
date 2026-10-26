@@ -1164,6 +1164,7 @@ button.art.artck:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 .capture .timeedit{display:grid;gap:8px;padding:10px 12px;background:var(--soft);border-radius:var(--r2)}
 .capture .timeedit label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
 .capture .timeedit label:not(.check):not(.tesrc)>span{width:36px;color:var(--mut)}.capture .timeedit .tesrc>span{color:var(--mut)}
+.capture .timeedit.notime label:not(.check){opacity:.45}
 .capture .timeedit input[type=datetime-local],.capture .timeedit select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 8px;min-width:0;max-width:100%}
 .capture .check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
 .capture .check input{width:17px;height:17px;accent-color:var(--acc)}

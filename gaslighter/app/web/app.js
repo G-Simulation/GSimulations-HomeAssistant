@@ -7708,22 +7708,28 @@ function fnpShow() {
   }
   $('fnpfrom').classList.toggle('on', FNP.from != null);
   const to = $('fnptoi').value, run = $('fnprun').checked;
-  $('fnptimetxt').textContent = (FNP.fixed ? t('fc_t_at', { t: hm(at) }) : t('fc_t_now')) + (to ? ' – ' + hm(new Date(to).getTime()) : run ? ' – ' + t('fc_t_run') : '') + ' · ' + t('fc_t_change');
+  $('fnptimetxt').textContent = $('fnpnotime') && $('fnpnotime').checked ? t('fk_notime') + ' · ' + t('fc_t_change') : (FNP.fixed ? t('fc_t_at', { t: hm(at) }) : t('fc_t_now')) + (to ? ' – ' + hm(new Date(to).getTime()) : run ? ' – ' + t('fc_t_run') : '') + ' · ' + t('fc_t_change');
 }
 function timeEdit(open) {
   $('fnpext').hidden = !open; $('fnptimebtn').setAttribute('aria-expanded', String(open));
   if (open && !$('fnpfromi').value) $('fnpfromi').value = dtl(new Date(FNP.fixed && FNP.from != null ? FNP.from : nowServer()));
 }
-function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
+function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; $('fnpnotime').checked = false; fnpNotime(); timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
+function fnpNotime() {                                 // Erinnerung: Zeitfelder aus, Hinweis statt Uhrzeit
+  const nt = $('fnpnotime').checked;
+  for (const id of ['fnpfromi', 'fnptoi', 'fnpfnow', 'fnptnow', 'fnptclr', 'fnprun']) { const e = $(id); if (e) e.disabled = nt; }
+  $('fnpext').classList.toggle('notime', nt);
+  if (nt) $('fnptimetxt').textContent = t('fk_notime') + ' · ' + t('fc_t_change');
+}
 function fnpFold(open) {
   $('fnpbody').hidden = !open; $('fnptog').setAttribute('aria-expanded', open ? 'true' : 'false'); $('fnpanel').classList.toggle('shut', !open);
   try { localStorage.setItem('laerm_fnp', open ? '1' : '0'); } catch (e) { }
 }
 async function fnpSave() {
   if (!fbReqOk()) return;
-  const run = $('fnprun').checked;
-  const fixed = FNP.fixed && $('fnpfromi').value, tv = $('fnptoi').value;      // eigene Zeiten („Zeit ändern“); sonst gilt die Uhrzeit beim Speichern
-  const body = { action: 'add', id: '', from: fixed ? $('fnpfromi').value : dtl(new Date(nowServer())), to: tv || (run ? dtl(new Date(nowServer())) : ''), src: $('fnpsrc').value, text: autoText($('fnptext').value, FNP.tags), typed: !!$('fnptext').value.trim(), tags: [...FNP.tags].concat(witVal().trim() && !FNP.tags.has('zeuge') ? ['zeuge'] : []), witness: witVal(), auto: !run && !fixed && !tv, fields: fbOut() };
+  const nt = $('fnpnotime').checked, run = !nt && $('fnprun').checked;   // ab 1.85.51: Erinnerung = ohne Zeitpunkt (Zeitpunkt: jetzt), keiner Störung zugeordnet
+  const fixed = !nt && FNP.fixed && $('fnpfromi').value, tv = nt ? '' : $('fnptoi').value;      // eigene Zeiten („Zeit ändern“); sonst gilt die Uhrzeit beim Speichern
+  const body = { action: 'add', id: '', from: fixed ? $('fnpfromi').value : dtl(new Date(nowServer())), to: tv || (run ? dtl(new Date(nowServer())) : ''), src: $('fnpsrc').value, text: autoText($('fnptext').value, FNP.tags), typed: !!$('fnptext').value.trim(), tags: [...FNP.tags].concat(witVal().trim() && !FNP.tags.has('zeuge') ? ['zeuge'] : []), witness: witVal(), auto: !nt && !run && !fixed && !tv, notime: nt, fields: fbOut() };
   const msg = $('fnpmsg'); msg.className = 'msg fnpmsg';
   try {
     const r = await (await fetch('fnote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
@@ -7742,6 +7748,7 @@ function initFnp() {
   $('fnptext').addEventListener('input', () => { if ($('fnptext').value.trim()) fnpStart(); });
   $('fnpwit').addEventListener('input', () => { if ($('fnpwit').value.trim()) fnpStart(); });
   $('fnprun').onchange = () => { fnpStart(); fnpShow(); };
+  $('fnpnotime').onchange = () => { fnpNotime(); fnpShow(); };
   $('fnpsrc').addEventListener('change', fnpTarget);
   $('fnpsave').onclick = fnpSave;
   enterSave($('fnptext'), fnpSave);

@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.50"
+VERSION = "1.85.51"
 
 # =====================================================================
 # Einstellungen
@@ -7516,8 +7516,11 @@ def fnote_public(x):
     a = ms_of(x.get("from")); b = ms_of(x.get("to")) if x.get("to") else None
     ta = dt.datetime.fromtimestamp(a / 1000.0).astimezone() if a else None
     tb = dt.datetime.fromtimestamp(b / 1000.0).astimezone() if b else None
-    return dict(x, a=a, b=b or a, clock=ta.strftime("%H:%M:%S") if ta else "", clock_to=tb.strftime("%H:%M:%S") if tb else "",
-                date=ta.strftime("%Y-%m-%d") if ta else "", rz=bool(ta and is_quiet_time(ta)), free=True)
+    out = dict(x, a=a, b=b or a, clock=ta.strftime("%H:%M:%S") if ta else "", clock_to=tb.strftime("%H:%M:%S") if tb else "",
+               date=ta.strftime("%Y-%m-%d") if ta else "", rz=bool(ta and is_quiet_time(ta)), free=True)
+    if x.get("kind") == "erinnerung" and not x.get("kind_l"):     # eigene Erinnerung (ab 1.85.51): Art wie bei GReport anzeigen
+        out["kind_l"] = "Reminder" if CFG.get("language") == "en" else "Erinnerung"; out["kind_i"] = "⏰"; out["kind_c"] = ""
+    return out
 
 
 FN_PUB = {"key": None, "lst": [], "a": [], "span": 0}
@@ -7955,6 +7958,10 @@ def fnote_change(action, data):
     """add / edit / del einer freien Notiz. Antwort: die Notiz bzw. ok.
     auto (ohne eingegebene Uhrzeit): Zeitpunkt = jetzt bzw. erster Tastendruck; liegt kurz davor eine Stoerung, gilt die Notiz fuer sie."""
     tgt = None
+    notime = data.get("notime") is True                 # ab 1.85.51: Erinnerung – ohne Zeitpunkt, nie einer Störung zugeordnet (wie in GReport)
+    if notime:
+        at = ms_of(str(data.get("from") or "")[:25]) or int(time.time() * 1000)
+        data = dict(data, **{"from": dt.datetime.fromtimestamp(at / 1000.0).isoformat(timespec="seconds"), "to": "", "auto": False})
     if action == "add" and data.get("auto"):
         at = ms_of(str(data.get("from") or "")[:25]) or int(time.time() * 1000)
         src_ = re.sub(r"[^a-z0-9_]", "", str(data.get("src") or "all"))[:16] or "all"
@@ -7996,6 +8003,8 @@ def fnote_change(action, data):
                "src": src, "text": text, "tags": list(dict.fromkeys(tags)), "witness": witness}
         if fields:
             rec["fields"] = fields
+        if notime:
+            rec["notime"] = True; rec["noassign"] = True; rec["kind"] = "erinnerung"
         if action == "add":
             if len(lst) >= FNOTES_MAX:
                 return {"ok": False, "error": "limit"}
@@ -8010,6 +8019,9 @@ def fnote_change(action, data):
                 return {"ok": False, "error": "not found"}
             if "fields" in data and not fields:             # Felder ausdrücklich geleert; ohne „fields“ (Dialog) bleiben sie
                 x.pop("fields", None)
+            if "notime" in data and not notime:              # Erinnerung in eine Notiz mit Zeitpunkt umgewandelt
+                for k_ in ("notime", "noassign", "kind"):
+                    x.pop(k_, None)
             x.update(rec, edited=now)
         notes_save()
         return {"ok": True, "note": fnote_public(x), "target": tgt}

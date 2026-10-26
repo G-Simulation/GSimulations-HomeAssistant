@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.51
+
+- **Erinnerung auch in GLighter:** Im Notizbereich unter „🕒 Zeit ändern“ gibt es den Haken „Erinnerung – ohne Zeitpunkt“. Die Notiz bekommt den Zeitpunkt des Speicherns, wird keiner Störung zugeordnet und erscheint mit der Art „⏰ Erinnerung“ in Tabelle, Art-Filter und Protokoll – genau wie Erinnerungen aus GReport. Bisher ging das nur in GReport.
+
 ## 1.85.50
 
 - **Anwesenheit:** War man beim Anlegen schon länger als 24 h zu Hause, löschte der 24-h-Abgleich mit Home Assistant den Balken wieder (Home Assistant meldet einen schon laufenden Zustand mit der Anfangszeit des Abfragefensters, nicht mit der echten Wechselzeit). Jetzt bleibt der eigene Beginn stehen. Mit Test.
