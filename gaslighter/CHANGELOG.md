@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.48
+
+- **Anwesenheit** (Einstellungen → Regeln (Home Assistant), ganz oben): Person oder Handy aus Home Assistant wählen. Solange der Zustand „home“ ist, zeichnet GLighter im Tagesverlauf einen Balken „Zuhause“, jede Störung bekommt den Vermerk in Tabelle und Protokoll, und die Vergangenheit wird aus der Home-Assistant-Historie nachgeholt. So sieht man direkt, ob die Störungen zu- oder abnehmen, wenn man da ist. Technisch eine Regel „nur festhalten“ mit fester Kennung – sie erscheint auch in der Liste und lässt sich dort umbenennen. Keine Automation in Home Assistant nötig.
+
 ## 1.85.47
 
 - **Ereignisliste viel schneller:** Die fertigen Tabellenzeilen werden je Störung zwischengespeichert (bis 5000 Zeilen kosteten je Anfrage 1–12 s, gemessen über die neue Zeitmessung im Protokoll). Neu gerechnet wird nur nach Änderungen (Einordnung, Notizen, Stichwörter) oder spätestens alle 2 Minuten.

@@ -3916,8 +3916,28 @@ function haRender() {
   const box = $('halist'); if (!box) return;
   haOverview(HAR.rules);
   box.innerHTML = '';
+  box.appendChild(haPresence());
   if (!HAR.rules.length) box.appendChild(el('div', { className: 'ntnone', textContent: t('ha_none') }));
   HAR.rules.forEach((r, idx) => box.appendChild(haCard(r, idx)));
+}
+/* ab 1.85.48: Anwesenheit als Einstellung – Person/Handy aus Home Assistant; dahinter steckt eine Regel „nur festhalten“ mit fester Kennung */
+function haPresence() {
+  const cur = HAR.rules.find(r => r.id === 'presence'), ent = cur ? cur.entity : '';
+  const L = el('label', { className: 'hafld hapres' }); L.append(el('span', { textContent: t('ha_pres') }));
+  const sel = el('select'); option(sel, '', t('ha_pres_none'));
+  const ents = (HAR.ents || []).filter(e => /^(person|device_tracker)\./.test(e.id));
+  if (ent && !ents.some(e => e.id === ent)) ents.unshift({ id: ent, name: ent, state: '' });
+  ents.forEach(e => option(sel, e.id, (e.name || e.id) + (e.state ? ' (' + e.state + ')' : '')));
+  sel.value = ent; L.appendChild(sel); L.title = t('ha_pres_hint');
+  sel.onchange = () => {
+    const v = sel.value;
+    if (!v) HAR.rules = HAR.rules.filter(r => r.id !== 'presence');
+    else if (cur) cur.entity = v;
+    else HAR.rules.unshift({ id: 'presence', entity: v, states: 'home', mode: 'note', label: t('ha_pres_lbl'), src: 'all', enabled: true, dur: 'state', cap_min: 0, after_min: 0, max_h: 0, dur_s: 5 });
+    haSave().then(haRender);
+  };
+  const w = el('div', { className: 'hapresbox' }); w.append(L, el('small', { className: 'hint', textContent: t('ha_pres_hint') }));
+  return w;
 }
 function haCard(r, idx) {
   const key = r.id || '#new';

@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.47"
+VERSION = "1.85.48"
 
 # =====================================================================
 # Einstellungen
@@ -3048,7 +3048,7 @@ def _ha_entities():
         return {"ok": False, "error": str(e)[:160], "entities": []}
     out = [{"id": x.get("entity_id"), "name": (x.get("attributes") or {}).get("friendly_name") or "", "state": x.get("state")}
            for x in lst if isinstance(x, dict) and str(x.get("entity_id", "")).split(".")[0] in
-           ("media_player", "binary_sensor", "sensor", "switch", "input_boolean", "light", "fan", "vacuum", "remote", "device_tracker", "select", "climate", "assist_satellite")]
+           ("media_player", "binary_sensor", "sensor", "switch", "input_boolean", "light", "fan", "vacuum", "remote", "device_tracker", "person", "select", "climate", "assist_satellite")]
     out.sort(key=lambda e: e["id"])
     return {"ok": True, "entities": out[:2000]}
 

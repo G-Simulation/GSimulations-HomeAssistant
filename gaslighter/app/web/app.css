@@ -1016,6 +1016,7 @@ fieldset.prolocked .f>:not(small){opacity:.55}
 .hagrid{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
 .hafld{display:grid;gap:3px;font-size:12px;color:var(--mut);min-width:0}.hafld>span{font-weight:600}.hafld em{font-style:normal}
 .hafld input[type=text],.hafld select{min-width:180px;max-width:100%}.hafld .n{width:80px}
+.hapresbox{display:grid;gap:4px;padding:8px 10px;margin-bottom:8px;border:1px solid var(--bd);border-radius:10px;background:var(--card)}.hapresbox .hafld{font-size:13px;color:var(--fg)}.hapresbox small.hint{font-size:11px;color:var(--mut);line-height:1.35}
 .hafld:has(em){grid-template-columns:auto auto;align-items:center}.hafld:has(em)>span{grid-column:1/-1}
 .hawide{grid-template-columns:1fr auto auto!important;min-width:min(100%,340px)}.haslider{width:100%;accent-color:var(--thr)}
 .hachkl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--tx)}.hachkl>span{font-weight:400}
