@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.45"
+VERSION = "1.85.46"
 
 # =====================================================================
 # Einstellungen
@@ -6942,6 +6942,7 @@ def qt_all():
         if QT["data"] is None:
             d = read_json(qt_path()) if os.path.exists(qt_path()) else {}
             QT["data"] = d if isinstance(d, dict) else {}
+            QT["lay_sig"] = qt_lay_sig(QT["data"])
         for k in ("own", "hide", "use", "words", "nope"):
             if not isinstance(QT["data"].get(k), dict):
                 QT["data"][k] = {}
@@ -6980,17 +6981,75 @@ def qt_groups_all():
     return sorted(base, key=lambda g: (pos.get(g, 10 ** 6), base.index(g)))
 
 
-def qt_save():
+# Tasten-Abgleich mit GReport (ab 1.85.46): sind beide installiert und verbunden, gilt in beiden dieselbe Tastenbelegung
+# (eigene Tasten, Rubriken, Namen, Farben, Pflicht, ausgeblendet, Reihenfolge). Wer zuletzt geändert hat, gewinnt (lay_ts);
+# Zähler (use/words/nope) bleiben je App. Gelesen wird nur die Datei der anderen App, geschrieben nur die eigene.
+QT_LAY_KEYS = ("own", "hide", "ren", "grp", "gcol", "req", "when", "groups", "gren", "ghide", "gone", "ghelp", "order", "gorder", "mode")
+QT_SYNC = {"last": 0.0}
+
+
+def qt_lay_sig(d):
+    return json.dumps({k: d.get(k) for k in QT_LAY_KEYS if d.get(k)}, sort_keys=True, ensure_ascii=False)
+
+
+def qt_sync_pull():
+    """Tastenbelegung von GReport übernehmen, wenn sie dort zuletzt geändert wurde."""
+    if not (os.path.isdir(GR_DIR) and gr_status().get("linked")):
+        return False
+    f = os.path.join(GR_DIR, "schnellwahl.json")
+    try:
+        st = os.stat(f)
+    except OSError:
+        return False
+    if st.st_mtime <= QT_SYNC["last"]:
+        return False
+    QT_SYNC["last"] = st.st_mtime
+    o = read_json(f)
+    if not isinstance(o, dict):
+        return False
+    with QT_LOCK:
+        d = qt_all()
+        if float(o.get("lay_ts") or 0) <= float(d.get("lay_ts") or 0) or qt_lay_sig(o) == qt_lay_sig(d):
+            return False
+        for k in QT_LAY_KEYS:
+            if k in o:
+                d[k] = o[k]
+            else:
+                d.pop(k, None)
+        d["lay_ts"] = float(o.get("lay_ts") or 0)
+        qt_save(sync=True)
+    log("Tasten von GReport übernommen")
+    return True
+
+
+def qt_sync_loop():
+    while True:
+        time.sleep(20)
+        try:
+            qt_sync_pull()
+        except Exception as e:
+            log("Tasten-Abgleich:", e)
+
+
+def qt_save(sync=False):
     if QT.get("batch"):                                  # mehrere Änderungen auf einmal: erst am Ende speichern
         QT["dirty"] = True
         return
     with QT_LOCK:
         if QT["data"] is None:
             return
+        d = qt_all()
+        if not sync:
+            sig = qt_lay_sig(d)
+            if sig != QT.get("lay_sig"):               # Tastenbelegung geändert: Zeitstempel für den Abgleich mit GReport
+                d["lay_ts"] = time.time()
+            QT["lay_sig"] = sig
+        else:
+            QT["lay_sig"] = qt_lay_sig(d)
         os.makedirs(os.path.dirname(qt_path()), exist_ok=True)
         tmp = qt_path() + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(qt_all(), f, ensure_ascii=False, separators=(",", ":"))
+            json.dump(d, f, ensure_ascii=False, separators=(",", ":"))
         os.replace(tmp, qt_path())
 
 
@@ -10163,6 +10222,7 @@ def main():
     threading.Thread(target=ha_watch, daemon=True).start()
     threading.Thread(target=gr_hello, daemon=True).start()
     threading.Thread(target=tiles_watch, daemon=True).start()
+    threading.Thread(target=qt_sync_loop, daemon=True).start()        # ab 1.85.46: Tasten mit GReport abgleichen
     threading.Thread(target=mem_watch, daemon=True).start()
     threading.Thread(target=kl_worker, daemon=True).start()        # ab 1.84.0: aus eigenen Korrekturen der Geräuschart lernen (nur Vorschläge)
     nl_soon(900)                                     # ab 1.85.27: nach dem Start einmal aus Notizen lernen (auch GReport-Notizen)
@@ -12762,21 +12822,43 @@ def events_summary(src="all", n=200, plist="", rng=None, art=""):
     with e["lock"]:                                   # gleiche Anfrage läuft schon: warten und deren Ergebnis nehmen
         if e["res"] is not None and e["ver"] == ver and time.time() - e["t"] < EVS_TTL:
             return e["res"]
-        res = _events_summary(src, n, plist, rng, art)
+        with EVS_SEM:                                 # ab 1.85.46: höchstens 2 Berechnungen zugleich – mehr machen sich nur gegenseitig langsam
+            t0 = time.time(); EVS_TL.d = {}
+            res = _events_summary(src, n, plist, rng, art)
+            dur = time.time() - t0
+            if dur > 3:                               # langsam: ins Protokoll, mit den Anteilen der Schritte
+                log(f"Ereignisliste {src} n={n} {rk[0][:16] if rk else '-'}..{rk[1][:16] if rk else '-'}: {dur:.1f} s ("
+                    + ", ".join(f"{k} {v:.1f}" for k, v in EVS_TL.d.items()) + ")")
         e.update(res=res, ver=ver, t=time.time())
         return res
 
 
+EVS_SEM = threading.BoundedSemaphore(2)
+EVS_TL = threading.local()
+
+
+def _evs_t(name, t0):
+    """Zeitanteil eines Schritts der Ereignisliste festhalten (je Thread); gibt die neue Startzeit zurück."""
+    now = time.time(); d = getattr(EVS_TL, "d", None)
+    if d is not None:
+        d[name] = d.get(name, 0.0) + (now - t0)
+    return now
+
+
 def _events_summary(src="all", n=200, plist="", rng=None, art=""):
+    _t = time.time()
     allrows = read_log()
     keyed = [dict(r, k=k) for r, k in zip(allrows, row_keys(allrows))]
     keyed_all = keyed
+    _t = _evs_t("lesen", _t)
     if rng:                                          # Zeitraum (Reiter Protokolle)
         a_, b_ = rng[0].strftime("%Y-%m-%dT%H:%M:%S"), rng[1].strftime("%Y-%m-%dT%H:%M:%S")
         keyed = [r for r in keyed if a_ <= (r.get("start") or "")[:19] < b_]
     keyed = sorted(keyed, key=lambda r: r.get("start") or "")
     by_k, I, G = incidents(keyed)                    # ueber alle Geraete (auch wenn unten nach einem Geraet gefiltert wird)
+    _t = _evs_t("gruppen", _t)
     MF = muster_map(keyed, inc=(by_k, I))           # Musterfilter: nur Kennzeichen, nichts wird entfernt
+    _t = _evs_t("muster", _t)
     rows = keyed if src == "all" else [r for r in keyed if r["quelle_id"] == src]
     if plist or art:                                 # Protokollliste, Art
         rows = [r for r in rows if ev_match(r, r["k"], plist, art)]
@@ -12801,6 +12883,7 @@ def _events_summary(src="all", n=200, plist="", rng=None, art=""):
         except (ValueError, IndexError):
             pass
     out_rows = []
+    _t = _evs_t("zaehlen", _t)
     for r in rows[-(n or EVENTS_MAX):][::-1]:
         e = ev_row(r)
         ig = by_k.get(r["k"])
@@ -12810,6 +12893,7 @@ def _events_summary(src="all", n=200, plist="", rng=None, art=""):
         if r["k"] in MF:
             e["mf"] = MF[r["k"]]
         out_rows.append(e)
+    _t = _evs_t("zeilen", _t)
     if out_rows:                                     # Regeln „nur festhalten“ (z. B. Fernseher): bei jeder Störung vermerken, was gerade an war
         try:
             ts_ = [(dt.datetime.fromisoformat(e["start"]).timestamp() * 1000, float(e.get("dauer_s") or 0) * 1000) for e in out_rows]
@@ -12832,6 +12916,7 @@ def _events_summary(src="all", n=200, plist="", rng=None, art=""):
                     rs_[x[2]] = max(rs_.get(x[2], 0), x[3])
             if rs_:
                 e["raise_on"] = [[k, v] for k, v in sorted(rs_.items())]
+    _t = _evs_t("ha", _t)
     sc_sum = None                                    # Sensor-Bestätigung: nur Anzeige, beim Lesen berechnet
     try:
         bk = {r["k"]: r for r in counted}; bk.update({e["k"]: e for e in out_rows if e.get("k")})
@@ -12844,11 +12929,14 @@ def _events_summary(src="all", n=200, plist="", rng=None, art=""):
             sc_sum = BC.summary([bcr[r["k"]]["sum"] for r in counted if r["k"] in bcr])
     except Exception as e_:
         log("Sensor-Bestätigung nicht berechnet:", e_)
+    _t = _evs_t("sensoren", _t)
     used_i = {e["inc"] for e in out_rows if "inc" in e}; used_g = {e["grp"] for e in out_rows if "grp" in e}
+    _sens = _sens_for(src, rng); _t = _evs_t("sens_liste", _t)
+    _fn = _fnotes_asg(_fnotes_for(src, rng), keyed_all); _t = _evs_t("notizen", _t)
     return {"total": sum(days.values()), "sc_sum": sc_sum, "rows": len(rows), "bg_n": bg_n, "mf_n": mf_n, "muster": muster_names() if MF else {}, "today": days.get(dt.date.today().isoformat(), 0), "hours": hours,
             "days": sorted(days.items(), reverse=True)[:(62 if rng else 14)], "n": n,
             "events": out_rows, "grps": {str(k): v for k, v in G.items() if k in used_g},
-            "sens": _sens_for(src, rng), "ha_names": ha_rule_names(), "fnotes": _fnotes_asg(_fnotes_for(src, rng), keyed_all), "fn_assign_min": CFG.get("fn_assign_min", 5),
+            "sens": _sens, "ha_names": ha_rule_names(), "fnotes": _fn, "fn_assign_min": CFG.get("fn_assign_min", 5),
             "fn_pre_min": int(CFG.get("fn_pre_min", 2) or 0), "fn_post_min": int(CFG.get("fn_post_min", 15) or 0),
             "group_pause_s": int(CFG.get("group_pause_s", 120) or 120), "grp_tail_s": int(CFG.get("grp_tail_s", 120) or 0),
             "grp_mix": CFG.get("grp_mix", True) is not False, "fn_grp": CFG.get("fn_grp", True) is not False, "fn_pick": CFG.get("fn_pick", "peak"),

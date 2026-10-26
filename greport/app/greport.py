@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 import lizenz  # noqa: E402
 import felder  # noqa: E402
 
-VERSION = "1.12.10"
+VERSION = "1.12.11"
 BRAND = "GReport"
 OPTIONS = os.environ.get("GR_OPTIONS", "/data/options.json")
 PRIV = os.environ.get("GR_PRIVATE", "/data")                    # nur für GReport (Pro-Schlüssel)
@@ -187,6 +187,7 @@ def qt_all():
         if QT["data"] is None:
             d = read_json(qt_path(), {})
             QT["data"] = d if isinstance(d, dict) else {}
+            QT["lay_sig"] = qt_lay_sig(QT["data"])
         for k in ("own", "hide", "use", "words", "nope", "ren", "grp", "gcol", "req", "when", "groups", "gren", "ghide", "gone", "ghelp"):
             if not isinstance(QT["data"].get(k), dict):
                 QT["data"][k] = {}
@@ -198,12 +199,59 @@ def qt_all():
         return QT["data"]
 
 
-def qt_save():
+# Tasten-Abgleich mit GLighter (ab 1.12.11): sind beide installiert und verbunden, gilt in beiden dieselbe Tastenbelegung.
+# Wer zuletzt geändert hat, gewinnt (lay_ts); Zähler (use/words/nope) bleiben je App. Gelesen wird nur GLighters Datei.
+QT_LAY_KEYS = ("own", "hide", "ren", "grp", "gcol", "req", "when", "groups", "gren", "ghide", "gone", "ghelp", "order", "gorder", "mode")
+QT_SYNC = {"last": 0.0}
+
+
+def qt_lay_sig(d):
+    return json.dumps({k: d.get(k) for k in QT_LAY_KEYS if d.get(k)}, sort_keys=True, ensure_ascii=False)
+
+
+def qt_sync_pull():
+    if not glighter().get("linked"):
+        return False
+    f = os.path.join(GL_DIR, "clips", "schnellwahl.json")
+    try:
+        st = os.stat(f)
+    except OSError:
+        return False
+    if st.st_mtime <= QT_SYNC["last"]:
+        return False
+    QT_SYNC["last"] = st.st_mtime
+    o = read_json(f, {})
+    if not isinstance(o, dict):
+        return False
+    with QT_LOCK:
+        d = qt_all()
+        if float(o.get("lay_ts") or 0) <= float(d.get("lay_ts") or 0) or qt_lay_sig(o) == qt_lay_sig(d):
+            return False
+        for k in QT_LAY_KEYS:
+            if k in o:
+                d[k] = o[k]
+            else:
+                d.pop(k, None)
+        d["lay_ts"] = float(o.get("lay_ts") or 0)
+        qt_save(sync=True)
+    log("Tasten von GLighter übernommen")
+    return True
+
+
+def qt_save(sync=False):
     if QT.get("batch"):                                  # mehrere Änderungen auf einmal („Layout anpassen“ → Fertig): erst am Ende speichern
         QT["dirty"] = True
         return
     with QT_LOCK:
-        write_json(qt_path(), qt_all())
+        d = qt_all()
+        if not sync:
+            sig = qt_lay_sig(d)
+            if sig != QT.get("lay_sig"):
+                d["lay_ts"] = time.time()
+            QT["lay_sig"] = sig
+        else:
+            QT["lay_sig"] = qt_lay_sig(d)
+        write_json(qt_path(), d)
     mqtt_announce()
     diary_soon()
 
@@ -3454,11 +3502,17 @@ def bg_loop():
     while True:
         try:
             heartbeat(); daily_backup()
+            for _ in range(3):                           # alle 20 s: Tasten mit GLighter abgleichen (ab 1.12.11)
+                try:
+                    qt_sync_pull()
+                except Exception as e:
+                    log("Tasten-Abgleich:", e)
+                time.sleep(20)
             if MQ["ok"] and MQ["day"] != dt.date.today():        # nach Mitternacht: „Notizen heute“ wieder bei 0
                 mqtt_notes()
         except Exception as e:
             log("Hintergrund:", e)
-        time.sleep(60)
+            time.sleep(60)
 
 
 # =====================================================================

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.85.46
+
+- **Livespur setzte aus, Rundlauf stockte – Ursache behoben:** Die Tabelle unter dem Live-Bild holte den sichtbaren Zeitraum mit nur einer Minute Vorlauf. Das Livebild lief dem Fenster sofort davon, und solange eine Antwort ausstand, ging jede Sekunde eine neue Anfrage raus. Bei vielen Störungen am Tag dauert eine solche Antwort Sekunden; die Anfragen belegten alle Verbindungen des Browsers (Chrome: 6 je Server), Livespur, Geräteliste und Rundlauf warteten darauf. Jetzt: nie zwei Tabellen-Anfragen zugleich, 5 Minuten Vorlauf, spätestens alle 30 s neu. Auf dem Server rechnen höchstens zwei Ereignislisten gleichzeitig; dauert eine länger als 3 s, steht im Protokoll, welcher Schritt wie lange brauchte.
+- **Rundlauf (Slideshow) der Live-Ansicht:** Ein Gerät, das kurz nicht meldet (Handy: Funkloch, Sperrbildschirm), bleibt 30 s im Rundlauf statt sofort herauszufallen (Leiste verschwand, Sprung zurück). Der Wechsel wartet höchstens 2,5 s auf die vorab geladenen Daten des nächsten Geräts, danach wird ohne Vorrat gewechselt. Prüfung alle 0,5 s statt 1 s, Fehler können den Rundlauf nicht mehr anhalten.
+- **Live-Tabelle:** Spaltenfilter als Shoelace-Auswahl (schließt bei Klick daneben, wird nicht abgeschnitten); Geräuschart je Störung in der Tabelle und im Art-Filter; wächst eine Gruppe (weitere Störung dazu), aktualisiert die Zeile; leere Felder zeigen „–“ statt nichts; der AG-Grid-Standardfilter an der Geräte-Spalte ist weg.
+- **Schnellwahl-Tasten mit GReport abgleichen:** Sind beide Apps installiert und verbunden, haben beide dieselbe Tastenbelegung (eigene Tasten, Umbenennungen, Ausblendungen, Gruppen, Reihenfolge, Pflichtfelder). Wer zuletzt geändert hat, gewinnt; die Nutzungszähler bleiben je App. Abgleich alle 20 s.
+
 ## 1.85.45
 
 - Versionsangabe im Programm war seit 1.85.43 nicht mitgezogen (zeigte 1.85.42).

@@ -1,5 +1,5 @@
 name: "GReport"
-version: "1.12.10"
+version: "1.12.11"
 slug: greport
 description: "Notizen zu Störungen festhalten – mit Schnellwahl, Zeugen und Logbuch in Home Assistant; arbeitet mit GLighter zusammen / Record notes about disturbances – quick select, witnesses, Home Assistant logbook; works with GLighter"
 url: "https://www.gsimulations.de/greport/"

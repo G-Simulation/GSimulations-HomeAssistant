@@ -1329,7 +1329,13 @@ const lsNum = (k, d, lo, hi) => { try { const v = +localStorage.getItem(k); retu
 const TILE = { on: (() => { try { return localStorage.getItem('laerm_tileshow') !== '0'; } catch (e) { return true; } })(), at: Date.now(), manual: false, busy: false, key: '',
   ms: lsNum('laerm_tile_s', 8, 3, 120) * 1000, anim: lsNum('laerm_tile_anim', 600, 150, 3000) };
 const rotActive = () => TILE.on && !TILE.manual && liveDevs().length > 1;    // Rundlauf laeuft (nicht von Hand angehalten)
-function liveDevs() { return SOURCES.filter(x => x.enabled !== false && x.online); }
+/* ab 1.85.46: ein Geraet bleibt im Rundlauf, wenn es nur kurz nicht meldet (Handy: Funkloch, Sperrbildschirm) – sonst
+   verschwindet die Leiste, springt zurueck und der Rundlauf wirkt unruhig. Nach 30 s ohne Meldung faellt es heraus. */
+const SEEN = {}; const SEEN_MS = 30000;
+function liveDevs() {
+  const now = Date.now();
+  return SOURCES.filter(x => { if (x.enabled === false) return false; if (x.online) SEEN[x.id] = now; return x.online || now - (SEEN[x.id] || 0) < SEEN_MS; });
+}
 function tileHeld() {
   return !view.live || document.hidden || NV.open || PV.open || !!document.querySelector('dialog[open]') || !!drag;
 }
@@ -1366,15 +1372,20 @@ function slideCopy(vp) {
 async function tileGo(id, now) {
   if (TILE.busy || id === selSrc) return;
   TILE.busy = true;
+  try { await tileGo1(id, now); } catch (e) { console.warn('Rundlauf', e); }
+  finally { TILE.at = Date.now(); TILE.busy = false; TILE.pf = null; TILE.pfp = null; tileBar(); }   // busy nie haengen lassen
+}
+const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+async function tileGo1(id, now) {
   const c = DCACHE[id], from = selSrc;
-  if (!c || Date.now() - c.t > 4000) { try { await prefetchDev(id); } catch (e) { } }
-  if (selSrc !== from || (!now && !rotActive())) { TILE.busy = false; return; }      // inzwischen von Hand gewaehlt
+  if (!c || Date.now() - c.t > 4000) { try { await withTimeout(TILE.pfp || prefetchDev(id), 2500); } catch (e) { } }   // hoechstens kurz warten, sonst ohne Vorrat wechseln (Daten kommen dann live)
+  if (selSrc !== from || (!now && !rotActive())) return;      // inzwischen von Hand gewaehlt
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const parts = reduce ? [] : [...document.querySelectorAll('#liveview .slidevp')].filter(v => v.offsetParent).map(slideCopy).filter(Boolean);   // alle geräteabhängigen Bereiche (Kennzahlen, Graph, Video, Spuren, Spektrogramm) gleiten zusammen
   parts.forEach(p => { p.inner.style.transition = 'none'; p.inner.style.transform = 'translateX(100%)'; });
   selectSource(id, true);
   markDirty(); updateStatus();
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));       // neues Geraet ist gezeichnet (noch rechts ausserhalb)
+  await withTimeout(new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))), 1000);   // neues Geraet ist gezeichnet (noch rechts ausserhalb); im Hintergrund-Tab kommt kein Frame
   const d = TILE.anim, ease = 'cubic-bezier(.65,0,.35,1)';
   parts.forEach(p => {
     p.vp.style.height = Math.max(p.vp.offsetHeight, p.inner.offsetHeight) + 'px';
@@ -1383,7 +1394,6 @@ async function tileGo(id, now) {
   });
   if (parts.length) await new Promise(r => setTimeout(r, d + 30));
   parts.forEach(p => { p.cl.remove(); p.inner.style.transition = p.inner.style.transform = ''; p.vp.style.height = ''; });
-  TILE.at = Date.now(); TILE.busy = false; TILE.pf = null; tileBar();
 }
 /* Einstellungen des Rundlaufs (pro Browser): Anzeigedauer je Geraet und Geschwindigkeit des Schiebens */
 function tileSetPop() {
@@ -1404,7 +1414,7 @@ function tileTick() {
     if (tileHeld()) TILE.at = Date.now();             // waehrend man etwas tut: Zeit laeuft nicht
     else {
       const i = devs.findIndex(d => d.id === selSrc), nx = devs[(i + 1) % devs.length].id;
-      if (Date.now() - TILE.at >= TILE.ms - 2500 && TILE.pf !== nx) { TILE.pf = nx; prefetchDev(nx).catch(() => { }); }   // naechstes Geraet vorab laden
+      if (Date.now() - TILE.at >= TILE.ms - 2500 && TILE.pf !== nx) { TILE.pf = nx; TILE.pfp = prefetchDev(nx).catch(() => { }); }   // naechstes Geraet vorab laden (tileGo wartet hoechstens kurz darauf)
       if (Date.now() - TILE.at >= TILE.ms || i < 0) tileGo(nx);
     }
   }
@@ -1951,16 +1961,16 @@ function evGrid(evs, sv, useArt, grpMode) {
         const r = d.r; return `${fnAsgHTML(d.fn, EV)}${(r.ha_on || []).filter(n => !SHIDE.has('ha:' + n)).map(n => `<span class="art haon" title="${esc(t('ha_on_tip'))}">📡 ${esc(n)} ${esc(t('ha_on'))}</span>`).join('')}${(r.raise_on || []).map(x => `<span class="art haraisec" title="${esc(t('ha_raise_tip'))}">📈 ${esc(x[0])} +${esc(fmtDb(x[1]))} dB</span>`).join('')}${profChip(r)}${(r.labels || []).map(n => `<span class="art lbl" title="${esc(t('lb_own'))}">🏷 ${esc(n)}</span>`).join('')}${mfChip(r)}${r.art && !(r.prof && r.art === 'other' && !r.art_man) ? artChip(r.art, r.art_c, r.art_man || r.art_ok, CUR && CUR.classify === false ? '' : r.k, r.art_lern != null ? r.art_lki : null) : (r.datei && !(r.labels || []).length && !r.prof ? '<span class="noclip" title="' + esc(t('art_pending')) + '">…</span>' : (r.labels || []).length || r.prof ? '' : '<span class="noclip">–</span>')}`; } },
     { f: 'sc', title: t('sc_col'), minW: 165, vis: hasSc, prio: 3, sort: false, cls: 'scol', flt: 'ms', aria: t('sc_col_a'),
       vals: () => SC_ST.map(scLabel), fpass: (v, d) => v.includes(scLabel(scOf(d))),
-      html: d => d._t === 'ev' ? scChip(d.r.sc) : '' },
-    { f: 'kinds', title: t('kinds_col'), minW: 150, grow: 2, vis: hasKinds, prio: 4, sort: false, cls: 'kinds', html: d => d._t === 'ev' ? kindsHTML(d.r.kinds, EV.fine) : d._t === 'grp' ? pillMerge(d._children.filter(c => c._t === 'ev').map(c => kindsHTML(c.r.kinds, EV.fine))) : '' },
+      html: d => d._t === 'ev' ? (scChip(d.r.sc) || '<span class="noclip">–</span>') : '<span class="noclip">–</span>' },
+    { f: 'kinds', title: t('kinds_col'), minW: 150, grow: 2, vis: hasKinds, prio: 4, sort: false, cls: 'kinds', html: d => (d._t === 'ev' ? kindsHTML(d.r.kinds, EV.fine) : d._t === 'grp' ? pillMerge(d._children.filter(c => c._t === 'ev').map(c => kindsHTML(c.r.kinds, EV.fine))) : '') || '<span class="noclip">–</span>' },
     { f: 'devs', title: t('devs_col'), minW: 130, vis: hasDev, prio: 5, sort: false, cls: 'devc',
       html: d => { if (d._t !== 'ev') return ''; const x = d.r.devs || []; if (x.length < 2) return '<span class="noclip">–</span>';
         return x.map((v, i) => `<span class="dvp${i === 0 ? ' top' : ''}${v[3] === d.r.k ? ' own' : ''}" title="${esc(v[1])}">${esc(shortName(v[1]))} ${v[2] != null ? v[2].toFixed(0) : '–'}</span>`).join(''); } },
     { f: 'dur', title: t('dur'), sort: 'num', minW: 90, prio: 2, cls: 'dur', html: d => d._t === 'grp' ? esc(fmtSpan(d.dur)) : d._t === 'note' && !d.dur ? '–' : esc(fmtDur(d.dur)) + (d._t === 'sens' && d.x.open ? ' · ' + esc(t('mot_open')) : '') },
     { f: 'pk', title: t('peak'), sort: 'num', minW: 105, prio: 3, cls: 'pk',
-      html: d => d.pk == null ? '' : d._t === 'sens' ? esc(f2(d.pk)) + ' <small>' + esc(d.x.unit || '') + '</small>' : esc(fdb(d.pk)) + ' <small>dBFS</small>' },
-    { f: 'thr', title: t('thr_col'), sort: 'num', minW: 120, prio: 6, html: d => d._t === 'ev' ? esc(fdb(d.thr)) : '' },
-    { f: 'bg', title: t('bg_col'), sort: 'num', minW: 140, prio: 6, html: d => d._t === 'ev' ? esc(fdb(d.bg)) : '' },
+      html: d => d.pk == null ? '<span class="noclip">–</span>' : d._t === 'sens' ? esc(f2(d.pk)) + ' <small>' + esc(d.x.unit || '') + '</small>' : esc(fdb(d.pk)) + ' <small>dBFS</small>' },
+    { f: 'thr', title: t('thr_col'), sort: 'num', minW: 120, prio: 6, html: d => d._t === 'ev' ? esc(fdb(d.thr)) : d._t === 'grp' && d._children.some(c => c._t === 'ev') ? esc(fdb(Math.min(...d._children.filter(c => c._t === 'ev').map(c => c.thr)))) : '<span class="noclip">–</span>' },
+    { f: 'bg', title: t('bg_col'), sort: 'num', minW: 140, prio: 6, html: d => d._t === 'ev' ? esc(fdb(d.bg)) : d._t === 'grp' && d._children.some(c => c._t === 'ev') ? esc(fdb(Math.max(...d._children.filter(c => c._t === 'ev').map(c => c.bg)))) : '<span class="noclip">–</span>' },
     { f: 'clip', title: t('spur_col'), sort: false, minW: 70, vis: hasClip, prio: 5, cls: 'clipc',
       html: d => d._t === 'ev' ? clipHTML(d.r) : '',
       click: (e, d) => { if (d._t === 'ev' && e.target.closest('.vbtn')) { e.stopPropagation(); openEvent(d.id); } else return false; } },
@@ -2058,45 +2068,39 @@ class GLFilter {
 class GLFloat {
   init(p) {
     this.p = p; const c = this.c = p.column.getColDef().context, lab = t('g_flt', { c: c.title || '' });
-    if (c.flt === 'ms') this.e = msButton(c.vals, () => this.v || [], v => this.set(v));
+    if (c.flt === 'ms') { this.e = msButton(c.vals, () => this.v || [], v => this.set(v)); this.b = this.e.querySelector('.msf'); }
     else {
       this.e = el('input', { type: c.flt === 'num' ? 'number' : 'text', placeholder: c.flt === 'num' ? '≥' : '…', className: 'gfi' });
       if (c.flt === 'num') this.e.step = 'any';
       let tm = 0; this.e.oninput = () => { clearTimeout(tm); tm = setTimeout(() => this.set(this.e.value.trim()), 250); };
     }
-    this.e.setAttribute('aria-label', lab); this.e.title = lab;
+    (this.b || this.e).setAttribute('aria-label', lab); (this.b || this.e).title = lab;
   }
   set(v) { this.v = gOn(v) ? v : null; this.p.parentFilterInstance(f => f.set(this.v)); }
-  onParentModelChanged(m) { this.v = m ? m.v : null; if (this.c.flt === 'ms') this.e._label(); else if (document.activeElement !== this.e) this.e.value = this.v == null ? '' : this.v; }
+  onParentModelChanged(m) { this.v = m ? m.v : null; if (this.c.flt === 'ms') this.b._label(); else if (document.activeElement !== this.e) this.e.value = this.v == null ? '' : this.v; }
   getGui() { return this.e; }
 }
 class GLHead { init(p) { this.e = p.column.getColDef().context.head(); } getGui() { return this.e; } refresh() { return false; } }
-function msButton(valuesFn, getCur, onChange) {      // „alle …“ bzw. Auswahl; Liste mit Häkchen öffnet darunter
-  const b = el('button', { type: 'button', className: 'msf' });
-  b._label = () => { const cur = getCur(); b.textContent = (!cur.length ? t('sf_any') : cur.length === 1 ? cur[0] : t('ms_n', { n: cur.length })) + ' ▾'; b.classList.toggle('on', cur.length > 0); };
-  b._label(); b.setAttribute('aria-haspopup', 'true'); b.setAttribute('aria-expanded', 'false');
-  b.onclick = e => {
-    e.stopPropagation(); document.querySelectorAll('.msfpop').forEach(x => x.remove());
+function msButton(valuesFn, getCur, onChange) {      // „alle …“ bzw. Auswahl; Liste mit Häkchen als Shoelace-Dropdown (ab 1.85.46: schließt bei Klick daneben/Esc, bleibt beim Ankreuzen offen)
+  const w = el('sl-dropdown', { className: 'sfltd msfd' }); w.setAttribute('placement', 'bottom-start'); w.setAttribute('distance', '4'); w.setAttribute('hoist', ''); w.setAttribute('stay-open-on-select', '');
+  const b = el('button', { type: 'button', className: 'msf' }); b.setAttribute('slot', 'trigger'); b.setAttribute('aria-haspopup', 'true');
+  const pop = el('div', { className: 'sfltl' }); pop.setAttribute('role', 'group'); w.append(b, pop);
+  b._label = () => { const cur = getCur(); b.textContent = (!cur.length ? t('sf_any') : cur.length === 1 ? cur[0] : t('ms_n', { n: cur.length })) + ' ▾'; b.classList.toggle('on', cur.length > 0); pop.setAttribute('aria-label', b.getAttribute('aria-label') || ''); };
+  b._label();
+  const build = () => {
     let cur = getCur().slice(); const base = typeof valuesFn === 'function' ? valuesFn() : [], vals = base.concat(cur.filter(x => !base.includes(x)));
-    const pop = el('div', { className: 'msfpop sfltl' }), r = b.getBoundingClientRect();
-    pop.setAttribute('role', 'group'); pop.setAttribute('aria-label', b.getAttribute('aria-label') || '');
-    pop.style.position = 'fixed'; pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 280)) + 'px'; pop.style.top = (r.bottom + 4) + 'px';
     pop.innerHTML = `<div class="sfltb"><button type="button" class="chip" data-a="all">${esc(t('sf_all'))}</button><button type="button" class="chip" data-a="none">${esc(t('ms_clear'))}</button></div>` +
-      (vals.length ? vals.map((v, i) => `<label><input type="checkbox" data-i="${i}"${cur.includes(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('') : `<small class="mut">${esc(t('none'))}</small>`);
+      (vals.length ? vals.map((v, i) => `<label><input type="checkbox" data-i="${i}"${cur.includes(v) ? ' checked' : ''}> ${esc(v)}</label>`).join('') : `<small class="mut">${esc(t('ms_empty'))}</small>`);
     const apply = () => { onChange(cur.slice()); b._label(); };
     pop.querySelectorAll('input[data-i]').forEach(c => c.onchange = () => { const v = vals[+c.dataset.i]; cur = c.checked ? [...new Set(cur.concat([v]))] : cur.filter(x => x !== v); apply(); });
     pop.querySelector('[data-a=all]').onclick = () => { cur = vals.slice(); pop.querySelectorAll('input[data-i]').forEach(c => c.checked = true); apply(); };
     pop.querySelector('[data-a=none]').onclick = () => { cur = []; pop.querySelectorAll('input[data-i]').forEach(c => c.checked = false); apply(); };
-    pop.onclick = ev => ev.stopPropagation();
-    const done = (back) => { pop.remove(); b.setAttribute('aria-expanded', 'false'); document.removeEventListener('click', close, true); removeEventListener('scroll', onScroll, true); if (back) b.focus(); };
-    pop.onkeydown = ev => { if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); done(true); } };
-    document.body.appendChild(pop); b.setAttribute('aria-expanded', 'true');
-    const close = ev => { if (!pop.contains(ev.target) && ev.target !== b) done(false); };
-    setTimeout(() => document.addEventListener('click', close, true), 0);
-    const onScroll = ev => { if (!pop.contains(ev.target)) done(false); }; addEventListener('scroll', onScroll, true);   // beim Scrollen schließen (sonst steht die Liste neben der Spalte)
-    const f = pop.querySelector('input[data-i]') || pop.querySelector('button'); if (f) f.focus({ preventScroll: true });
   };
-  return b;
+  w.addEventListener('sl-show', build);                 // Werte-Liste beim Öffnen frisch (neue Geräte, Arten, Sensoren)
+  w.addEventListener('sl-after-show', () => { const f = pop.querySelector('input[data-i]') || pop.querySelector('button'); if (f) f.focus({ preventScroll: true }); });
+  w.addEventListener('sl-after-hide', () => b.focus({ preventScroll: true }));
+  pop.addEventListener('click', ev => ev.stopPropagation());
+  return w;
 }
 const gHtml = h => { const s = document.createElement('div'); s.className = 'gc'; s.innerHTML = h == null ? '' : h; return s; };
 /* Tabelle bauen. o: { cols, rows, max ('60vh'), ph (Text ohne Zeilen), onRow(e, d, rowEl), onDbl(e, d), onCtx(e, d, rowEl), rowCls(d) -> [Klassen],
@@ -2164,7 +2168,7 @@ function glGrid(box, o) {
       cellClass: ['gcell'].concat(c.cls ? c.cls.split(/\s+/) : []), headerClass: c.head ? 'ghcust' : c.hide ? 'ghid' : undefined, autoHeight: true, wrapText: !c.one,   // one: eine Zeile mit „…“ (ganzer Text im Hinweis)
       suppressHeaderMenuButton: true, suppressHeaderFilterButton: true, suppressFloatingFilterButton: true, headerTooltip: c.hide ? c.title : undefined };
     if (c.w) { cd.width = c.w; cd.maxWidth = c.w; cd.resizable = false; } else if (wsav[c.f]) cd.width = Math.max(cd.minWidth, wsav[c.f]); else cd.flex = c.grow || 1;   // gemerkte Breite (gezogen)
-    if (c.flt) { cd.filter = GLFilter; cd.floatingFilter = true; cd.floatingFilterComponent = GLFloat; }
+    if (c.flt) { cd.filter = GLFilter; cd.floatingFilter = true; cd.floatingFilterComponent = GLFloat; } else { cd.filter = false; cd.floatingFilter = false; }   // ab 1.85.46: ohne eigenen Filter auch kein Standard-Knopf von AG Grid in der Filterzeile
     if (c.head) cd.headerComponent = GLHead;
     return cd;
   }));
@@ -2246,7 +2250,8 @@ function glGrid(box, o) {
   };
   G.toggleDet = d => { const k = String(d.id); G.det.has(k) ? G.det.delete(k) : G.det.add(k); G.setRows(G.rows); const n = G.api.getRowNode(k); if (n) G.api.redrawRows({ rowNodes: [n] }); };
   G.rows = o.rows || [];
-  G.setRows = rows => { G.rows = rows; G.api.setGridOption('rowData', flat(rows)); };
+  G.setRows = rows => { G.rows = rows; G.api.setGridOption('rowData', flat(rows));
+    G.api.refreshCells({ force: true }); };           // ab 1.85.46: Zeilen mit gleicher Kennung, aber neuem Inhalt (Ereignis gewachsen: Zeitraum, Anzahl, Pillen) neu zeichnen
   G.setVis = (f, on) => { const c = G.cols.find(x => x.f === f); if (!c || (c.vis !== false) === !!on) return; c.vis = !!on; G.fitted = false; G.fit(); };
   G.setPh = txt => { G.ph = txt; for (const e of G.phEls) e.textContent = txt; };
   G.redraw = pred => { const ns = []; G.api.forEachNode(n => { if (n.data && !n.data._det && (!pred || pred(n.data))) ns.push(n); }); if (ns.length) G.api.redrawRows({ rowNodes: ns }); };
@@ -5670,7 +5675,7 @@ async function init() {
     TILE.at = Date.now(); tileBar(); evFollow();
   };
   $('tileset').onclick = e => { e.stopPropagation(); tileSetPop(); };
-  setInterval(tileTick, 1000);
+  setInterval(tileTick, 500);
   $('hbbtn').onclick = () => hbOpen('');
   $('hmore').onclick = toggleHMenu; placeHeader(); MOBILE.addEventListener('change', placeHeader);
   $('evx').onclick = () => $('evdlg').close();
@@ -6897,18 +6902,23 @@ async function levLoad(force) {
   let fa = Math.min(w0, now.getTime()), fb = nx.setHours(0, 0, 0, 0);
   if (win) { fa = Math.floor((win[0] - 60000) / 60000) * 60000; fb = Math.ceil((win[1] + 60000) / 60000) * 60000 + 60000; }   // nur den sichtbaren Bereich holen (mit 1 min Rand)
   else if (rg) { fa = rg[0]; fb = rg[1]; }
+  if (win && fb > nowServer()) fb = Math.ceil((win[1] + 60000) / 60000) * 60000 + 300000;   // ab 1.85.46: 5 min Vorlauf nach rechts – sonst läuft das Livebild dem Fenster jede Minute davon
   const src = LEV.src === 'sel' ? selSrc : 'all', key = [lastCount, src, fa, fb, LEV.rng].join('|');
-  if (!force && key === LEV.key) return; LEV.key = key;
+  if (!force && key === LEV.key) return;
+  if (LEV.busy) { LEV.again = true; return; }       // ab 1.85.46: nie zwei Anfragen zugleich – eine kann Sekunden dauern, und jede weitere belegt eine der 6 Browser-Verbindungen (Livespur setzt dann aus)
+  LEV.key = key; LEV.busy = true; LEV.again = false; LEV.t0 = Date.now();
   const id = ++LEV.req; levTitleSet();
   try { const j = await (await fetch('events?src=' + encodeURIComponent(src) + '&n=' + (win ? 500 : 5000) + '&from=' + dtl(new Date(fa)).slice(0, 16) + '&to=' + dtl(new Date(fb)).slice(0, 16), { cache: 'no-store' })).json(); if (id !== LEV.req) return; LEV.data = j; LEV.at = Date.now(); LEV.fa = fa; LEV.fb = fb; LEV.sig = ''; levRender(); } catch (e) { LEV.key = ''; }
+  finally { LEV.busy = false; if (LEV.again) { LEV.again = false; setTimeout(() => levLoad(true), 300); } }
 }
 function levTick() {                                  // sichtbarer Bereich ändert sich (Live läuft, Zoomen, Verschieben): Tabelle mitführen
   if (NV.open || !$('ldev') || document.hidden) return;
+  if (LEV.busy) return;                               // Antwort steht noch aus
   // ab 1.85.43: spätestens alle 30 s neu holen – Sensor-Ereignisse und Notizen aus GReport ändern den Störungszähler nicht (der Server antwortet aus dem Zwischenspeicher)
-  const due = Date.now() - (LEV.at || 0) > 30000;
+  const due = Date.now() - Math.max(LEV.at || 0, LEV.t0 || 0) > 30000;
   if (!LEV.vis) { if (due || LEV.rng === '24h' || LEV.rng === 'today') levLoad(due); return; }
   const w = levWin(); if (!w) return;
-  if (due || w[0] < LEV.fa || w[1] > LEV.fb - 30000) levLoad(true); else levRender();
+  if (due || w[0] < LEV.fa || w[1] > LEV.fb - 60000) levLoad(true); else levRender();
 }
 let LTBL = null, LTBL_KEY = '';
 const levGrp = () => { try { return localStorage.getItem('gl_lev_grp') !== 'all'; } catch (e) { return true; } };   // Live-Tabelle: Standard „Ereignisse“ (zusammengefasst)
@@ -6926,7 +6936,7 @@ function levRender(force) {
   const useArt = !CUR || CUR.classify !== false;
   const txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.trim(); };
   const rows = evs.map(r => ({ _hid: evSrcHid(r), id: 'e' + (r.k || r.start), k: r.k || '', start: new Date(r.start).getTime(), src: r.quelle || (SOURCES.find(x => x.id === (r.quelle_id || 'main')) || {}).name || r.quelle_id || '', r,
-    tags: [].concat((r.mf || []).map(id => '⊘ ' + mfInfo(id).name), r.prof ? ['🧩 ' + r.prof] : [], (r.labels || []).map(n => '🏷 ' + n)), dur: r.dauer_s, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs, nt: r.notes ? '📝 ' + r.notes : '' }))
+    tags: evTags(r), dur: r.dauer_s, pk: r.spitze_dbfs, thr: r.schwelle_dbfs, bg: r.hintergrund_dbfs, nt: r.notes ? '📝 ' + r.notes : '' }))   // ab 1.85.46: wie in Protokolle, mit der Geräuschart (Art-Filter war in Live leer)
     .concat(fnLink(j.fnotes, j.events, j).map(([n, ev, dms]) => ({ _hid: !fnShow(), id: 'n' + n.id, k: '', start: n.a, fdms: dms, src: (n.src || 'all') === 'all' ? t('all_sources') : viewName(n.src), fn: n, fev: ev,
       tags: ['📝 ' + t('fn_row')].concat(n.kind_l ? [(n.kind_i ? n.kind_i + ' ' : '') + n.kind_l] : []), dur: Math.max(0, ((n.b || n.a) - n.a) / 1000), pk: null, nt: '📝 ' + [n.text, ...(n.tags || []).map(x => ntLabel(x)), n.witness ? '👤 ' + n.witness : '', ...fbList(n)].filter(Boolean).join(' · ') + (ev ? ' · 🔗 ' + t('fn_link', { c: clockOf(ev.start) }) : '') })))
     .concat(sens.map(x => ({ _hid: SHIDE.has(sensKey(x)), id: 's' + x.key, k: '', start: x.a, src: x.kind === 'ha' ? 'Home Assistant' : x.name || '', x, tags: [sensIcon(x.kind) + ' ' + sensLabel(x)], dur: Math.max(0, (x.b - x.a) / 1000), pk: x.peak, nt: x.note ? '📝 ' + x.note : '' })));
@@ -6944,12 +6954,12 @@ function levRender(force) {
   levTitleSet();
   const rs = $('ldevrng'); if (rs && rs.value !== LEV.rng) rs.value = LEV.rng;
   const cw = $('ldevcus'); if (cw) cw.hidden = LEV.rng !== 'custom';
-  const sig = rows.map(d => d.id).join(',') + '|' + (LEV.fa) + '|' + rows.length + '|' + JSON.stringify(sf) + '|' + MF.show;
+  const sig = rows.map(d => d.id + (d._t === 'grp' ? ':' + d._children.length + ':' + Math.round(d.dur) : '')).join(',') + '|' + (LEV.fa) + '|' + rows.length + '|' + JSON.stringify(sf) + '|' + MF.show;   // ab 1.85.46: gewachsenes Ereignis zählt als Änderung
   if (win && sig === LEV.sig && LTBL) return;          // nichts Neues im Bereich: Tabelle nicht neu aufbauen
   LEV.sig = sig;
   LEV.tot = win ? rows.length : (j.total != null ? j.total : evs.length) + sens.length; LEV.loaded = rows.length;
   for (const d of rows) if (d.fn && d.fev) { const e = rows.find(x => x.k && x.k === d.fev.k); if (e) e.nt = [e.nt, '📝 ' + fnAsgTxt(d.fdms) + ': ' + (d.fn.text || (d.fn.tags || []).map(x => ntLabel(x)).join(', '))].filter(Boolean).join(' · '); }   // Notiz auch an der Störung
-  const vals = f => () => [...new Set(rows.flatMap(d => f === 'tags' ? d.tags : [d[f]]).filter(Boolean))].sort((p, q) => String(p).localeCompare(String(q)));
+  const vals = f => () => [...new Set(rows.flatMap(function v(d) { return (f === 'tags' ? d.tags : [d[f]]).concat((d._children || []).flatMap(v)); }).filter(Boolean))].sort((p, q) => String(p).localeCompare(String(q)));   // ab 1.85.46: auch die Werte der Einträge in einem Ereignis (Gerät, Art)
   const ms = f => ({ flt: 'ms', vals: vals(f), fpass: (v, d) => f === 'tags' ? d.tags.some(x => v.includes(x)) : v.includes(d[f]) });
   const num = () => ({ flt: 'num' });
   const hm = ms_ => { const d = new Date(ms_), td = new Date(nowServer()); return (d.toDateString() === td.toDateString() ? '' : pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '. ') + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
@@ -6974,8 +6984,11 @@ function levRender(force) {
       if (k === 'kinds') return pillMerge(d._children.filter(c => c.r).map(h0));
       if (k === 'sc') { const ev = d._children.filter(c => c.r && c.r.sc), rk = x => ['own', 'ok', 'no', 'nb'].indexOf((x.r.sc || {}).s); ev.sort((a, b) => (rk(a) < 0 ? 9 : rk(a)) - (rk(b) < 0 ? 9 : rk(b))); return ev.length ? h0(ev[0]) : ''; }   // bestes Ergebnis der Gruppe
       if (k === 'dur') return esc(fmtSpan(d.dur));
-      if (k === 'pk') return d.pk == null ? '' : esc(fdb(d.pk)) + ' <small>dBFS</small>';
-      return ''; }; }
+      if (k === 'pk') return d.pk == null ? '<span class="noclip">–</span>' : esc(fdb(d.pk)) + ' <small>dBFS</small>';
+      if (k === 'thr' || k === 'bg') { const v = d._children.filter(c => c.r && c[k] != null).map(c => c[k]); return v.length ? esc(fdb(k === 'thr' ? Math.min(...v) : Math.max(...v))) : '<span class="noclip">–</span>'; }   // ab 1.85.46: Gruppe – niedrigste Schwelle, höchster Hintergrund
+      return '<span class="noclip">–</span>'; }; }
+  // ab 1.85.46: Felder, die es für diese Zeile nicht gibt (Sensor-Ereignis oder Notiz ohne Pegel, Schwelle, Sensor-Prüfung): „–“ statt leer
+  for (const k of ['sc', 'kinds', 'pk', 'thr', 'bg', 'devs']) { const h1 = def[k].html; def[k].html = d => { const h = h1(d); return h === '' || h == null ? '<span class="noclip">–</span>' : h; }; }
   def.nt.aria = t('col_text'); def.nt.menu = '📝 ' + t('fn_row'); def.tm.cls = 'tm'; def.tm.minW = levGrp() ? 132 : LEV.rng === 'today' || LEV.vis ? 84 : 128; def.sc.minW = 165;
   const hasSc = evs.some(r => r.sc && r.sc.s);
   // ab 1.84.0: alle passenden Spalten an die Tabelle; an/aus, Reihenfolge und Dichte über „Spalten ▾“ (gemerkt in layout.json). Ältere Auswahl (laerm_lev) gilt als Vorgabe.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.11
+
+- **Schnellwahl-Tasten mit GLighter abgleichen:** Sind beide Apps installiert und verbunden, haben beide dieselbe Tastenbelegung (eigene Tasten, Umbenennungen, Ausblendungen, Gruppen, Reihenfolge, Pflichtfelder). Wer zuletzt geändert hat, gewinnt; die Nutzungszähler bleiben je App.
+
 ## 1.12.10
 
 - **Von selbst speichern** (Anzeige → „Von selbst speichern“, 3/5/8/12 s, Standard aus): Sobald alle Pflichtfelder gesetzt sind, zählt die Taste „Speichern“ sichtbar herunter und speichert dann. Text tippen oder ein freiwilliges Feld wählen startet den Countdown neu, Klick auf die Taste speichert sofort. Nur bei neuen Notizen, nie beim Ändern. Ohne ein einziges Pflichtfeld passiert nichts.
