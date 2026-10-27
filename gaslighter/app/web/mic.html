@@ -155,17 +155,22 @@ function toneSet(on) {
   if (on && !toneSrc) { try { const g = ctx.createGain(); g.gain.value = 0.8; toneSrc = ctx.createBufferSource(); toneSrc.buffer = pinkBuf(ctx); toneSrc.loop = true; toneSrc.connect(g); g.connect(ctx.destination); toneSrc.start(); } catch (e) { toneSrc = null; } }
   else if (!on && toneSrc) { try { toneSrc.stop(); } catch (e) { } toneSrc = null; }
 }
+let pushAC = null, sendT0 = 0;                       // ab 1.85.53: laufende Übertragung (zum Abbrechen), Beginn
 async function send() {
   if (sending || !queue.length || dead) return;
-  sending = true;
+  sending = true; sendT0 = Date.now();
   while (queue.length && running && !dead) {
     // bis zu 1 s auf einmal senden, beim Nachholen bis zu 5 s (spart Anfragen nach Verbindungsabbruch)
     const n = Math.min(queue.length, queue.length > 25 ? 25 : 5), parts = queue.slice(0, n), len = parts.reduce((s, p) => s + p.buf.byteLength, 0);
     const body = new Uint8Array(len); let o = 0; for (const p of parts) { body.set(new Uint8Array(p.buf), o); o += p.buf.byteLength; }
     const last = parts[n - 1];
     try {
-      const r = await fetch(BASE + '/push?sid=' + sid + '&first=' + parts[0].seq + '&seq=' + last.seq + '&age=' + Math.max(0, Date.now() - last.t) + '&ct=' + Date.now() + (devModel ? '&dev=' + encodeURIComponent(devModel) : '') + (devPv ? '&pv=' + encodeURIComponent(devPv) : '') + motParams(parts),
-        { method: 'POST', body, headers: { 'Content-Type': 'application/octet-stream' }, cache: 'no-store' });
+      sendT0 = Date.now(); pushAC = new AbortController(); const tmo = setTimeout(() => pushAC.abort(), 8000);   // haengt die Verbindung (WLAN-Wechsel, Server kurz weg): nach 8 s abbrechen und neu – vorher wartete die Seite minutenlang und schickte dann alles in Schueben
+      let r;
+      try {
+        r = await fetch(BASE + '/push?sid=' + sid + '&first=' + parts[0].seq + '&seq=' + last.seq + '&age=' + Math.max(0, Date.now() - last.t) + '&ct=' + Date.now() + (devModel ? '&dev=' + encodeURIComponent(devModel) : '') + (devPv ? '&pv=' + encodeURIComponent(devPv) : '') + motParams(parts),
+          { method: 'POST', body, headers: { 'Content-Type': 'application/octet-stream' }, cache: 'no-store', signal: pushAC.signal });
+      } finally { clearTimeout(tmo); pushAC = null; }
       if (r.status === 404) { dead = true; warn(L.nolink); setState(L.nolink, 'err'); stop(true); break; }
       if (r.status === 409) { warn(L.busy); setState(L.busy, 'err'); await new Promise(res => setTimeout(res, 5000)); continue; }
       if (!r.ok) throw new Error(r.status);
@@ -181,6 +186,11 @@ async function send() {
   }
   sending = false;
 }
+setInterval(() => {                                   // Waechter: Senden anstossen, wenn Ton wartet und nichts laeuft; eine seit >20 s haengende Uebertragung abbrechen
+  if (!running || dead) return;
+  if (sending && pushAC && Date.now() - sendT0 > 20000) { try { pushAC.abort(); } catch (e) { } }
+  if (!sending && queue.length) send();
+}, 2000);
 
 /* Bewegungsmelder: Erschütterung (Beschleunigung ohne Schwerkraft) und Bewegung im Kamerabild – nur hier ausgewertet */
 function motParams(parts) {

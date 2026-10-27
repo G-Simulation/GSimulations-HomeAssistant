@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.53
+
+- **Handy als Mikrofon: Ton kam in Schüben, Live-Bild abgehackt.** Blieb eine Übertragung vom Handy hängen (WLAN-Wechsel, Server kurz nicht erreichbar), wartete die Handy-Seite minutenlang, sammelte den Ton und schickte ihn dann als Paket nach – im Live-Bild sah das aus wie Aussetzer mit Nachladen. Jetzt wird eine Übertragung nach 8 s abgebrochen und wiederholt, ein Wächter stößt das Senden an, wenn es stockt. **Die Seite auf dem Handy einmal neu laden**, damit die Änderung greift.
+
 ## 1.85.52
 
 - **Notiz-Arten wie in GReport:** Über dem Notiztext stehen jetzt die Arten als Chips („⏰ Erinnerung“ ist von Anfang an da). Eine Art „ohne Zeitpunkt“ setzt den Haken mit; die Notiz wird keiner Störung zugeordnet. Eigene Arten (Name, Farbe, Symbol, ohne Zeitpunkt, nicht zuordnen, Vorgabe, Auswahl merken) unter „Layout anpassen“ der Erfassung – wie in GReport. Ist GReport verbunden, erscheinen dessen Arten zusätzlich (ändern dort). Mit Tests.
