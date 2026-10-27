@@ -139,8 +139,8 @@ def main():
                 if not pg.locator("#ldevcus").is_visible():
                     fails.append("Eigener Zeitraum zeigt keine Von/Bis-Felder")
                 rs.select_option("vis"); pg.wait_for_timeout(800)
-            if pg.locator("#fnptags .tag.add").count() != 1:                # eigene Schnellwahl im Notiz-Feld
-                fails.append("Knopf ＋ Eigene fehlt in der Schnellwahl")
+            if pg.locator("#fnptags .tag.add").count() < 2 or pg.locator("#fnptags .grp[data-g='own'] .tag.add").count() != 1:   # ab 1.85.54: ＋ in jeder Rubrik
+                fails.append("Knopf ＋ fehlt in den Rubriken der Schnellwahl")
             else:
                 pg.click("#fnptags .tag.add"); pg.fill("#fnptags_qt .qtnew", "Waschmaschine"); pg.click("#fnptags_qt .qtaddok"); pg.wait_for_timeout(800)
                 if not pg.locator('#fnptags .grp[data-g="own"] .tag[data-t]:has-text("Waschmaschine")').count():
