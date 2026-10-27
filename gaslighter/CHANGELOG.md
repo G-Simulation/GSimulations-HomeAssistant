@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.85.54
+
+- **Neue Taste direkt in der Rubrik:** Am Ende jeder Rubrik-Zeile steht „＋“. Klick klappt an der Stelle ein Eingabefeld auf – Name tippen, Enter – die Taste steht in dieser Rubrik und ist gleich gewählt. Esc oder ✕ bricht ab. Rechtsklick auf „＋“ öffnet wie bisher die Verwaltung.
+- **Notiz-Art umbenennen:** Lange auf den Chip drücken (oder Rechtsklick) öffnet „Layout anpassen“ direkt bei dieser Art – Name, Farbe, Symbol, ohne Zeitpunkt, nicht zuordnen; „Fertig“ speichert. Arten aus GReport lassen sich nur dort ändern (Hinweis). Fehler aus 1.85.52 behoben: Änderungen an den Arten im Layout-Editor wurden nicht gespeichert.
+
+## 1.85.54
+
+- **Notiz-Art umbenennen:** Lange auf den Chip drücken (oder Rechtsklick) öffnet „Layout anpassen“ direkt bei dieser Art – Name, Farbe, Symbol, ohne Zeitpunkt, nicht zuordnen. Mit „Fertig“ gespeichert. Arten aus GReport lassen sich nur dort ändern (Hinweis). Fehler aus 1.85.52 behoben: Änderungen an den Arten im Layout-Editor wurden nicht gespeichert.
+
 ## 1.85.53
 
 - **Handy als Mikrofon: Ton kam in Schüben, Live-Bild abgehackt.** Blieb eine Übertragung vom Handy hängen (WLAN-Wechsel, Server kurz nicht erreichbar), wartete die Handy-Seite minutenlang, sammelte den Ton und schickte ihn dann als Paket nach – im Live-Bild sah das aus wie Aussetzer mit Nachladen. Jetzt wird eine Übertragung nach 8 s abgebrochen und wiederholt, ein Wächter stößt das Senden an, wenn es stockt. **Die Seite auf dem Handy einmal neu laden**, damit die Änderung greift.

@@ -7653,7 +7653,17 @@ function kindSet(id, quiet) {
   if (nt) { if (FNP.kindNt) nt.checked = true; else if (prev && nt.checked) nt.checked = false; fnpNotime(); }
   kindDraw(); if (!quiet) fnpShow();
 }
-function kindDraw() { const b = $('fnpkinds'); if (b) Felder.kindPick(b, FNP.kind, id => kindSet(id)); }
+function kindDraw() {
+  const b = $('fnpkinds'); if (!b) return; Felder.kindPick(b, FNP.kind, id => kindSet(id));
+  b.querySelectorAll('.fbkchip').forEach(c => { c.title = (c.title ? c.title + ' · ' : '') + t('fk_hold'); holdBind(c, () => kindEditAt(c.dataset.k)); });   // lange drücken / Rechtsklick: umbenennen (Layout anpassen, Zeile der Art)
+}
+function kindEditAt(id) {                             // Art zum Bearbeiten öffnen: eigene im Layout-Editor, die aus GReport nur dort änderbar
+  const k = Felder.kindOf(id); if (!k) return;
+  if (k.gr) { toast(t('fk_gr_only')); return; }
+  if (!FCL.on) fclOpen();
+  pwin().requestAnimationFrame(() => { const r = $('fclkinds') && $('fclkinds').querySelector(`details.fbkrow[data-k="${CSS.escape(id)}"]`); if (!r) return;
+    r.open = true; r.scrollIntoView({ block: 'center' }); const i = r.querySelector('.fk_l'); if (i) { i.focus(); i.select(); } });
+}
 function kindDefault() { const S = Felder.S; kindSet(S.kind_keep && Felder.kindOf(FNP.kind) ? FNP.kind : (S.kind_def || ''), true); }
 function fnpTags() {
   const box = $('fnptags'); if (!box) return;
@@ -7666,7 +7676,7 @@ function fnpTags() {
     const gi = gInfo(g) || {}, ks = by[g] || []; if (!ks.length && g !== 'own') continue;
     if (gHid(g) && !ks.some(k => FNP.tags.has(k))) continue;                 // ausgeblendete Rubrik dieser Ansicht (gewählte Tasten bleiben sichtbar)
     const rq = NTS.req && NTS.req.has(g);
-    h += `<div class="grp${rq ? ' req' : ''}" data-g="${esc(g)}"><span>${esc(gLabel(g))}${rq ? '<i class="reqm" title="' + esc(t('fc_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {})[g] ? `<small class="ghelp">${esc(NTS.ghelp[g])}</small>` : ''}</span><div role="group" aria-label="${esc(gLabel(g) + (NTS.gone && NTS.gone.has(g) ? ' – ' + t('fb_g_one') : ''))}">${ks.map(k => tagBtn(k, FNP.tags.has(k))).join('')}${g === 'own' ? `<button type="button" class="tag add" title="${esc(t('qt_add_tip'))}">＋ ${esc(t('qt_add'))}</button>` : ''}</div></div>`;
+    h += `<div class="grp${rq ? ' req' : ''}" data-g="${esc(g)}"><span>${esc(gLabel(g))}${rq ? '<i class="reqm" title="' + esc(t('fc_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {})[g] ? `<small class="ghelp">${esc(NTS.ghelp[g])}</small>` : ''}</span><div role="group" aria-label="${esc(gLabel(g) + (NTS.gone && NTS.gone.has(g) ? ' – ' + t('fb_g_one') : ''))}">${ks.map(k => tagBtn(k, FNP.tags.has(k))).join('')}<button type="button" class="tag add${g === 'own' ? '' : ' sm'}" data-g="${esc(g)}" title="${esc(t('qt_add_here', { g: gLabel(g) }))}" aria-label="${esc(t('qt_add_here', { g: gLabel(g) }))}">＋${g === 'own' ? ' ' + esc(t('qt_add')) : ''}</button></div></div>`;
   }
   box.innerHTML = h;
   box.querySelectorAll('.grp>div').forEach(row => {    // Handy: Hinweis rechts, solange die Zeile weitergeht
@@ -7682,12 +7692,31 @@ function fnpTags() {
     b.addEventListener('touchend', e => { if (lp === -1) e.preventDefault(); clearTimeout(lp); });
     b.addEventListener('touchmove', () => clearTimeout(lp), { passive: true });
   });
-  const ad = box.querySelector('.tag.add'); if (ad) ad.onclick = () => ntManage(box);
+  box.querySelectorAll('.tag.add').forEach(ad => ad.onclick = () => tagNewAt(box, ad));   // ab 1.85.54: ＋ in jeder Rubrik – Eingabefeld klappt an der Stelle auf
+  box.querySelectorAll('.tag.add').forEach(ad => { ad.oncontextmenu = e => { e.preventDefault(); ntManage(box); }; });
   const sy = box.querySelector('.sugy'); if (sy) sy.onclick = async () => { try { const j = await ntsPost({ action: 'add', l: w.w }); if (j.k) { FNP.tags.add(j.k); fnpTags(); } } catch (e) { alert(e.message); } };
   const sn = box.querySelector('.sugn'); if (sn) sn.onclick = () => ntsPost({ action: 'nope', w: w.k }).catch(e => alert(e.message));
   reqCheck();
 }
 NT_AREAS.fnptags = () => fnpTags();
+function tagNewAt(box, ad) {                            // neue Taste direkt in der Rubrik: Name tippen, Enter = anlegen und wählen, Esc = weg
+  const g = ad.dataset.g || 'own';
+  if (box.querySelector('.tagnew')) { box.querySelector('.tagnew input').focus(); return; }
+  const w = el('span', { className: 'tag tagnew' }), i = el('input', { type: 'text', maxLength: 30, placeholder: t('qt_new_ph') });
+  i.setAttribute('aria-label', t('qt_add_here', { g: gLabel(g) })); i.setAttribute('enterkeyhint', 'done');
+  const ok = el('button', { type: 'button', className: 'tnok', textContent: '✓', title: t('save') }), no = el('button', { type: 'button', className: 'tnno', textContent: '✕', title: t('cancel') });
+  w.append(i, ok, no); ad.replaceWith(w); i.focus();
+  let done = false;
+  const close = () => { if (done) return; done = true; fnpTags(); };
+  const go = async () => {
+    const l = i.value.trim(); if (!l) { close(); return; }
+    try { const j = await ntsPost({ action: 'add', l, g }); done = true; if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l })); }
+    catch (e) { alert(e.message); i.focus(); }
+  };
+  i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  ok.onclick = go; no.onclick = close;
+  i.onblur = () => setTimeout(() => { if (!done && !w.contains(document.activeElement)) close(); }, 150);
+}
 function reqCheck() {                                 // alle Pflicht-Rubriken gewählt: gewählte Tasten und „Speichern“ leuchten auf (gespeichert wird immer)
   const req = [...(NTS.req || [])], pn = $('fnpanel'); if (!pn) return;
   const have = new Set([...FNP.tags].map(ntGroup));
@@ -8109,6 +8138,7 @@ async function fclSave() {
     const sec = JSON.parse(JSON.stringify(fbNew.sec)), keep = (CAP.hide || []).filter(x => !SEC_EL[x]);
     cap.hide = keep.concat(Object.keys(SEC_EL).filter(k => (sec[k] || {}).hide)); for (const k in sec) delete sec[k].hide;
     cap.blocks = fbNew.blocks; cap.sec = sec;
+    if (fbNew.kinds) { cap.kinds = fbNew.kinds; cap.kind_def = fbNew.kind_def || ""; cap.kind_keep = !!fbNew.kind_keep; }   // Notiz-Arten (ab 1.85.52)
   }
   try {
     if (ops.length) {
