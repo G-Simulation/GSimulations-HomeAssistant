@@ -701,7 +701,7 @@ function statsDraw() {
 function tplFirst() {
   const box = $('tplfirst'); if (!box) return;
   const on = FB.first && !FB.tpl; box.hidden = !on; if (!on) { box.innerHTML = ''; return; }
-  Felder.tplBox(box, null, x => fbTpl(x, false), () => fbTpl('laerm', false));
+  Felder.tplBox(box, null, x => fbTpl(x, false), () => fbTpl(FB.linked ? 'laerm' : 'allg', false));   // „Später“: allein allgemein vorbelegt, mit GLighter lärm-spezifisch (ab 1.12.12)
 }
 async function fbTpl(name, ask) {
   if (ask && !confirm(t('fb_tpl_q', { n: t('fb_tpl_' + name) }))) return false;

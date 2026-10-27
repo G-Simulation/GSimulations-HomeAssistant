@@ -23,7 +23,7 @@ window.Felder = (() => {
     if (!j || !j.ok) return;
     for (const k of ['sec', 'counts', 'daily', 'sug']) S[k] = j[k] || {};
     S.kinds = j.kinds || []; S.kind_def = j.kind_def || ''; S.kind_keep = !!j.kind_keep; S.kind_n = j.kind_n || {};
-    S.defs = j.blocks || []; S.tpl = j.tpl || null; S.first = !!j.first; S.max = j.max || 20; if (j.tpls) S.tpls = j.tpls;
+    S.defs = j.blocks || []; S.tpl = j.tpl || null; S.first = !!j.first; S.linked = !!j.linked; S.max = j.max || 20; if (j.tpls) S.tpls = j.tpls;
   }
   const isId = id => /^b_[0-9a-f]{6}$/.test(String(id || ''));
   const byId = id => S.defs.find(b => b.id === id);

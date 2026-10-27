@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 import lizenz  # noqa: E402
 import felder  # noqa: E402
 
-VERSION = "1.12.11"
+VERSION = "1.12.12"
 BRAND = "GReport"
 OPTIONS = os.environ.get("GR_OPTIONS", "/data/options.json")
 PRIV = os.environ.get("GR_PRIVATE", "/data")                    # nur für GReport (Pro-Schlüssel)
@@ -954,7 +954,18 @@ def kinds_seed(tpl):
 
 def fb_all():
     with FB_LOCK:
+        if FB["data"] is not None:                         # ab 1.12.12: GLighter (verbunden) schreibt die Erfassung direkt hierher – Datei neu lesen, wenn sie sich von außen geändert hat
+            try:
+                m = os.stat(fb_path()).st_mtime_ns
+            except OSError:
+                m = None
+            if m is not None and FB.get("mtime") is not None and m != FB["mtime"]:
+                FB["data"] = None; FB["mtime"] = m
         if FB["data"] is None:
+            try:
+                FB["mtime"] = os.stat(fb_path()).st_mtime_ns
+            except OSError:
+                FB["mtime"] = None
             d = read_json(fb_path(), {}) or {}
             d = d if isinstance(d, dict) else {}
             blocks, _ = felder.clean_defs(d.get("blocks") or [], [])
@@ -983,6 +994,10 @@ def fb_defs():
 def fb_save():
     with FB_LOCK:
         write_json(fb_path(), fb_all())
+        try:
+            FB["mtime"] = os.stat(fb_path()).st_mtime_ns   # eigene Schreibung: nicht als fremde Änderung werten
+        except OSError:
+            pass
     mqtt_announce()
     diary_soon()
 
@@ -999,7 +1014,7 @@ def fb_first():
 def fb_state():
     with FB_LOCK:
         f = fb_all()
-        out = {"ok": True, "tpl": f["tpl"] or ("laerm" if not fb_first() else None), "first": fb_first(), "blocks": json.loads(json.dumps(f["blocks"])),
+        out = {"ok": True, "tpl": f["tpl"] or ("laerm" if not fb_first() else None), "first": fb_first(), "linked": bool(glighter().get("linked")), "blocks": json.loads(json.dumps(f["blocks"])),
                "sec": json.loads(json.dumps(f["sec"])), "max": felder.MAX_ACTIVE, "tpls": list(TPLS), "counts": {}, "daily": {}, "sug": {},
                "kinds": json.loads(json.dumps(f.get("kinds") or [])), "kind_def": f.get("kind_def") or "", "kind_keep": bool(f.get("kind_keep")), "kind_n": {}}
         with NOTES_LOCK:

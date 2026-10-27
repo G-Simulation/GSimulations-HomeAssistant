@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.55
+
+- **Eine Erfassung, zwei Fenster:** Ist GReport verbunden, gehört die Notiz-Erfassung (eigene Felder, Benennung der Bereiche, Notiz-Arten samt Vorgabe) GReport. GLighter zeigt sie und steuert sie: Änderungen in „Layout anpassen“ landen direkt in GReport, GReport liest sie sofort nach. Ohne Verbindung arbeitet GLighter mit seiner eigenen Erfassung weiter, dieselbe Oberfläche. Beim ersten Verbinden bekommt ein noch unkonfiguriertes GReport GLighters lärm-spezifische Vorbelegung; hat GReport schon etwas eingestellt, bleibt das. Die Schnellwahl-Tasten gleichen sich weiter in beide Richtungen ab (1.85.46). Mit Tests.
+
 ## 1.85.54
 
 - **Neue Taste direkt in der Rubrik:** Am Ende jeder Rubrik-Zeile steht „＋“. Klick klappt an der Stelle ein Eingabefeld auf – Name tippen, Enter – die Taste steht in dieser Rubrik und ist gleich gewählt. Esc oder ✕ bricht ab. Rechtsklick auf „＋“ öffnet wie bisher die Verwaltung.

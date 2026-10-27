@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.54"
+VERSION = "1.85.55"
 
 # =====================================================================
 # Einstellungen
@@ -7043,6 +7043,11 @@ def qt_sync_loop():
             qt_sync_pull()
         except Exception as e:
             log("Tasten-Abgleich:", e)
+        try:
+            gr_fb_seed()
+        except Exception as e:
+            log("Erfassung vorbelegen:", e)
+
 
 
 def qt_save(sync=False):
@@ -13290,6 +13295,82 @@ def layout_save():
         os.replace(tmp, LAYOUT_FILE)
 
 
+# ab 1.85.55: Ist GReport verbunden, gehört die Erfassung (Felder, Bereiche, Arten) GReport – GLighter zeigt sie und schreibt
+# Änderungen direkt in GReports felder.json. Ohne Verbindung arbeitet GLighter mit seiner eigenen Konfiguration (Layout → cap).
+GRFB = {"key": None, "data": None}
+
+
+def fb_linked():
+    return os.path.isdir(GR_DIR) and bool(gr_status().get("linked"))
+
+
+def gr_fb_path():
+    return os.path.join(GR_DIR, "felder.json")
+
+
+def gr_fb():
+    """GReports Erfassung (felder.json), nach Änderungsdatum zwischengespeichert; {} wenn nicht lesbar."""
+    f = gr_fb_path()
+    try:
+        st_ = os.stat(f); key = (st_.st_mtime_ns, st_.st_size)
+    except OSError:
+        return {}
+    if GRFB["key"] != key:
+        d = read_json(f)
+        GRFB["data"] = d if isinstance(d, dict) else {}; GRFB["key"] = key
+    return GRFB["data"] or {}
+
+
+def gr_fb_write(inc):
+    """Änderung aus GLighter in GReports felder.json schreiben: Felder, Bereiche (nur die hier bekannten), Arten. GReport liest die Datei
+    neu, sobald sie sich geändert hat. Eigene GReport-Felder mit festem Speicherort (ext:…) und der Bereich „Mehr“ bleiben."""
+    with GRFB_LOCK:
+        cur = dict(gr_fb())
+        if "blocks" in inc:
+            keep = [b for b in (cur.get("blocks") or []) if isinstance(b, dict) and str(b.get("bind") or "").startswith("ext:")]
+            new = [b for b in (inc.get("blocks") or []) if isinstance(b, dict) and not str(b.get("bind") or "").startswith("ext:")]
+            cur["blocks"] = felder.clean_defs(new + keep, cur.get("blocks") or [])[0]
+        if "sec" in inc:
+            sec = dict(cur.get("sec") or {}) if isinstance(cur.get("sec"), dict) else {}
+            mine = felder.clean_sec(inc.get("sec"), LAYOUT_CAP_SECS)
+            for k_ in LAYOUT_CAP_SECS:
+                if k_ in mine:
+                    sec[k_] = mine[k_]
+                else:
+                    sec.pop(k_, None)
+            cur["sec"] = sec
+        if "kinds" in inc:
+            cur["kinds"] = felder.clean_kinds(inc.get("kinds"), cur.get("kinds") or [])
+            cur["kind_def"] = felder.kind_ok(cur["kinds"], str(inc.get("kind_def") or ""))
+            cur["kind_keep"] = inc.get("kind_keep") is True
+        if inc.get("tpl") in ("laerm", "allg", "zaehler"):
+            cur["tpl"] = inc["tpl"]
+        f = gr_fb_path(); tmp = f + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(cur, fh, ensure_ascii=False, indent=1)
+        os.replace(tmp, f)
+        GRFB["key"] = None
+    VER["row"] += 1; KPUB["t"] = 0.0
+    log("Erfassung in GReport geändert (verbunden)")
+
+
+GRFB_LOCK = threading.Lock()
+
+
+def gr_fb_seed():
+    """Erstes Verbinden (ab 1.85.55): Hat GReport noch keine eigene Erfassung (keine felder.json), bekommt es GLighters lärm-spezifische
+    Vorbelegung – Felder, Bereiche, Arten, Vorlage „laerm“. Hat GReport schon etwas eingestellt, bleibt das (GReport ist der Speicher)."""
+    if not fb_linked() or os.path.exists(gr_fb_path()):
+        return False
+    with LAYOUT_LOCK:
+        c = layout_cap_clean((layout_all().get("cap") or {}))
+    kinds = list(c.get("kinds") or []) if "kinds" in c else kinds_seed(c.get("tpl"))
+    gr_fb_write({"blocks": c.get("blocks") or [], "sec": c.get("sec") or {}, "kinds": kinds, "kind_def": c.get("kind_def") or "",
+                 "kind_keep": bool(c.get("kind_keep")), "tpl": c.get("tpl") or "laerm"})
+    log("GReport verbunden: Erfassung von GLighter vorbelegt (lärm-spezifisch)")
+    return True
+
+
 def _lay_int(v, lo, hi):
     try:
         v = int(v)
@@ -13398,23 +13479,19 @@ def kinds_seed(tpl):
 
 
 def own_kinds():
-    """Eigene Notiz-Arten (Layout → Erfassung); noch nie gesetzt = Vorlage („Erinnerung“)."""
+    """Notiz-Arten: verbunden = die von GReport (dort gespeichert, hier gesteuert); sonst eigene (Layout → Erfassung), nie gesetzt = Vorlage („Erinnerung“)."""
+    if fb_linked():
+        g = gr_fb()
+        kinds = felder.clean_kinds(g.get("kinds") if "kinds" in g else kinds_seed(g.get("tpl")), [])
+        return kinds, felder.kind_ok(kinds, str(g.get("kind_def") or "")), g.get("kind_keep") is True
     with LAYOUT_LOCK:
         c = layout_cap_clean((layout_all().get("cap") or {}))
     return (list(c.get("kinds") or []) if "kinds" in c else kinds_seed(c.get("tpl"))), c.get("kind_def") or "", bool(c.get("kind_keep"))
 
 
 def all_kinds():
-    """Eigene Arten plus die aus GReport (wenn verbunden, Kennung noch nicht vorhanden; gr=True) – fürs Anlegen und die Anzeige."""
-    own, _, _ = own_kinds()
-    have = {k["id"] for k in own}
-    try:
-        for k in gr_kinds():
-            if k.get("id") not in have:
-                own.append(dict(k, gr=True)); have.add(k["id"])
-    except Exception:
-        pass
-    return own
+    """Arten fürs Anlegen und die Anzeige (verbunden: GReports, sonst eigene)."""
+    return own_kinds()[0]
 
 
 GRK = {"key": None, "kinds": []}
@@ -13494,10 +13571,12 @@ def layout_change(data):
             return {"ok": False, "error": "bad reset"}
         if isinstance(data.get("cap"), dict):                  # Notiz-Erfassung: geänderte Felder übernehmen
             inc = dict(data["cap"]); old = (d.get("cap") or {}).get("blocks") or []
-            if "blocks" in inc:                               # eigene Felder: nie Definitionen verlieren (gelöschte bleiben markiert)
-                inc["blocks"] = felder.clean_defs(inc["blocks"], old)[0]
             for k_ in ("tpl", "made"):                        # Vorlage nur über cap_tpl()
                 inc.pop(k_, None)
+            if fb_linked() and any(k_ in inc for k_ in ("blocks", "sec", "kinds")):   # verbunden: Felder/Bereiche/Arten gehören GReport (ab 1.85.55)
+                gr_fb_write({k_: inc.pop(k_) for k_ in ("blocks", "sec", "kinds", "kind_def", "kind_keep") if k_ in inc})
+            if "blocks" in inc:                               # eigene Felder: nie Definitionen verlieren (gelöschte bleiben markiert)
+                inc["blocks"] = felder.clean_defs(inc["blocks"], old)[0]
             d["cap"] = layout_cap_clean(dict(d.get("cap") or {}, **inc))
         if "cap_pop" in data:                                  # eigene abgedockte Ansicht (dict) oder wie angedockt (null)
             cp = layout_cap_pop_clean(data["cap_pop"])
@@ -13556,9 +13635,19 @@ def fnote_fx(x):
 
 
 def felder_state():
-    """Für die Erfassung: Definitionen, Vorlage, Zähler heute und je Tag, Vorschläge für „Ort“ (nur lesen)."""
+    """Für die Erfassung: Definitionen, Vorlage, Zähler heute und je Tag, Vorschläge für „Ort“ (nur lesen).
+    Verbunden (ab 1.85.55): Felder, Bereiche und Arten kommen aus GReport – GLighter zeigt und steuert sie."""
+    linked = fb_linked()
     with LAYOUT_LOCK:
         c = layout_cap_clean((layout_all().get("cap") or {}))
+    if linked:
+        g = gr_fb(); c = dict(c)
+        c["blocks"] = felder.clean_defs([b for b in (g.get("blocks") or []) if isinstance(b, dict) and not str(b.get("bind") or "").startswith("ext:")], [])[0]
+        sc = felder.clean_sec(g.get("sec"), LAYOUT_CAP_SECS)
+        if sc:
+            c["sec"] = sc
+        else:
+            c.pop("sec", None)
     defs = list(c.get("blocks") or [])
     if not any(b.get("bind") == "witness" for b in defs):  # ab 1.85: Zeuge ist ein normales Feld (Wert weiter in „witness“ der Notiz)
         w = (c.get("sec") or {}).get("wit") or {}
@@ -13575,7 +13664,7 @@ def felder_state():
     kd_, kdef_, kkeep_ = own_kinds()
     out = {"ok": True, "tpl": c.get("tpl") or "laerm", "first": False, "blocks": defs, "sec": c.get("sec") or {}, "max": felder.MAX_ACTIVE,
            "tpls": list(CAP_TPLS), "counts": {}, "daily": {}, "sug": {},
-           "kinds": all_kinds(), "kind_def": kdef_, "kind_keep": kkeep_, "kind_n": {}}
+           "kinds": kd_, "kind_def": kdef_, "kind_keep": kkeep_, "kind_n": {}, "linked": linked}
     want = [b for b in defs if not b.get("del") and (b["type"] in ("counter", "place") or (b["type"] == "text" and b.get("sug")))]
     if want:
         with NOTES_LOCK:

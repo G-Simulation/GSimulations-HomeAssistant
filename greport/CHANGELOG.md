@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.12
+
+- **Mit GLighter verbunden:** GLighter zeigt und steuert jetzt GReports Erfassung (Felder, Bereiche, Arten); GReport liest Änderungen von dort sofort nach. GReport bleibt eigenständig – ohne GLighter ändert sich nichts.
+- **Erster Start allein:** „Später“ bei der Vorlagenwahl belegt allgemein vor („Allgemein“); mit GLighter lärm-spezifisch.
+
 ## 1.12.11
 
 - **Schnellwahl-Tasten mit GLighter abgleichen:** Sind beide Apps installiert und verbunden, haben beide dieselbe Tastenbelegung (eigene Tasten, Umbenennungen, Ausblendungen, Gruppen, Reihenfolge, Pflichtfelder). Wer zuletzt geändert hat, gewinnt; die Nutzungszähler bleiben je App.
