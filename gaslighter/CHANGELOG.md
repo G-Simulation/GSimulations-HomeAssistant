@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.56
+
+- **Rubrik „Zeitpunkt“ auch in GLighter** (wie GReport): gerade eben, vor 5/15 Min., vor 1 Std., heute Nacht, gestern Abend, ohne Zeitpunkt. Gerechnet wird vom ersten Tippen an; nochmal tippen = wieder „jetzt“. Umbenennungen, ausgeblendete und eigene Zeit-Tasten kommen bei Verbindung über den Tasten-Abgleich aus GReport.
+
 ## 1.85.55
 
 - **Eine Erfassung, zwei Fenster:** Ist GReport verbunden, gehört die Notiz-Erfassung (eigene Felder, Benennung der Bereiche, Notiz-Arten samt Vorgabe) GReport. GLighter zeigt sie und steuert sie: Änderungen in „Layout anpassen“ landen direkt in GReport, GReport liest sie sofort nach. Ohne Verbindung arbeitet GLighter mit seiner eigenen Erfassung weiter, dieselbe Oberfläche. Beim ersten Verbinden bekommt ein noch unkonfiguriertes GReport GLighters lärm-spezifische Vorbelegung; hat GReport schon etwas eingestellt, bleibt das. Die Schnellwahl-Tasten gleichen sich weiter in beide Richtungen ab (1.85.46). Mit Tests.

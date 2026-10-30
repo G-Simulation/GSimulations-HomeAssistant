@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.55"
+VERSION = "1.85.56"
 
 # =====================================================================
 # Einstellungen
@@ -7091,6 +7091,27 @@ def tag_known(t):
     return isinstance(t, str) and (t in NOTE_TAG_SET or isinstance(qt_all()["own"].get(t), dict))
 
 
+# Zeitpunkt-Tasten (ab 1.85.56, wie GReport): m = Minuten zurück, at = Uhrzeit, rng = ungefährer Zeitraum, day = Tage zurück, none = ohne Zeitpunkt.
+# Eigene Zeit-Tasten kommen über den Tasten-Abgleich aus GReport („when“).
+WHEN_DEF = {"w_now": {"m": 0}, "w_5": {"m": 5}, "w_15": {"m": 15}, "w_60": {"m": 60}, "w_night": {"rng": ["22:00", "06:00"]},
+            "w_eve": {"rng": ["18:00", "22:00"], "day": 1}, "w_none": {"none": True}}
+WHEN_DE = {"w_now": "gerade eben", "w_5": "vor 5 Min.", "w_15": "vor 15 Min.", "w_60": "vor 1 Std.", "w_night": "heute Nacht",
+           "w_eve": "gestern Abend", "w_none": "ohne Zeitpunkt"}
+WHEN_EN = {"w_now": "just now", "w_5": "5 min ago", "w_15": "15 min ago", "w_60": "1 hour ago", "w_night": "last night",
+           "w_eve": "yesterday evening", "w_none": "no time"}
+
+
+def when_list():
+    """Zeitpunkt-Tasten für die Erfassung: eingebaute (umbenennbar, ausblendbar) und eigene aus GReport."""
+    d = qt_all(); ren = qt_x("ren"); hide = d.get("hide") or {}; own = qt_x("when")
+    lbl = WHEN_EN if CFG.get("language") == "en" else WHEN_DE
+    out = [dict({"k": k, "l": (ren.get(k) if isinstance(ren.get(k), str) and ren.get(k) else lbl[k]), "own": False, "hide": bool(hide.get(k))}, **v) for k, v in WHEN_DEF.items()]
+    for k, o in own.items():
+        if isinstance(o, dict) and not o.get("del") and re.fullmatch(r"t_[0-9a-f]{6}", str(k)):
+            out.append(dict({"k": k, "l": str(o.get("l") or k)[:30], "own": True, "hide": bool(hide.get(k))}, **{x: o[x] for x in ("m", "at", "day", "rng") if x in o}))
+    return out
+
+
 def tag_label(t):
     if isinstance(t, str) and t.startswith("g:"):          # eigene Taste aus GReport
         return t[2:]
@@ -7152,7 +7173,8 @@ def qt_state():
                 "own": [{"k": k, "l": o.get("l") or k, "del": bool(o.get("del"))} for k, o in d["own"].items() if isinstance(o, dict)],
                 "hide": sorted(k for k, v in d["hide"].items() if v and k in NOTE_TAG_SET),
                 "use": {k: int(v or 0) for k, v in d["use"].items() if isinstance(v, (int, float))},
-                "suggest": [{"w": e.get("w") or k, "k": k, "n": int(e.get("n") or 0)} for k, e in sug[:5]]}
+                "suggest": [{"w": e.get("w") or k, "k": k, "n": int(e.get("n") or 0)} for k, e in sug[:5]],
+                "when": when_list()}
 
 
 def qt_change(data):

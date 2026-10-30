@@ -3370,7 +3370,7 @@ function ntsApply(j) {
   if (!j || !j.ok) return;
   if (j.tags) NOTE_TAGS = j.tags;
   NTS.own = {}; NTS.del = new Set(); for (const o of j.own || []) { NTS.own[o.k] = o.l; if (o.del) NTS.del.add(o.k); }
-  NTS.hide = new Set(j.hide || []); NTS.use = j.use || {}; NTS.sug = j.suggest || [];
+  NTS.hide = new Set(j.hide || []); NTS.use = j.use || {}; NTS.sug = j.suggest || []; NTS.when = j.when || [];   // Zeitpunkt-Tasten (ab 1.85.56)
   Object.assign(NTS, { ren: j.ren || {}, grp: j.grp || {}, order: j.order || [], mode: j.mode || 'use', gcol: j.gcol || {}, req: new Set(j.req || []), gall: j.gall || [], max: j.own_max || 40, gone: new Set(j.gone || []), ghelp: j.ghelp || {} });
   fcColApply();
 }
@@ -7672,13 +7672,21 @@ function fnpTags() {
   const ids = gIds(); for (const g in by) if (!ids.includes(g)) (by.own = by.own || []).push(...by[g]);   // Rubrik gibt es nicht mehr: unter „Eigene“
   let h = ''; const w = NTS.sug[0];
   if (w) h += `<div class="sugline">💡 ${esc(t('qt_sug', { w: w.w, n: w.n }))} <button type="button" class="sugy">＋ ${esc(t('qt_create'))}</button><button type="button" class="sugn" aria-label="${esc(t('qt_sug_no'))}" title="${esc(t('qt_sug_no'))}">✕</button></div>`;
+  const whenRow = () => {                                 // Rubrik „Zeitpunkt“ (ab 1.85.56, wie GReport): Tasten setzen die Zeit, kein Wort in der Notiz
+    const ws = (NTS.when || []).filter(w => !w.hide || FNP.when === w.k); if (!ws.length) return '';
+    return `<div class="grp" data-g="when"><span>${esc(t('fc_g_when'))}</span><div role="group" aria-label="${esc(t('fc_g_when'))}">${ws.map(w => `<button type="button" class="tag g-when${FNP.when === w.k ? ' on' : ''}" data-w="${esc(w.k)}" aria-pressed="${FNP.when === w.k}">${esc(w.l)}</button>`).join('')}</div></div>`;
+  };
+  let whenDone = false;
   for (const g of ids) {
+    if (g === 'own' && !whenDone) { h += whenRow(); whenDone = true; }
     const gi = gInfo(g) || {}, ks = by[g] || []; if (!ks.length && g !== 'own') continue;
     if (gHid(g) && !ks.some(k => FNP.tags.has(k))) continue;                 // ausgeblendete Rubrik dieser Ansicht (gewählte Tasten bleiben sichtbar)
     const rq = NTS.req && NTS.req.has(g);
     h += `<div class="grp${rq ? ' req' : ''}" data-g="${esc(g)}"><span>${esc(gLabel(g))}${rq ? '<i class="reqm" title="' + esc(t('fc_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {})[g] ? `<small class="ghelp">${esc(NTS.ghelp[g])}</small>` : ''}</span><div role="group" aria-label="${esc(gLabel(g) + (NTS.gone && NTS.gone.has(g) ? ' – ' + t('fb_g_one') : ''))}">${ks.map(k => tagBtn(k, FNP.tags.has(k))).join('')}<button type="button" class="tag add${g === 'own' ? '' : ' sm'}" data-g="${esc(g)}" title="${esc(t('qt_add_here', { g: gLabel(g) }))}" aria-label="${esc(t('qt_add_here', { g: gLabel(g) }))}">＋${g === 'own' ? ' ' + esc(t('qt_add')) : ''}</button></div></div>`;
   }
+  if (!whenDone) h += whenRow();
   box.innerHTML = h;
+  box.querySelectorAll('.tag[data-w]').forEach(b => b.onclick = () => whenPick(b.dataset.w));
   box.querySelectorAll('.grp>div').forEach(row => {    // Handy: Hinweis rechts, solange die Zeile weitergeht
     const upd = () => row.parentNode.classList.toggle('ovf', row.scrollWidth - row.scrollLeft - row.clientWidth > 4);
     row.addEventListener('scroll', upd, { passive: true }); requestAnimationFrame(upd);
@@ -7699,6 +7707,30 @@ function fnpTags() {
   reqCheck();
 }
 NT_AREAS.fnptags = () => fnpTags();
+function hmAt(hm, base, back) { const [hh, mm] = hm.split(':').map(Number); return new Date(base.getFullYear(), base.getMonth(), base.getDate() - (back || 0), hh, mm, 0); }
+function whenRange(w, base) {                         // wie GReport: [von, bis] in ms; bis = null wenn ohne
+  base = new Date(base);
+  if (w.rng) {                                        // ungefährer Zeitraum, z. B. 22:00–06:00 (höchstens bis Erfassungsbeginn)
+    const a = hmAt(w.rng[0], base, w.day); if (!w.day && a > base) a.setDate(a.getDate() - 1);
+    const b = hmAt(w.rng[1], a); if (b <= a) b.setDate(b.getDate() + 1);
+    const e = Math.min(b.getTime(), base.getTime()); return [a.getTime(), e > a.getTime() ? e : null];
+  }
+  if (w.at) { const d = hmAt(w.at, base, w.day); if (!w.day && d > base) d.setDate(d.getDate() - 1); return [d.getTime(), null]; }
+  return [base.getTime() - (w.m || 0) * 60000, null];
+}
+function whenPick(k) {                                // Zeitpunkt-Taste: rechnet vom Beginn der Erfassung (erstes Tippen), nochmal tippen = wieder „jetzt“
+  const w = (NTS.when || []).find(x => x.k === k); if (!w) return;
+  const nt = $('fnpnotime');
+  if (FNP.when === k) { FNP.when = null; FNP.fixed = false; $('fnpfromi').value = ''; $('fnptoi').value = ''; if (nt) nt.checked = false; }
+  else {
+    if (FNP.cap == null) FNP.cap = FNP.from != null ? FNP.from : nowServer();
+    FNP.when = k;
+    if (w.none) { FNP.fixed = false; $('fnpfromi').value = ''; $('fnptoi').value = ''; if (nt) nt.checked = true; }
+    else { const [a, b] = whenRange(w, FNP.cap); FNP.fixed = true; FNP.from = a; $('fnpfromi').value = dtl(new Date(a)); $('fnptoi').value = b ? dtl(new Date(b)) : ''; $('fnprun').checked = false; if (nt) nt.checked = false; }
+  }
+  if (FNP.from == null) FNP.from = nowServer();
+  fnpNotime(); fnpTags(); fnpShow();
+}
 function tagNewAt(box, ad) {                            // neue Taste direkt in der Rubrik: Name tippen, Enter = anlegen und wählen, Esc = weg
   const g = ad.dataset.g || 'own';
   if (box.querySelector('.tagnew')) { box.querySelector('.tagnew input').focus(); return; }
@@ -7754,7 +7786,7 @@ function timeEdit(open) {
   $('fnpext').hidden = !open; $('fnptimebtn').setAttribute('aria-expanded', String(open));
   if (open && !$('fnpfromi').value) $('fnpfromi').value = dtl(new Date(FNP.fixed && FNP.from != null ? FNP.from : nowServer()));
 }
-function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; $('fnpnotime').checked = false; fnpNotime(); kindDefault(); timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
+function fnpReset() { FNP.from = null; FNP.tgt = null; FNP.when = null; FNP.cap = null; FNP.tags = new Set(); FNP.fv = {}; FNP.reqWarned = null; fbMount(); $('fnptext').value = ''; $('fnpwit').value = ''; $('fnpfromi').value = ''; $('fnptoi').value = ''; FNP.fixed = false; $('fnprun').checked = false; $('fnpnotime').checked = false; fnpNotime(); kindDefault(); timeEdit(false); fnpTags(); fnpShow(); secDraw(); }
 function fnpNotime() {                                 // Erinnerung: Zeitfelder aus, Hinweis statt Uhrzeit
   const nt = $('fnpnotime').checked;
   for (const id of ['fnpfromi', 'fnptoi', 'fnpfnow', 'fnptnow', 'fnptclr', 'fnprun']) { const e = $(id); if (e) e.disabled = nt; }
