@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.13
+
+- **Neue Taste direkt in der Rubrik** (wie GLighter): Am Ende jeder Rubrik-Zeile steht „＋“. Klick klappt ein Eingabefeld auf, Name tippen, Enter – die Taste steht in dieser Rubrik und ist gleich gewählt. Esc oder ✕ bricht ab, Rechtsklick auf „＋“ öffnet die Verwaltung.
+
 ## 1.12.12
 
 - **Mit GLighter verbunden:** GLighter zeigt und steuert jetzt GReports Erfassung (Felder, Bereiche, Arten); GReport liest Änderungen von dort sofort nach. GReport bleibt eigenständig – ohne GLighter ändert sich nichts.

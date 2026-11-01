@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.57
+
+- **Fehler behoben: Ereignisliste leer** (Live-Tabelle und Protokolle, seit 1.85.52). Der Zwischenspeicher der Tabellenzeilen baute seinen Schlüssel aus der KI-Einordnung; manche Einordnungen enthalten verschachtelte Listen, und sobald eine solche Störung im Zeitraum lag, brach die ganze Liste mit „Interner Fehler“ ab. Jetzt ist der Schlüssel Text, und ein Problem im Zwischenspeicher kann die Liste nie mehr abbrechen. Mit Test.
+
 ## 1.85.56
 
 - **Rubrik „Zeitpunkt“ auch in GLighter** (wie GReport): gerade eben, vor 5/15 Min., vor 1 Std., heute Nacht, gestern Abend, ohne Zeitpunkt. Gerechnet wird vom ersten Tippen an; nochmal tippen = wieder „jetzt“. Umbenennungen, ausgeblendete und eigene Zeit-Tasten kommen bei Verbindung über den Tasten-Abgleich aus GReport.

@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.56"
+VERSION = "1.85.57"
 
 # =====================================================================
 # Einstellungen
@@ -14489,11 +14489,11 @@ def _row_sig(datei):
         return None
     with ART_LOCK:
         e = art_all().get(datei)
-    es = (e.get("g"), e.get("c"), e.get("man"), tuple(e.get("k") or ()), tuple(e.get("p") or ()), e.get("kv")) if isinstance(e, dict) else None
+    es = [e.get("g"), e.get("c"), e.get("man"), e.get("k"), e.get("p"), e.get("kv")] if isinstance(e, dict) else None
     b = best_of(datei)
-    bs = (b.get("g"), b.get("ki")) if isinstance(b, dict) else None
-    k_ = KL["sug"].get(datei)
-    return (es, bs, tuple(k_) if k_ else None)
+    bs = [b.get("g"), b.get("ki")] if isinstance(b, dict) else None
+    # ab 1.85.57: als Text – Einordnungen enthalten Listen (verschachtelt), ein Tupel daraus ist nicht hashbar und brach die ganze Ereignisliste ab
+    return json.dumps([es, bs, KL["sug"].get(datei)], sort_keys=True, default=str, ensure_ascii=False)
 
 
 def ev_row(r):
@@ -14504,7 +14504,10 @@ def ev_row(r):
     with EVROW_LOCK:
         if EVROW["ver"] != ver:
             EVROW["ver"] = ver; EVROW["rows"].clear()
-        e = EVROW["rows"].get(key)
+        try:
+            e = EVROW["rows"].get(key)
+        except TypeError:                              # nie wegen des Zwischenspeichers scheitern: dann eben ohne
+            return _ev_row(r)
         if e is not None and now - e[0] < EVROW_TTL:
             return dict(e[1])
     row = _ev_row(r)

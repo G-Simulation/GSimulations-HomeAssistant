@@ -38,7 +38,7 @@ def main():
             if pg.input_value("#fnptext") != "Bass dröhnt" or not pg.locator("#fnpcancel").is_visible():
                 fails.append("Ändern füllt „Notiz jetzt“ nicht")
             pg.click("#fnpcancel")
-            pg.click("#fnptags .tag.add"); pg.wait_for_timeout(300)                   # Schnellwahl bearbeiten
+            pg.click("#fnptags .grp[data-g='own'] .tag.add", button="right"); pg.wait_for_timeout(300)   # Schnellwahl bearbeiten (ab 1.12.13: Rechtsklick; Klick = Eingabefeld in der Rubrik)
             pg.fill("#qtnew", "Waschmaschine"); pg.click("#qtaddok"); pg.wait_for_timeout(500)
             r = pg.locator('#qtlist .qtr[data-k="musik"] input[type=text]'); r.fill("Bass"); r.press("Enter"); pg.wait_for_timeout(500)
             pg.click('#qtlist .qtr[data-k="unten"] .up'); pg.wait_for_timeout(500)
@@ -61,7 +61,7 @@ def main():
             import re as _re
             if not _re.fullmatch(r"\d\d:\d\d", pg.locator("#capclock").inner_text().strip()) or not _re.fullmatch(r"\d{4}-\d\d-\d\d", pg.locator("#capdate").inner_text().strip()):
                 fails.append("Datums-/Zeitformat wirkt nicht: " + pg.locator("#capclock").inner_text() + " " + pg.locator("#capdate").inner_text())
-            pg.click("#fnptags .tag.add"); pg.wait_for_timeout(300)             # Pflicht-Gruppen: pulsieren, wenn alle gewählt
+            pg.click("#fnptags .grp[data-g='own'] .tag.add", button="right"); pg.wait_for_timeout(300)             # Pflicht-Gruppen: pulsieren, wenn alle gewählt
             pg.locator("#qtlist .qtg.g-src .reqc input").check(); pg.wait_for_timeout(400)
             pg.locator("#qtlist .qtg.g-kind .reqc input").check(); pg.wait_for_timeout(400)
             pg.click("#qtdlg .dlgx"); pg.wait_for_timeout(200)
