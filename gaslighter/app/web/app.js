@@ -7016,7 +7016,7 @@ function levRender(force) {
   const cols = LEV_COLS.filter(c => (useArt || (c !== 'art' && c !== 'kinds')) && (c !== 'devs' || multi) && (c !== 'sc' || hasSc)).map(c => Object.assign({}, def[c]));
   const hide0 = LEV_COLS.filter(c => !LEV.cols.includes(c)).map(c => def[c].f);
   if (typeof agGrid === 'undefined') return;
-  const key = JSON.stringify([lang, useArt, multi, hasSc]);
+  const key = JSON.stringify([lang, useArt, multi, hasSc, LEV.vis]);   // ab 1.85.58: Hinweis „keine Ereignisse“ passt zum Bereich (sichtbar / Zeitraum)
   const ph = t(LEV.vis ? 'lev_none' : 'lev_none_rng');
   if (!LTBL || LTBL_KEY !== key) {
     if (LTBL) { LTBL.destroy(); LTBL = null; }

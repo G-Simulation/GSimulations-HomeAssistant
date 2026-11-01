@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.58
+
+- **Live-Tabelle:** Bei „Letzte 30 Tage“ (oder einem anderen Zeitraum) stand in einer leeren Tabelle noch „Im sichtbaren Bereich keine Ereignisse“. Der Hinweis passt jetzt zum gewählten Bereich.
+
 ## 1.85.57
 
 - **Fehler behoben: Ereignisliste leer** (Live-Tabelle und Protokolle, seit 1.85.52). Der Zwischenspeicher der Tabellenzeilen baute seinen Schlüssel aus der KI-Einordnung; manche Einordnungen enthalten verschachtelte Listen, und sobald eine solche Störung im Zeitraum lag, brach die ganze Liste mit „Interner Fehler“ ab. Jetzt ist der Schlüssel Text, und ein Problem im Zwischenspeicher kann die Liste nie mehr abbrechen. Mit Test.
