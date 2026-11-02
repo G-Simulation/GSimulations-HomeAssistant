@@ -1316,7 +1316,7 @@ const EVR = { t: 0, timer: 0 };
 function evRefreshSoon() {
   clearTimeout(EVR.timer);
   const wait = Math.max(0, (NV.open ? 5000 : 15000) - (Date.now() - EVR.t)) + (st && st.active && Date.now() - EVR.t < 20000 ? 2000 : 0);
-  EVR.timer = setTimeout(() => { if (st && st.active && Date.now() - EVR.t < 20000) return evRefreshSoon(); EVR.t = Date.now(); loadEvents(); levLoad(); }, wait);
+  EVR.timer = setTimeout(() => { if (st && st.active && Date.now() - EVR.t < 20000) return evRefreshSoon(); EVR.t = Date.now(); loadEvents(); if (LEV.vis || LEV.rng === 'today' || LEV.rng === '24h') levLoad(); }, wait);   // lange Zeiträume: nur im 3-min-Takt
 }
 /* Kacheln (Pegel, Hintergrund, Schwelle, Geraeusch, Ereignisse) fuer ein Geraet */
 function renderTiles(S, sid) {
@@ -7079,7 +7079,8 @@ function levTick() {                                  // sichtbarer Bereich änd
   if (NV.open || !$('ldev') || document.hidden) return;
   if (LEV.busy) return;                               // Antwort steht noch aus
   // ab 1.85.43: spätestens alle 30 s neu holen – Sensor-Ereignisse und Notizen aus GReport ändern den Störungszähler nicht (der Server antwortet aus dem Zwischenspeicher)
-  const due = Date.now() - Math.max(LEV.at || 0, LEV.t0 || 0) > 30000;
+  const longR = !LEV.vis && (LEV.rng === '7d' || LEV.rng === '30d' || LEV.rng === 'custom');   // ab 1.85.65: lange Zeiträume seltener (die Berechnung dauert Sekunden)
+  const due = Date.now() - Math.max(LEV.at || 0, LEV.t0 || 0) > (longR ? 180000 : 30000);
   if (!LEV.vis) { if (due || LEV.rng === '24h' || LEV.rng === 'today') levLoad(due); return; }
   const w = levWin(); if (!w) return;
   if (due || w[0] < LEV.fa || w[1] > LEV.fb - 60000) levLoad(true); else levRender();

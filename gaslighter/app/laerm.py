@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.64"
+VERSION = "1.85.65"
 
 # =====================================================================
 # Einstellungen
@@ -12947,6 +12947,11 @@ def events_summary(src="all", n=200, plist="", rng=None, art=""):
                 EVS_CACHE.pop(k, None)
     with e["lock"]:                                   # gleiche Anfrage läuft schon: warten und deren Ergebnis nehmen
         if e["res"] is not None and e["ver"] == ver and time.time() - e["t"] < EVS_TTL:
+            return e["res"]
+        # ab 1.85.65: lange Zeiträume (über 2 Tage) nicht bei jeder neuen Störung neu rechnen – das dauert Sekunden und bremst alles andere.
+        # Nur neue Störungen (log.csv) dürfen bis 90 s warten; Änderungen über die Oberfläche (Einordnung, Notizen …) rechnen sofort neu.
+        long_ = rng is not None and (rng[1] - rng[0]).total_seconds() > 2 * 86400
+        if long_ and e["res"] is not None and e["ver"] and e["ver"][1:] == ver[1:] and time.time() - e["t"] < 90:
             return e["res"]
         with EVS_SEM:                                 # ab 1.85.46: höchstens 2 Berechnungen zugleich – mehr machen sich nur gegenseitig langsam
             t0 = time.time(); EVS_TL.d = {}

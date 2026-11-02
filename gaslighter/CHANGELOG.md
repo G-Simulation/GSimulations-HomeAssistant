@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.65
+
+- **Laden hing oft:** Die Live-Tabelle auf „Letzte 30 Tage“ ließ die Ereignisliste alle 30–45 s neu berechnen (auf einem kleinen Server 11–42 s je Berechnung); in der Zeit warteten Graphen und alles andere. Jetzt: lange Zeiträume (7/30 Tage, eigener Zeitraum) lädt die Tabelle höchstens alle 3 Minuten, und der Server rechnet sie bei neuen Störungen höchstens alle 90 s neu. Änderungen über die Oberfläche (Einordnung, Notizen) gelten weiter sofort.
+
 ## 1.85.64
 
 - **Live-Bild und gespeicherte Daten sind eine Kurve:** Was nicht (mehr) im Arbeitsspeicher liegt – nach einem Neustart oder Update nur die letzten Minuten –, holt das Live-Bild aus der Tagesaufzeichnung und setzt es nahtlos davor. Vorher blieb links alles leer. (Das Spektrogramm füllt sich dort noch nicht, nur der Pegel.)
