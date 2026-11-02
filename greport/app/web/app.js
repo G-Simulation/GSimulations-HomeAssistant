@@ -266,6 +266,7 @@ function layOpenAt(k) {
 }
 function fnpTags() {
   const box = $('fnptags'); if (!box) return;
+  const tin = tagInKeep(box);
   if (LAY.on) { layDraw(); return; }
   const vis = ntVisible(FNP.tags), by = {}; for (const k of vis) (by[ntGroup(k)] = by[ntGroup(k)] || []).push(k);
   let h = '';
@@ -282,7 +283,7 @@ function fnpTags() {
     const ks = by[g] || []; if (!ks.length && g !== 'own') continue;
     if (gHid(g) && !ks.some(k => FNP.tags.has(k))) continue;        // ausgeblendete Rubrik dieser Ansicht (gewählte Wörter bleiben sichtbar)
     const lim = NTS.show > 0 && !FNP.open.has(g) ? NTS.show : 0, shown = lim ? ks.filter((k, i) => i < lim || FNP.tags.has(k)) : ks, hid = ks.length - shown.length;   // Pro: nur die ersten N je Gruppe
-    h += `<div class="grp${NTS.req && NTS.req.has(g) ? ' req' : ''}" data-g="${g}"><span>${esc(gLabel(g))}${NTS.req && NTS.req.has(g) ? '<i class="reqm" title="' + esc(t('gr_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {})[g] ? `<small class="ghelp">${esc(NTS.ghelp[g])}</small>` : ''}</span><div${NTS.gone && NTS.gone.has(g) ? ` role="group" aria-label="${esc(gLabel(g) + ' – ' + t('fb_g_one'))}"` : ''}>${shown.map(k => tagBtn(k, FNP.tags.has(k))).join('')}${hid > 0 ? `<button type="button" class="tag more" data-g="${g}">${esc(t('gr_more', { n: hid }))}</button>` : FNP.open.has(g) && NTS.show > 0 && ks.length > NTS.show ? `<button type="button" class="tag more less" data-g="${g}">${esc(t('gr_less'))}</button>` : ''}<button type="button" class="tag add${g === 'own' ? '' : ' sm'}" data-g="${esc(g)}" title="${esc(t('qt_add_here', { g: gLabel(g) }))}" aria-label="${esc(t('qt_add_here', { g: gLabel(g) }))}">＋${g === 'own' ? ' ' + esc(t('qt_add')) : ''}</button></div></div>`;
+    h += `<div class="grp${NTS.req && NTS.req.has(g) ? ' req' : ''}" data-g="${g}"><span>${esc(gLabel(g))}${NTS.req && NTS.req.has(g) ? '<i class="reqm" title="' + esc(t('gr_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {})[g] ? `<small class="ghelp">${esc(NTS.ghelp[g])}</small>` : ''}</span><div${NTS.gone && NTS.gone.has(g) ? ` role="group" aria-label="${esc(gLabel(g) + ' – ' + t('fb_g_one'))}"` : ''}>${shown.map(k => tagBtn(k, FNP.tags.has(k))).join('')}${hid > 0 ? `<button type="button" class="tag more" data-g="${g}">${esc(t('gr_more', { n: hid }))}</button>` : FNP.open.has(g) && NTS.show > 0 && ks.length > NTS.show ? `<button type="button" class="tag more less" data-g="${g}">${esc(t('gr_less'))}</button>` : ''}<span class="tag add tagin${g === 'own' ? '' : ' sm'}" data-g="${esc(g)}" title="${esc(t('qt_add_here', { g: gLabel(g) }))}"><input type="text" maxlength="30" enterkeyhint="done" placeholder="${esc(g === 'own' ? '+ ' + t('qt_add') : '+')}" aria-label="${esc(t('qt_add_here', { g: gLabel(g) }))}"><button type="button" class="tnok" tabindex="-1" aria-label="${esc(t('save'))}">✓</button></span></div></div>`;
   }
   box.innerHTML = h;
   box.querySelectorAll('.grp>div').forEach(row => {          // Handy: Hinweis rechts, solange die Zeile weitergeht
@@ -298,28 +299,36 @@ function fnpTags() {
   box.querySelectorAll('.tag[data-w]').forEach(b => b.onclick = () => whenPick(b.dataset.w));
   const wg = box.querySelector('.grp[data-g="when"]'); if (wg) { const sl = el('div', { className: 'tipslot' }); sl.dataset.tips = '3'; wg.after(sl); tipsDraw(box); }
   box.querySelectorAll('.tag.more').forEach(b => b.onclick = () => { const g = b.dataset.g; FNP.open.has(g) ? FNP.open.delete(g) : FNP.open.add(g); fnpTags(); });
-  box.querySelectorAll('.tag.add').forEach(ad => { ad.onclick = () => tagNewAt(box, ad); ad.oncontextmenu = e => { e.preventDefault(); qtOpen(); }; });   // ab 1.12.13: ＋ in jeder Rubrik, Eingabefeld an Ort und Stelle (wie GLighter)
+  tagInBind(box, () => qtOpen(), tin);                 // ab 1.12.14: leere Pille mit „+“ in jeder Rubrik – direkt hineinschreiben (wie GLighter)
   reqCheck();
   const sy = box.querySelector('.sugy'); if (sy) sy.onclick = async () => { try { const j = await ntsPost({ action: 'add', l: w.w }); if (j.k) { FNP.tags.add(j.k); fnpTags(); } } catch (e) { alert(e.message); } };
   const sn = box.querySelector('.sugn'); if (sn) sn.onclick = () => ntsPost({ action: 'nope', w: w.k }).catch(e => alert(e.message));
 }
-function tagNewAt(box, ad) {                            // neue Taste direkt in der Rubrik: Name tippen, Enter = anlegen und wählen, Esc = weg
-  const g = ad.dataset.g || 'own';
-  if (box.querySelector('.tagnew')) { box.querySelector('.tagnew input').focus(); return; }
-  const w = el('span', { className: 'tag tagnew' }), i = el('input', { type: 'text', maxLength: 30, placeholder: t('qt_new_ph') });
-  i.setAttribute('aria-label', t('qt_add_here', { g: gLabel(g) })); i.setAttribute('enterkeyhint', 'done');
-  const ok = el('button', { type: 'button', className: 'tnok', textContent: '✓', title: t('save') }), no = el('button', { type: 'button', className: 'tnno', textContent: '✕', title: t('cancel') });
-  w.append(i, ok, no); ad.replaceWith(w); i.focus();
-  let done = false;
-  const close = () => { if (done) return; done = true; fnpTags(); };
-  const go = async () => {
-    const l = i.value.trim(); if (!l) { close(); return; }
-    try { const j = await ntsPost({ action: 'add', l, g }); done = true; if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l })); }
-    catch (e) { alert(e.message); i.focus(); }
-  };
-  i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); close(); } };
-  ok.onclick = go; no.onclick = close;
-  i.onblur = () => setTimeout(() => { if (!done && !w.contains(document.activeElement)) close(); }, 150);
+/* Leere Pille mit „+“ in jeder Rubrik: direkt hineinschreiben, Enter (oder ✓) = neue Taste anlegen und wählen, Esc = leeren.
+   Rechtsklick auf die leere Pille = Schnellwahl bearbeiten. Beim Neuzeichnen bleibt Getipptes erhalten. */
+function tagInKeep(box) {
+  const vals = {}; let foc = null, s = null;
+  box.querySelectorAll('.tag.tagin input').forEach(i => { const g = i.parentNode.dataset.g; if (i.value) vals[g] = i.value; if (document.activeElement === i) { foc = g; s = i.selectionStart; } });
+  return { vals, foc, s };
+}
+function tagInBind(box, manage, keep) {
+  box.querySelectorAll('.tag.tagin').forEach(w => {
+    const i = w.querySelector('input'), ok = w.querySelector('.tnok'), g = w.dataset.g || 'own';
+    const upd = () => w.classList.toggle('has', !!i.value.trim());
+    if (keep && keep.vals[g]) i.value = keep.vals[g];
+    if (keep && keep.foc === g) { i.focus(); try { i.setSelectionRange(keep.s, keep.s); } catch (e) { } }
+    upd(); i.oninput = upd;
+    const go = async () => {
+      const l = i.value.trim(); if (!l || w._busy) return; w._busy = true;
+      try { const j = await ntsPost({ action: 'add', l, g }); i.value = ''; if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l }));
+        const n = box.querySelector(`.tag.tagin[data-g="${CSS.escape(g)}"] input`); if (n) n.focus(); }   // gleich die nächste eintippen
+      catch (e) { alert(e.message); i.focus(); } finally { w._busy = false; }
+    };
+    i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); i.value = ''; upd(); i.blur(); } };
+    if (ok) { ok.onmousedown = e => e.preventDefault(); ok.onclick = go; }
+    w.onclick = e => { if (e.target === w) i.focus(); };
+    w.oncontextmenu = e => { if (i.value) return; e.preventDefault(); manage(); };
+  });
 }
 function whenOrdered() {
   const ks = [...WHEN.keys()];

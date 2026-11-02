@@ -142,7 +142,9 @@ def main():
             if pg.locator("#fnptags .tag.add").count() < 2 or pg.locator("#fnptags .grp[data-g='own'] .tag.add").count() != 1:   # ab 1.85.54: ＋ in jeder Rubrik
                 fails.append("Knopf ＋ fehlt in den Rubriken der Schnellwahl")
             else:
-                pg.click("#fnptags .grp[data-g='own'] .tag.add"); pg.fill("#fnptags .tagnew input", "Waschmaschine"); pg.keyboard.press("Enter"); pg.wait_for_timeout(800)   # ab 1.85.54: Eingabefeld an Ort und Stelle
+                pg.click("#fnptags .grp[data-g='own'] .tagin input"); pg.keyboard.type("Waschmaschine"); pg.keyboard.press("Enter"); pg.wait_for_timeout(800)   # ab 1.85.76: leere Pille mit „+“, direkt hineinschreiben
+                if pg.evaluate("document.activeElement && document.activeElement.closest('.tag.tagin') ? document.activeElement.value : 'x'") != "":
+                    fails.append("nach dem Anlegen ist die Pille nicht leer und bereit für die nächste")
                 if not pg.locator('#fnptags .grp[data-g="own"] .tag[data-t]:has-text("Waschmaschine")').count():
                     fails.append("eigene Schnellwahl-Taste erscheint nicht")
             mp = b.new_context(locale="de-DE", viewport={"width": 375, "height": 760}, is_mobile=True, has_touch=True).new_page()   # Handy: nichts breiter als der Bildschirm
