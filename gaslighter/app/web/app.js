@@ -688,7 +688,7 @@ function upDraw(e, dk, mkData, x0, x1, y0, y1, cutT) {
   });
 }
 /* Live-Pegelspur: KI-Symbole oben, Sensor-Fähnchen und rote Marken unten – wie im Verlauf, auch beim Zoomen */
-const LOV = { el: { cv: 'main' }, data: null, key: '', at: 0, busy: false, ahits: [] };
+const LOV = { el: { cv: 'main' }, data: null, key: '', at: 0, busy: false, ahits: [], fhits: [] };
 function lovFetch(t0, t1) {
   const now = Date.now(), key = view.live ? selSrc + '|live|' + view.span : selSrc + '|' + Math.round(t0 / 2000) + '|' + Math.round(t1 / 2000);
   if (LOV.busy || (key === LOV.key && now - LOV.at < 5000)) return;   // ab 1.85.73 live: höchstens alle 5 s (vorher fast jede Sekunde – kostet den Server je ~150 ms)
@@ -697,9 +697,29 @@ function lovFetch(t0, t1) {
   fetch('daytrack?src=' + encodeURIComponent(selSrc || 'main') + '&date=' + date + '&n=60&free=1&nospec=1&from=' + Math.floor(t0) + '&to=' + Math.ceil(t1), { cache: 'no-store' })
     .then(r => r.json()).then(j => { LOV.data = j && (j.art || j.subs || j.ha) ? j : null; }).catch(() => { }).finally(() => { LOV.busy = false; });
 }
+/* ab 1.85.75: Hinweis zu einem Sensor (Fähnchen, Streifen) – sofort beim Draufzeigen, statt des trägen Browser-Hinweises */
+var FLAGHOV = null;
+function haTipHtml(a, col, extra) {                  // a: [von, bis, Name, Regel, Notiz]
+  const dur = Math.max(0, (a[1] - a[0]) / 1000), ds = dur < 10 ? dur.toFixed(1) : String(Math.round(dur));
+  return `<div class="evtiph"><i class="evtipd" style="background:${esc(col || '#1c7ed6')}"></i><b>📡 ${esc(a[2])}</b></div>`
+    + `<div class="evtipt">${hms(a[0])} – ${hms(a[1])}<span>${esc(lang === 'de' ? ds.replace('.', ',') : ds)} s</span></div>`
+    + (a[4] ? `<div class="evtipn">📝 ${esc(a[4])}</div>` : '') + (extra ? `<small class="evtipk">${esc(extra)}</small>` : '');
+}
+function hitTipHtml(h, click) {                      // Treffer aus dem Verlauf (Sensor, Notiz, Unterbrechung)
+  const o = h[3] || {};
+  if (o.kind === 'ha') return haTipHtml([o.a, o.b, o.name, 0, o.note], o.col, click ? t('ha_click') : '');
+  const ls = String(h[2] || '').split('\n'), last = ls.length - 1;
+  return `<div class="evtiph"><b>${esc(ls[0])}</b></div>` + ls.slice(1).map((l, i) => i + 1 === last && click ? `<small class="evtipk">${esc(l)}</small>` : i + 1 === last ? '' : `<div class="evtipn">${esc(l)}</div>`).join('');
+}
+document.addEventListener('pointermove', e => {    // Live-Graph: Fähnchen
+  const cv = e.target, hs = LOV.fhits || [];
+  const h = cv && cv.id === 'main' && hs.length ? (() => { const rc = cv.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top; for (let i = hs.length - 1; i >= 0; i--) { const q = hs[i]; if (x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1) return q; } return null; })() : null;
+  if (h) { FLAGHOV = h; tipShow('flag', haTipHtml(h.a, h.col), e.clientX, e.clientY + 6); }
+  else if (FLAGHOV) { FLAGHOV = null; tipHide('flag'); }
+}, { passive: true });
 function lovHas() { const r = LOV.data; return !!(r && ((r.art || []).length || (r.subs || []).length || (r.ha || []).some(a => a[5] === 'event' || a[5] === 'note'))); }
 function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
-  LOV.ahits = []; const r = LOV.data; if (!r) return;
+  LOV.ahits = []; LOV.fhits = []; const r = LOV.data; if (!r) return;
   const span = t1 - t0, haV = (r.ha || []).filter(a => a[5] !== 'pause' && a[5] !== 'quiet' && !SHIDE.has('ha:' + a[2]) && a[1] >= t0 && a[0] <= t1), haLane = haLanes(haV);
   c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph + 12 * d); c.clip();
   for (const a of haV) {                               // Fähnchen oben im Bild, gestrichelte Linie ab Oberkante des Fähnchens, rote Marke unter dem Bild
@@ -709,6 +729,10 @@ function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
       c.strokeStyle = ca(col, 0.28); c.lineWidth = hb * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); c.moveTo(x0 + 0.5 * d, ly); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]); }
     c.fillStyle = col; c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb);
     if (ev) { haFlag(c, x0, ly, d, hb, col); c.fillStyle = col; c.fillRect(x0 - 1 * d * hb, T + ph + 1 * d, Math.max(3 * d, x1 - x0), (a[7] ? 8 : 4) * d); }
+    if (x1 >= L && x0 <= L + pw) {                     // ab 1.85.75: Draufzeigen zeigt, was es war (Fähnchen/Streifen oben, Marke unten)
+      LOV.fhits.push({ x0: x0 / d - 4, x1: Math.max(x1 / d, x0 / d + 10 * hb) + 4, y0: ly / d - 3, y1: ly / d + (ev ? 14 * hb : 8) + 3, a, col });
+      if (ev) LOV.fhits.push({ x0: x0 / d - 4, x1: Math.max(x1 / d, x0 / d + 3) + 4, y0: (T + ph) / d - 2, y1: (T + ph) / d + 11, a, col });
+    }
   }
   c.restore();
   const y0 = T - 20 * d, fine = r.fine || {}; let lastX = -1e9;
@@ -1042,7 +1066,7 @@ function drawHover(c, X, Y, L, T, pw, ph, d, t0, t1) {
   c.fillStyle = C.card; c.strokeStyle = C.bd; c.lineWidth = d; c.beginPath(); c.rect(bx, by, bw, bh); c.fill(); c.stroke();
   c.textAlign = 'left';
   lines.forEach((s, k) => { c.fillStyle = k === 0 ? C.tx : (k === 3 ? C.thr : k === 2 ? C.bgl : C.acc); c.fillText(s, bx + 8 * d, by + 20 * d + k * 17 * d); });
-  if (r.a && c.canvas.id !== 'spec' && !MK.sel) {               // auf einer Störung: Einzelheiten darunter
+  if (r.a && c.canvas.id !== 'spec' && !MK.sel && !FLAGHOV) {   // auf einer Störung: Einzelheiten darunter (Fähnchen hat Vorrang)
     const rc = c.canvas.getBoundingClientRect(), k = rc.width ? c.canvas.width / rc.width : d;
     try { tipShow('live', tipHtml(liveTipAt(i)), rc.left + x / k, rc.top + (by + bh) / k + 6, bx < x); } catch (e) { tipHide('live'); }
   } else tipHide('live');
@@ -6332,7 +6356,7 @@ function dtDraw(S, hoverX) {
       // Sensoren können gleichzeitig an sein (Fernseher + Türsensor): jede Spur hat ihre eigene Klickfläche, darunter bleibt Ziehen frei
       const ln = lanes2.get(a[2]), ly = T / d + ln * HA_LS, solo = (nl === 1 && x1 - x0 <= 40) || (a[5] === 'event' && x1 - x0 <= 40);   // Ereignis-Sensoren (rote Linie, Marker oben und unten): auf ganzer Höhe anklickbar
       const ymax = solo ? null : a[4] ? T / d + nl * HA_LS + 16 + ln * 15 : ly + HA_LS, ymin = solo ? null : ln === 0 ? null : ly - 2;   // breiter Balken: nur oben anklickbar (Leiste + Notiz), darunter bleibt Ziehen/Markieren frei
-      hits.push([x0 - pad, x1 + pad, '📡 ' + a[2] + ' ' + t('ha_on') + ' · ' + hms(a[0]) + '–' + hms(a[1]) + (a[4] ? '\n📝 ' + a[4] : '') + '\n' + t('ha_click'), { kind: 'ha', a: a[0], b: a[1], name: a[2], rid: a[3], note: a[4] || '', S }, ymax, ymin]); }
+      hits.push([x0 - pad, x1 + pad, '📡 ' + a[2] + ' ' + t('ha_on') + ' · ' + hms(a[0]) + '–' + hms(a[1]) + (a[4] ? '\n📝 ' + a[4] : '') + '\n' + t('ha_click'), { kind: 'ha', a: a[0], b: a[1], name: a[2], rid: a[3], note: a[4] || '', S, col: a[5] === 'event' ? sensCol(a) : '#1c7ed6' }, ymax, ymin]); }
     S.downHit = hits.concat(S.downHit || []);
   }
   const mk = S.parent ? S.parent.mark : S.mark;        // in der Tabelle gewähltes Ereignis
@@ -6349,7 +6373,7 @@ function dtDraw(S, hoverX) {
       const dd = new Date(best[0]); $(S.el.hover).textContent = (S.name ? S.name + ' · ' : '') + t('dt_at', { t: pad(dd.getHours()) + ':' + pad(dd.getMinutes()) + ':' + pad(dd.getSeconds()), p: best[1] != null ? best[1].toFixed(1) : '–', b: best[3] != null ? best[3].toFixed(1) : '–' }); }
     const tol = span / S.geo.pw * 4, on = e => tq >= e[0] - tol && tq <= e[0] + Math.max(e[1], 0) + tol;   // ±4 px, damit auch kurze Störungen zu treffen sind
     const hit = (r.ev || []).find(on), hx = hit ? null : (r.evx || []).find(on), e = hit || hx;
-    if (e && !S.drag && !(MK.sel && MK.sel.day === S)) {
+    if (e && !S.drag && !S.hov && !(MK.sel && MK.sel.day === S)) {
       const o = e[3] && typeof e[3] === 'object' ? e[3] : {}, sid = S.src || r.src || selSrc;
       const tip = hit ? { src: sid, from: e[0], to: e[0] + e[1], pk: e[2], th: o.th, bg: o.bg, art: o.a, ac: o.ac, am: o.am, prof: o.p, pc: o.pc, pbg: o.pbg, nt: o.nt,
         also: (r.evx || []).filter(x => x[0] <= e[0] + e[1] + 1500 && x[0] + x[1] >= e[0] - 1500).map(x => x[3]) } : { other: true, src: e[3], from: e[0], to: e[0] + e[1], pk: e[2] };
@@ -6830,7 +6854,8 @@ function bindDay(S, reset) {
     if (ptd) { const v = ptVal(S, yAt(e)); if (v != null) ptSet(v, false); return; }
     const dh = !MK.on && !DR.on && hitAt(S, xAt(e), yAt(e));   // anklickbar: Unterbrechung, Notiz, Sensor (breite Sensor-Balken nur oben)
     cv.style.cursor = ptNear(S, yAt(e)) ? 'ns-resize' : dh && !S.drag && !pan ? 'pointer' : '';
-    cv.title = dh ? dh[2] : '';
+    cv.title = ''; S.hov = dh && !S.drag && !pan ? dh : null;   // ab 1.85.75: Hinweis sofort (vorher Browser-Hinweis nach ~1 s)
+    if (S.hov) tipShow('dayha', hitTipHtml(dh, true), e.clientX, e.clientY + 6); else tipHide('dayha');
     if (pts.has(e.pointerId)) pts.set(e.pointerId, xAt(e));
     if (pts.size > 1 && e.pointerType === 'touch') return;
     if (pinch && pts.size === 2) {
@@ -6843,7 +6868,7 @@ function bindDay(S, reset) {
     }
     if (S.drag) { S.drag.b = xAt(e); dtDrawRaf(S); } else dtDrawRaf(S, xAt(e));
   });
-  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') tipHide('day'); if (!S.drag && !pan) { $(S.el.hover).textContent = ''; dtDraw(S); } });
+  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { tipHide('day'); tipHide('dayha'); } S.hov = null; if (!S.drag && !pan) { $(S.el.hover).textContent = ''; dtDraw(S); } });
   let dcT = 0;                                       // Klick auf eine Unterbrechung: Kommentar (kurz warten, ein Doppelklick hat Vorrang)
   const downClick = (x, e) => {
     if (MK.on || DR.on || e.type !== 'pointerup') return false;
@@ -7109,7 +7134,11 @@ function bindLive() {
     S.drag = { x: xAt(e), from: S.data.from, to: S.data.to, moved: false }; cv.setPointerCapture(e.pointerId);
   });
   cv.addEventListener('pointermove', e => {
-    if (!S.drag) { dtDrawRaf(S, xAt(e)); return; }
+    if (!S.drag) {                                   // ab 1.85.75: Fähnchen/Sensor/Notiz – Hinweis sofort
+      const rc = cv.getBoundingClientRect(), dh = !MK.on && hitAt(S, e.clientX - rc.left, e.clientY - rc.top);
+      S.hov = dh || null; cv.style.cursor = dh ? 'help' : '';
+      if (dh) tipShow('dayha', hitTipHtml(dh, false), e.clientX, e.clientY + 6); else tipHide('dayha');
+      dtDrawRaf(S, xAt(e)); return; }
     if (S.drag.mk) { S.drag.b = xAt(e); dtDrawRaf(S); return; }
     const g = S.geo; if (!g) return;
     const dx = xAt(e) - S.drag.x; if (Math.abs(dx) > 3) S.drag.moved = true; if (!S.drag.moved) return;
@@ -7134,7 +7163,7 @@ function bindLive() {
     S.drag = null;
   };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') tipHide('day'); if (!S.drag) { $(S.el.hover).textContent = ''; dtDraw(S); } });
+  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { tipHide('day'); tipHide('dayha'); } S.hov = null; if (!S.drag) { $(S.el.hover).textContent = ''; dtDraw(S); } });
   cv.addEventListener('wheel', e => {
     if (!wheelGate(e, cv)) return;
     e.preventDefault(); if (!S.data || !S.geo) return;

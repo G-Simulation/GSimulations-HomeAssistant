@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.75
+- Fähnchen und Sensor-Streifen: Draufzeigen zeigt sofort, was es war (Sensor, von–bis, Dauer, Notiz) – im Live-Graphen, im zurückgespulten Live und im Verlauf. Vorher im Live gar nichts, im Verlauf nur der träge Browser-Hinweis.
+
 ## 1.85.74
 - Live (zurückgespult) und Verlauf: „Lädt … (Netzlaufwerk wacht evtl. gerade auf)“ blieb endlos stehen, obwohl die Daten schon da waren. Kam eine zweite Abfrage während des Ladens und lag sie schon im Vorrat, wurde die Anzeige nie zurückgesetzt.
 
