@@ -98,9 +98,9 @@
       <span class="seg"><button id="zout" title="−">−</button><button id="zin" title="+">+</button></span>
       <button id="zauto" class="on" data-i="auto"></button>
       <button type="button" id="mkbtn" class="chip mkbtn" data-ia="mk_tip" aria-pressed="false">🏷 <span data-i="mk_btn"></span></button>
+      <button type="button" id="ldlive" class="golive toplive" hidden><span class="gl-dot"></span><span data-i="golive"></span></button>
     </div>
     <div class="mkhint" role="status"><span data-i="mk_on"></span><button type="button" class="chip mkend" data-i="mk_end"></button></div>
-    <div class="cleg" aria-hidden="true"><span><i class="cl lv"></i><span data-i="cl_lvl"></span></span><span><i class="cl ac"></i><span data-i="cl_act"></span></span><span><i class="cl bg"></i><span data-i="background"></span></span><span><i class="cl th"></i><span data-i="threshold"></span></span><span><i class="cl ev"></i><span data-i="cl_sens"></span></span></div>
     <div class="cvwrap">
       <canvas id="main"></canvas>
       <div class="cvbtns" id="cvbtns" hidden>
@@ -109,12 +109,13 @@
       </div>
     </div>
     <div id="ldaybox" class="ldaybox" hidden>
-      <div class="ldhd"><b id="ldrange" class="ldrange"></b><button type="button" id="ldlive" class="golive"><span class="gl-dot"></span><span data-i="golive"></span></button></div>
+      <div class="ldhd"><b id="ldrange" class="ldrange"></b></div>
       <div class="ndcvw"><canvas id="ldcv"></canvas><div class="ldspin"><i></i><span data-i="loading"></span></div></div>
       <div id="ldnone" class="ntnone" data-i="dt_none_live" hidden></div>
     </div>
     <div id="ltl" class="ndtl" role="slider" data-ia="tl_a"></div>
     <div class="ndfoot tlfoot"><span id="ldhover" class="ndhover"></span></div>
+    <div class="cleg" id="ldleg" aria-hidden="true"><span><i class="cl lv"></i><span data-i="cl_lvl"></span></span><span><i class="cl ac"></i><span data-i="cl_act"></span></span><span><i class="cl bg"></i><span data-i="background"></span></span><span><i class="cl th"></i><span data-i="threshold"></span></span><span><i class="cl ev"></i><span data-i="cl_sens"></span></span><span class="clsens"></span></div>
     <small id="ldhint" class="tlhint" data-i="dt_hint_live" hidden></small>
     <div id="classres" class="classres" hidden></div>
     <details class="hlp note"><summary data-i="help_sum"></summary><div id="livenote" data-i="livenote"></div><a class="hblink" href="#" data-hb="live/bedienung" data-i="hb_more"></a></details>
@@ -167,12 +168,12 @@
       <div class="ndayhd"><b data-i="dt_title"></b><span id="ndchips" class="ndchips"></span><span id="ndrange" class="ndrange"></span><span class="seg ndzoom"><button type="button" id="ndleft" data-ia="dt_left">‹</button><button type="button" id="ndzout" data-ia="dt_zout">−</button><button type="button" id="ndzin" data-ia="dt_zin">+</button><button type="button" id="ndright" data-ia="dt_right">›</button></span><button type="button" id="ndreset" class="chip" data-i="dt_reset"></button><button type="button" id="ndmore" class="chip ndmore" aria-expanded="false" data-ia="dt_tools">⋯ <span data-i="dt_tools"></span></button><span id="ndtools" class="ndtools"><button type="button" id="ndpt" class="chip" data-ia="pt_tip" aria-pressed="false">📏 <span data-i="pt_btn"></span></button><button type="button" id="ndprint" class="chip" data-ia="pr_title">🖨 <span data-i="pr_btn"></span></button><button type="button" id="ndmk" class="chip mkbtn" data-ia="mk_tip" aria-pressed="false">🏷 <span data-i="mk_btn"></span></button><button type="button" id="nddel" class="chip drbtn" data-ia="dr_tip" aria-pressed="false">🗑 <span data-i="dr_btn"></span></button></span></div>
       <div id="ndptbar" class="ndptbar" hidden><label><b data-i="pt_lbl"></b> <input type="number" id="ndptv" step="0.5" min="-130" max="0" inputmode="decimal"> dB</label><span id="ndptsum" class="ndptsum"></span><span class="ndptact"><button type="button" id="ndptl" class="chip" data-i="pt_list"></button><button type="button" id="ndptx" class="chip" data-ia="pt_off">✕</button></span><small class="ndpthint"><span data-i="pt_hint"></span> <a class="hblink" href="#" data-hb="protokolle/pruefschwelle" data-i="hb_more"></a></small></div>
       <div class="mkhint" role="status"><span data-i="mk_on"></span><button type="button" class="chip mkend" data-i="mk_end"></button></div>
-<div class="cleg" aria-hidden="true"><span><i class="cl lv"></i><span data-i="cl_lvl"></span></span><span><i class="cl ac"></i><span data-i="cl_act"></span></span><span><i class="cl bg"></i><span data-i="background"></span></span><span><i class="cl th"></i><span data-i="threshold"></span></span><span><i class="cl ev"></i><span data-i="cl_sens"></span></span></div>
       <canvas id="ndcv"></canvas>
       <div id="ndmulti" class="ndmulti" hidden></div>
       <div id="scnd" class="sclanes inday" role="img" hidden></div>
       <div id="ndptlist" class="ndptlist" hidden></div>
       <div id="ndtl" class="ndtl" role="slider" data-ia="tl_a" hidden></div>
+      <div class="cleg" id="ndleg" aria-hidden="true"><span><i class="cl lv"></i><span data-i="cl_lvl"></span></span><span><i class="cl ac"></i><span data-i="cl_act"></span></span><span><i class="cl bg"></i><span data-i="background"></span></span><span><i class="cl th"></i><span data-i="threshold"></span></span><span><i class="cl ev"></i><span data-i="cl_sens"></span></span><span class="clsens"></span></div>
       <div id="ndbar" class="ndbar" hidden><div id="ndtrack" class="ndtrack"><div id="ndthumb" class="ndthumb"></div></div></div>
       <div class="ndfoot"><span id="ndhover" class="ndhover"></span><details class="hlp"><summary data-i="help_sum"></summary><small id="dthint" data-i="dt_hint"></small><a class="hblink" href="#" data-hb="protokolle/verlauf" data-i="hb_more"></a></details></div>
       <div id="ndnone" class="ntnone" data-i="dt_none" hidden></div>

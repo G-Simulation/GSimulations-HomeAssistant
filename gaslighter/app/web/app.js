@@ -6100,6 +6100,14 @@ document.addEventListener('click', e => {
 }, true);
 /* ab 1.85.17: Sensoren im Verlauf (Pegelspur und Spektrogramm) – je Sensor eine eigene Höhe (HA_LS px), damit gleichzeitige Fähnchen alle sichtbar sind;
    je Zeile wählbar, welche Sensoren gezeigt werden (row.hs = ausgeblendete Namen) */
+const LEGS = { ndleg: new Map(), ldleg: new Map() };   // Legende der Sensoren je Bereich: aus allen Zeilen zusammen
+function legSet(S, list) {
+  const id = S === LDT ? 'ldleg' : (S === DT || S.parent === DT) ? 'ndleg' : null; if (!id) return;
+  LEGS[id].set(S, list); const box = $(id); if (!box) return; const sp = box.querySelector('.clsens'); if (!sp) return;
+  const all = new Map(); for (const [k, l] of LEGS[id]) { if (k !== S && k.parent === DT && !(DT.subs || []).includes(k)) { LEGS[id].delete(k); continue; } for (const x of l) if (!all.has(x[0])) all.set(x[0], x); }
+  const h = [...all.values()].map(([nm, col, ev]) => `<span><i class="cls${ev ? ' ev' : ''}" style="--sc:${esc(col)}"></i>${esc(nm)}</span>`).join('');
+  if (sp.dataset.h !== h) { sp.innerHTML = h; sp.dataset.h = h; }
+}
 function haFlag(c, x, y, d, hb, col) {               // Fähnchen: Stiel und kleine Fahne in der Farbe des Sensors, heller Rand trennt übereinanderliegende
   c.save(); c.fillStyle = col; c.fillRect(x, y, 2 * d * hb, 13 * d * hb);
   c.beginPath(); c.moveTo(x + 2 * d * hb, y); c.lineTo(x + 10 * d * hb, y + 3.5 * d * hb); c.lineTo(x + 2 * d * hb, y + 7 * d * hb); c.closePath(); c.fill();
@@ -6112,8 +6120,7 @@ function dtDraw(S, hoverX) {
   S = S || DT; const r = S.data, cv = $(S.el.cv); if (!r || !cv || !cv.offsetParent) return;
   fit(cv); readNC();
   const art = (r.art || []).length || (r.subs || []).length || (r.pa || []).length;          // Zeile für die KI-Arten (Muster über den Tag)
-  const hasLeg = (r.ha || []).some(a => haOk(S, a));   // ab 1.85.66: Legende der Sensoren und Zeile der KI-Symbole nicht übereinander – eigene Zeile, etwas Luft
-  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = ((art ? 40 : 18) + (hasLeg ? (art ? 16 : 8) : 0)) * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
+  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = (art ? 30 : 12) * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
   const span = r.to - r.from, X = t2 => L + pw * (t2 - r.from) / span;
   let lo = 1e9, hi = -1e9; for (const p of r.pts) for (const v of [p[1], p[2], p[3]]) if (v != null && v > -125) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   if (lo > hi) { lo = -90; hi = -30; }               // unten bündig am tiefsten Wert (Schwelle zählt nicht), zu wenig Spanne nur nach oben ergänzen
@@ -6200,7 +6207,7 @@ function dtDraw(S, hoverX) {
       c.fillRect(x, T, 1 * d, 6 * d); c.fillText(tx, x + 2 * d, T + 9 * d + (art ? 0 : 0)); lastX = x + c.measureText(tx).width; }
     c.restore();
   }
-  if (haV.length) { c.textAlign = 'left'; let lx = L + 4 * d; for (const [nm] of haLane) { const ea = haV.find(a => a[2] === nm && a[5] === 'event'), ev = !!ea; c.fillStyle = ev ? sensCol(ea) : '#1c7ed6'; const tx = (ev ? '◆ ' : '▬ ') + nm; c.fillText(tx, lx, 15 * d); lx += c.measureText(tx).width + 10 * d; } }
+  legSet(S, [...haLane.keys()].map(nm => { const ea = haV.find(a => a[2] === nm && a[5] === 'event'); return [nm, ea ? sensCol(ea) : '#1c7ed6', !!ea]; }));   // ab 1.85.67: Legende der Sensoren unten (unter der Zeitleiste)
   const bw = Math.max(1, pw * (r.step || span / 1200) / span);
   // Spitze als Fläche mit Linie; Lücken (keine Werte, z. B. gestoppt) bleiben offen; Störung rot
   const gapMs = Math.max(400, 3 * (r.step || 0)), segs = []; let cur = null, prevT = null;
@@ -6959,7 +6966,7 @@ document.addEventListener('wheel', e => { if (Date.now() < WHEEL_HOLD.until && e
 function syncLongSpan() {
   const on = histOn();
   if ($('ldaybox').hidden === on) WHEEL_HOLD.until = Date.now() + 900;
-  $('ldaybox').hidden = !on;
+  $('ldaybox').hidden = !on; { const gl = $('ldlive'); if (gl) gl.hidden = !on; }   // ab 1.85.67: „● Live“ oben rechts in der Menüzeile, sobald nicht das normale Live-Bild läuft
   document.querySelectorAll('.cvwrap').forEach(e => e.classList.toggle('longhide', on));
   $('spec').hidden = on; $('ldsp').hidden = !on; if (!on) slHide('scld');   // Spektrogramm und Spuren stehen in eigenen Bereichen: kurz oder lang
   clearInterval(LDT.timer); LDT.timer = null;

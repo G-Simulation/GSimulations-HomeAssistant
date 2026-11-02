@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.67
+
+- **Legenden unten:** Kurven-Legende (Pegel, Störung, Hintergrund, Schwelle, Sensor-Ereignis) und die Namen der Sensoren stehen unter der Zeitleiste – in Live und Protokolle. Oben im Graphen bleibt nur die Zeile der KI-Symbole, der Graph bekommt mehr Höhe.
+- **„● Live“ oben rechts in der Menüzeile** des Live-Bereichs, sichtbar sobald nicht das normale Live-Bild läuft.
+
 ## 1.85.66
 
 - **Zeitleiste** (wie in einem Schnittprogramm, mit uPlot wie die Graphen) unter dem Verlauf in Protokolle und unter dem Live-Bild – ersetzt die einfache Scrollleiste: Mini-Ansicht des ganzen Zeitraums (Pegel, Hintergrund, Störungen rot, Uhrzeit-Raster) mit Fenster für den gezeigten Ausschnitt. Fenster ziehen = scrollen, Rand ziehen = zoomen, Bereich aufziehen = genau dorthin, Mausrad = scrollen, Strg + Mausrad = zoomen, Doppelklick = ganzer Zeitraum (Live: zurück zu live). Fest gekoppelt mit dem Zoom des Graphen. Live: die letzten 24 Stunden.
