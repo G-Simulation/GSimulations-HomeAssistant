@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.72"
+VERSION = "1.85.73"
 
 # =====================================================================
 # Einstellungen
@@ -10318,6 +10318,7 @@ def lock_release():
 def main():
     out, clips, _ = paths()
     os.makedirs(clips, exist_ok=True)
+    sys.setswitchinterval(0.001)    # ab 1.85.73: lange Berechnungen (Ereignisliste) geben Aufnahme und Live-Abruf öfter den Vortritt (Standard 5 ms)
     log(f"Laermprotokoll {VERSION}")
     log("Einstellungen:", json.dumps(public_settings(), ensure_ascii=False))
     log("Audioquellen:\n" + describe_sources())
@@ -12964,9 +12965,11 @@ def events_summary(src="all", n=200, plist="", rng=None, art=""):
         if e["res"] is not None and e["ver"] == ver and time.time() - e["t"] < EVS_TTL:
             return e["res"]
         # ab 1.85.65: lange Zeiträume (über 2 Tage) nicht bei jeder neuen Störung neu rechnen – das dauert Sekunden und bremst alles andere.
-        # Nur neue Störungen (log.csv) dürfen bis 90 s warten; Änderungen über die Oberfläche (Einordnung, Notizen …) rechnen sofort neu.
+        # ab 1.85.73: alles, was mit einer neuen Störung von selbst kommt (log.csv, KI-Einordnung, Ereignis-Daten), darf bis 5 min warten –
+        # vorher rechnete jede Störung 15–40 s lang die 30-Tage-Liste neu und die Live-Anzeige blieb dabei immer wieder hängen.
+        # Änderungen über die Oberfläche (VER["data"]) und an den Einstellungen rechnen weiter sofort neu.
         long_ = rng is not None and (rng[1] - rng[0]).total_seconds() > 2 * 86400
-        if long_ and e["res"] is not None and e["ver"] and e["ver"][1:] == ver[1:] and time.time() - e["t"] < 90:
+        if long_ and e["res"] is not None and e["ver"] and e["ver"][2] == ver[2] and e["ver"][4:] == ver[4:] and time.time() - e["t"] < 300:
             return e["res"]
         with EVS_SEM:                                 # ab 1.85.46: höchstens 2 Berechnungen zugleich – mehr machen sich nur gegenseitig langsam
             t0 = time.time(); EVS_TL.d = {}

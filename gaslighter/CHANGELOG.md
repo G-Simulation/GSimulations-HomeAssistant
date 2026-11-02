@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.73
+- Live hängt nicht mehr alle paar Sekunden: Jede neue Störung (und deren KI-Einordnung) ließ die 30-Tage-Ereignisliste 15–40 s lang neu rechnen; währenddessen kamen die Live-Daten stockend. Lange Zeiträume (über 2 Tage) warten damit jetzt bis zu 5 min; Änderungen über die Oberfläche rechnen weiter sofort neu.
+- Server: lange Berechnungen geben Aufnahme und Live-Abruf öfter den Vortritt.
+- Live: Symbole/Fähnchen über der Kurve werden höchstens alle 5 s nachgeladen (vorher fast jede Sekunde); vor einer Lücke in der Tagesaufzeichnung wird nicht mehr alle 4 s erneut nachgefragt.
+- Live-Punkt: sitzt fest an der Wiedergabe-Position (18 px vor dem Rand) und gleitet mit, statt mit jedem ankommenden Datenpaket zu springen. Kurve, Markierungen und Spektrogramm enden dort.
+
 ## 1.85.72
 - Live: Der Fokusrahmen um „Zeitfenster“ und die anderen Schalter oben im Graph-Bereich wird nicht mehr abgeschnitten (der Schiebe-Rahmen für den Geräte-Rundlauf beschneidet nur noch seitlich, mit 4 px Luft).
 - Umschalter (z. B. Pegel/Welle): Fokusrahmen liegt innen, damit er an den runden Ecken nicht abgeschnitten wird.

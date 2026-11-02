@@ -190,6 +190,7 @@ const DFILL = { busy: false, at: 0, src: '' };
 async function dayFill(t0) {
   if (DFILL.busy || !recs.length || Date.now() - DFILL.at < 4000 && DFILL.src === selSrc) return;
   const want = selSrc, to = recs[0].ts, from = Math.max(t0 - 5000, to - 3 * 3600000); if (to - from < 1500) return;
+  const no = DFILL.none; if (no && no.src === want && from >= no.from && to <= no.upto) return;   // ab 1.85.73: davor liegt nichts (Lücke, frisch gestartet) – nicht alle 4 s erneut fragen
   DFILL.busy = true; DFILL.at = Date.now(); DFILL.src = want;
   try {
     const n = Math.max(50, Math.min(16000, Math.ceil((to - from) / 125)));
@@ -197,6 +198,7 @@ async function dayFill(t0) {
     if (want !== selSrc || !recs.length) return;
     const ev = (j.ev || []).map(e => [e[0], e[0] + (e[1] || 0)]), first = recs[0];
     const pts = (j.pts || []).filter(p => p[0] < first.ts - 60 && p[1] != null);
+    DFILL.none = { src: want, from, upto: (pts.length ? pts[0][0] : to) + 1000 };
     if (!pts.length) return;
     let s0 = first.s - pts.length; const w = new Int16Array(30), sp = new Uint8Array(NB);
     const add = pts.map(p => ({ s: s0++, ts: p[0], l: p[1], b: p[3], t: p[4], a: ev.some(([a, b]) => p[0] >= a && p[0] <= b) ? 1 : 0, w, sp, day: true }));
@@ -596,7 +598,10 @@ function upGet(cv, cfg) {
     const opts = { width: Math.max(50, cv.clientWidth), height: Math.max(40, cv.clientHeight), pxAlign: 1, legend: { show: false }, select: { show: false },
       cursor: { show: false, drag: { x: false, y: false }, points: { show: false } },
       padding: [cfg.T, cfg.R, 0, 0], scales: { x: { time: false, auto: false }, y: { auto: false, range: (u, a, b) => [a, b] } },
-      axes: [xAxis, yAxis], series };
+      axes: [xAxis, yAxis], series,
+      hooks: {                                         // ab 1.85.73 live: Kurve nur bis zur Wiedergabe-Position (dahinter liegen schon Pakete bereit – sonst springt das Ende)
+        drawAxes: [u => { if (u._cutT == null) return; const x = u.valToPos(u._cutT, 'x', true); u.ctx.save(); u.ctx.beginPath(); u.ctx.rect(0, 0, Math.max(0, x), u.ctx.canvas.height); u.ctx.clip(); u._cl = 1; }],
+        draw: [u => { if (u._cl) { u._cl = 0; u.ctx.restore(); } }] } };
     const u = new uPlot(opts, series.map(() => []), host);
     e = { u, host, key, dk: null }; UPS.set(cv, e);
   }
@@ -674,8 +679,8 @@ function waveData(group, F) {                       // Lautstärke-Balken: je Gr
   return [X, ...S];
 }
 /* Daten und Ausschnitt setzen; dk: Kennung der Daten (nur bei Änderung neu übergeben) */
-function upDraw(e, dk, mkData, x0, x1, y0, y1) {
-  const u = e.u;
+function upDraw(e, dk, mkData, x0, x1, y0, y1, cutT) {
+  const u = e.u; u._cutT = cutT == null ? null : cutT;
   u.batch(() => {
     if (e.dk !== dk) { e.dk = dk; u.setData(mkData(), false); }
     u.setScale('x', { min: x0, max: x1 });
@@ -685,8 +690,8 @@ function upDraw(e, dk, mkData, x0, x1, y0, y1) {
 /* Live-Pegelspur: KI-Symbole oben, Sensor-Fähnchen und rote Marken unten – wie im Verlauf, auch beim Zoomen */
 const LOV = { el: { cv: 'main' }, data: null, key: '', at: 0, busy: false, ahits: [] };
 function lovFetch(t0, t1) {
-  const now = Date.now(), key = selSrc + '|' + Math.round(t0 / 2000) + '|' + Math.round(t1 / 2000);
-  if (LOV.busy || (key === LOV.key && now - LOV.at < 5000)) return;
+  const now = Date.now(), key = view.live ? selSrc + '|live|' + view.span : selSrc + '|' + Math.round(t0 / 2000) + '|' + Math.round(t1 / 2000);
+  if (LOV.busy || (key === LOV.key && now - LOV.at < 5000)) return;   // ab 1.85.73 live: höchstens alle 5 s (vorher fast jede Sekunde – kostet den Server je ~150 ms)
   LOV.busy = true; LOV.key = key; LOV.at = now;
   const date = isoDay(new Date(t1));
   fetch('daytrack?src=' + encodeURIComponent(selSrc || 'main') + '&date=' + date + '&n=60&free=1&nospec=1&from=' + Math.floor(t0) + '&to=' + Math.ceil(t1), { cache: 'no-store' })
@@ -720,6 +725,17 @@ function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
   else for (const a of r.art || []) { const xx = X(a[0]); if (xx < L || xx > L + pw) continue; if (a[3]) continue; icon(xx, a[1], ART_ICON[a[1]] || '❓', artName(a[1]), ART_HEX[a[1]] || NC.mut); }
   c.restore();
 }
+/* ab 1.85.73: live endet alles an der Wiedergabe-Position (LCUT); der Punkt sitzt dort, Wert zwischen zwei Messwerten
+   interpoliert – er gleitet mit der Wiedergabe statt mit jedem ankommenden Datenpaket zu springen */
+function liveAt(tc) {
+  if (!recs.length) return null;
+  const j = lowerBound(tc + 50), a = recs[Math.max(0, j - 1)];
+  if (j <= 0) return { r: recs[0], ts: recs[0].ts - 50, l: recs[0].l };
+  if (j >= recs.length || gapBefore(j)) return { r: a, ts: Math.min(tc, a.ts - 50), l: a.l };   // Daten reichen (noch) nicht bis hierher: am letzten Wert
+  const b = recs[j], f = clamp((tc - (a.ts - 50)) / Math.max(1, b.ts - a.ts), 0, 1);
+  return { r: a, ts: tc, l: a.l == null || b.l == null ? a.l : a.l + (b.l - a.l) * f };
+}
+const cutW = (X, L, pw) => LCUT == null ? pw : Math.max(0, Math.min(pw, X(LCUT) - L));
 function drawLevel(cv, t0, t1) {
   fit(cv);
   const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height;
@@ -750,9 +766,9 @@ function drawLevel(cv, t0, t1) {
   up.u.setSeries(1, { show: !!LAY.lvl }); up.u.setSeries(2, { show: !!LAY.bg }); up.u.setSeries(3, { show: !!LAY.thr });
   const bw = (t1 - t0) / Math.max(50, pw);           // ms je Bildpunkt (fest gerastert, damit live und angehalten gleich aussehen)
   const bwq = bw > 250 ? Math.pow(2, Math.round(Math.log2(bw) * 4) / 4) : 0;
-  upDraw(up, recs.length + ':' + (recs.length ? recs[0].s + ':' + recs[recs.length - 1].s : '') + ':' + bwq, () => liveLvlData(bwq), t0, t1, yv.lo, yv.hi);
+  upDraw(up, recs.length + ':' + (recs.length ? recs[0].s + ':' + recs[recs.length - 1].s : '') + ':' + bwq, () => liveLvlData(bwq), t0, t1, yv.lo, yv.hi, LCUT);
   if (i1 < i0) return;
-  c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip();
+  c.save(); c.beginPath(); c.rect(L, T, cutW(X, L, pw), ph); c.clip();
   // Ereignisse
   { const light = (a, b) => { c.fillStyle = C.red + '06'; c.fillRect(X(a), T, X(b) - X(a), ph); c.fillStyle = C.red + '55'; c.fillRect(X(a), T, X(b) - X(a), 2 * d); };
     eventSpans(i0, i1, light); preRollSpans(i0, i1, light); }               // Nachlauf und Vorlauf hellrot
@@ -764,14 +780,16 @@ function drawLevel(cv, t0, t1) {
   }
   drawRefs(c, curRefs(), v => [Y(v)], yv.lo, yv.hi, L, pw, T, ph, d);
   if (LAY.thr) { const tp = []; for (let i = i0; i <= i1; i++) { if (gapBefore(i)) tp.push([X(recs[i].ts - 51), null]); tp.push([X(recs[i].ts - 50), recs[i].t]); } thrEdge(c, tp, yv.lo, yv.hi, L, T, pw, ph, d, C.thr, 2); }   // Schwelle außerhalb: am Rand
-  // Live-Punkt
-  const lr = recs[i1];
-  if (view.live && lr) {
-    const x = X(lr.ts - 50), y = Y(lr.l), p = (Date.now() % 1200) / 1200;
+  c.restore();
+  // Live-Punkt (an der Wiedergabe-Position, außerhalb des Zuschnitts, damit der Ring ganz zu sehen ist)
+  const lv = view.live && LCUT != null ? liveAt(LCUT) : null, lr = lv ? lv.r : recs[i1];
+  if (lv && lv.l != null) {
+    const x = X(lv.ts), y = Y(lv.l), p = (Date.now() % 1200) / 1200;
+    c.save(); c.beginPath(); c.rect(L, T - 14 * d, pw + 14 * d, ph + 28 * d); c.clip();
     c.fillStyle = C.acc; c.beginPath(); c.arc(x, y, 3.5 * d, 0, 7); c.fill();
     c.strokeStyle = C.acc; c.globalAlpha = 1 - p; c.lineWidth = 1.5 * d; c.beginPath(); c.arc(x, y, (4 + 9 * p) * d, 0, 7); c.stroke(); c.globalAlpha = 1;
+    c.restore();
   }
-  c.restore();
   lovDraw(c, X, L, T, pw, ph, d, t0, t1);
   // Beschriftung rechts
   if (lr) {
@@ -818,14 +836,14 @@ function drawWave(cv, t0, t1) {
   const up = upGet(cv, { kind: 'wave', L: AXL(), R: 14, T: 10, B: 22, pal: livePal });
   up.u._wv = { ticks: dbTicks(yv.lo, yv.hi, ph / 2, 22).ticks.filter(k => k.major), F, fmt: dbTicks(yv.lo, yv.hi, ph / 2, 22).fmt };
   const ylo = Math.round(yv.lo * 20) / 20, yhi = Math.round(yv.hi * 20) / 20;
-  upDraw(up, [recs.length, recs.length ? recs[0].s + ':' + recs[recs.length - 1].s : '', group, ylo, yhi].join('|'), () => waveData(group, F), t0, t1, -1, 1);
+  upDraw(up, [recs.length, recs.length ? recs[0].s + ':' + recs[recs.length - 1].s : '', group, ylo, yhi].join('|'), () => waveData(group, F), t0, t1, -1, 1, LCUT);
   if (i1 < i0) return;
-  c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip();
+  c.save(); c.beginPath(); c.rect(L, T, cutW(X, L, pw), ph); c.clip();
   { const light = (a, b) => { c.fillStyle = C.red + '0a'; c.fillRect(X(a), T, X(b) - X(a), ph); }; eventSpans(i0, i1, light); preRollSpans(i0, i1, light); }
   eventSpans(i0, i1, (a, b) => { c.fillStyle = C.red + '14'; c.fillRect(X(a), T, X(b) - X(a), ph); }, true);
   drawRefs(c, curRefs(), v => [mid - F(v) * ph / 2, mid + F(v) * ph / 2], yv.lo, yv.hi, L, pw, T, ph, d);
   // Schwelle und Hintergrund als Linien
-  const lr = recs[i1];
+  const lvw = view.live && LCUT != null ? liveAt(LCUT) : null, lr = lvw ? lvw.r : recs[i1];
   for (const [key, col, lab, dash] of [['b', C.bgl, t('background'), [3, 4]], ['t', C.thr, t('threshold'), [8, 4]]]) {
     // Verlauf ueber die Zeit (wandert mit dem Hintergrund), oben und gespiegelt unten
     c.setLineDash(dash.map(q => q * d)); c.strokeStyle = col; c.lineWidth = 2 * d;
@@ -1076,7 +1094,7 @@ function drawSpec(cv, t0, t1) {
   autoRange(Math.max(0, lowerBound(t0)), Math.min(recs.length - 1, lowerBound(t1)));
   c.clearRect(0, 0, w, h);
   c.fillStyle = '#000004'; c.fillRect(L, T, pw, ph);
-  c.save(); c.beginPath(); c.rect(L, T, pw, ph); c.clip();
+  c.save(); c.beginPath(); c.rect(L, T, cutW(X, L, pw), ph); c.clip();   // live: nur bis zur Wiedergabe-Position
   c.imageSmoothingEnabled = true;
   let a = i0;
   while (a <= i1) {
@@ -5266,6 +5284,7 @@ function calibrate() {
 }
 
 /* ================= Start ================= */
+var LCUT = null;                                      // live: Wiedergabe-Position (Ende der Kurve), sonst null
 let animating = false, dirty = true, lastFrame = performance.now(), frameDt = 16, lastT1 = 0, lastSeqDrawn = -1, lastMeter = 0;
 const smoothK = tau => 1 - Math.exp(-frameDt / tau);
 function markDirty() { dirty = true; }
@@ -5276,7 +5295,7 @@ function frame(now) {
       playAdapt(frameDt);
       let [t0, t1] = viewRange();
       if (view.live) { const pxm = (t1 - t0) / Math.max(100, ($('main').clientWidth - AXL() - 14) * DPR()); t1 = Math.floor(t1 / pxm) * pxm; t0 = t1 - view.span * 1000;   // in ganzen Pixeln weiter
-        const pad = pxm * 18 * DPR(); t0 += pad; t1 += pad; }   // ab 1.85.71: Kurve endet 18 px vor dem rechten Rand – der Live-Punkt mit Ring ist ganz zu sehen
+        const pad = pxm * 18 * DPR(); t0 += pad; t1 += pad; LCUT = t1 - pad; } else LCUT = null;   // ab 1.85.71: Kurve endet 18 px vor dem rechten Rand – der Live-Punkt mit Ring ist ganz zu sehen
       const hist = histOn();                         // zurückgespult: Tagesverlauf statt Live-Grafik
       if (!hist && recs.length && t0 < recs[0].ts) { if (recs[0].s <= firstAvail) dayFill(t0); else loadOlder(); }   // ab 1.85.64: vor dem Arbeitsspeicher aus der Tagesaufzeichnung
       const pxMs = view.span * 1000 / Math.max(100, $('main').clientWidth - AXL() - 14);
