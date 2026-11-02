@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.76
+- Erfassung: „Zeitpunkt“ ist jetzt eine normale Rubrik wie alle anderen – im Layout-Editor mit Name, Farbe, Anzeigen/Ausblenden, Pflicht, Hilfetext und Reihenfolge. Seine Tasten lassen sich umbenennen, ausblenden, sortieren und eigene anlegen (Name + Minuten zurück oder Uhrzeit), wie in GReport.
+- Schnellwahl: statt „＋“ eine leere Pille mit „+“ in jeder Rubrik – direkt hineinschreiben, Enter (oder ✓) legt die Taste an und wählt sie, die Pille ist gleich wieder bereit für die nächste. Rechtsklick auf die leere Pille = Schnellwahl bearbeiten.
+
 ## 1.85.75
 - Fähnchen und Sensor-Streifen: Draufzeigen zeigt sofort, was es war (Sensor, von–bis, Dauer, Notiz) – im Live-Graphen, im zurückgespulten Live und im Verlauf. Vorher im Live gar nichts, im Verlauf nur der träge Browser-Hinweis.
 

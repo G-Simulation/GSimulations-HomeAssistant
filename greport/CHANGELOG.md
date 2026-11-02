@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.14
+- Schnellwahl: statt „＋“ eine leere Pille mit „+“ in jeder Rubrik – direkt hineinschreiben, Enter (oder ✓) legt die Taste an und wählt sie, die Pille ist gleich wieder bereit für die nächste. Rechtsklick auf die leere Pille = Schnellwahl bearbeiten.
+
 ## 1.12.13
 
 - **Neue Taste direkt in der Rubrik** (wie GLighter): Am Ende jeder Rubrik-Zeile steht „＋“. Klick klappt ein Eingabefeld auf, Name tippen, Enter – die Taste steht in dieser Rubrik und ist gleich gewählt. Esc oder ✕ bricht ab, Rechtsklick auf „＋“ öffnet die Verwaltung.

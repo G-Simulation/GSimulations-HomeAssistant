@@ -3457,7 +3457,7 @@ const NT_GCOL = { src: '#0ca678', kind: '#e0314b', lvl: '#f08c00', eff: '#7048e8
 function ntGroup(tag) { if (NTS.grp && NTS.grp[tag]) return NTS.grp[tag]; for (const g in NOTE_TAGS) if (NOTE_TAGS[g].includes(tag)) return g; return NTS.own[tag] != null || String(tag).startsWith('g:') ? 'own' : 'misc'; }
 /* ===== Schnellwahl: eigene Tasten, ausgeblendete eingebaute, Reihenfolge nach Gebrauch, gelernte Vorschläge ===== */
 const NTS = { own: {}, del: new Set(), hide: new Set(), use: {}, sug: [], ren: {}, grp: {}, order: [], mode: 'use', gcol: {}, req: new Set(), gall: [] };
-function ntLabel(tg) { return NTS.own[tg] != null ? NTS.own[tg] : NTS.ren[tg] ? NTS.ren[tg] : String(tg).startsWith('g:') ? tg.slice(2) : t('nt_' + tg); }   // g: = eigene Taste aus GReport
+function ntLabel(tg) { const w = (NTS.when || []).find(x => x.k === tg); if (w) return w.l; return NTS.own[tg] != null ? NTS.own[tg] : NTS.ren[tg] ? NTS.ren[tg] : String(tg).startsWith('g:') ? tg.slice(2) : t('nt_' + tg); }   // g: = eigene Taste aus GReport
 function ntsApply(j) {
   if (!j || !j.ok) return;
   if (j.tags) NOTE_TAGS = j.tags;
@@ -3465,6 +3465,10 @@ function ntsApply(j) {
   NTS.hide = new Set(j.hide || []); NTS.use = j.use || {}; NTS.sug = j.suggest || []; NTS.when = j.when || [];   // Zeitpunkt-Tasten (ab 1.85.56)
   Object.assign(NTS, { ren: j.ren || {}, grp: j.grp || {}, order: j.order || [], mode: j.mode || 'use', gcol: j.gcol || {}, req: new Set(j.req || []), gall: j.gall || [], max: j.own_max || 40, gone: new Set(j.gone || []), ghelp: j.ghelp || {} });
   fcColApply();
+}
+function whenOrdered() {                           // ab 1.85.76: Zeitpunkt-Tasten in der eingestellten Reihenfolge (wie GReport)
+  const ks = (NTS.when || []).map(w => w.k); if (NTS.mode !== 'fixed' || !NTS.order) return ks;
+  const pos = new Map(NTS.order.map((x, i) => [x, i])); return ks.slice().sort((a, b) => (pos.has(a) ? pos.get(a) : 1e6 + ks.indexOf(a)) - (pos.has(b) ? pos.get(b) : 1e6 + ks.indexOf(b)));
 }
 async function ntsLoad() { try { ntsApply(await (await fetch('notetags', { cache: 'no-store' })).json()); } catch (e) { } ntsRedraw(); }
 async function ntsPost(body) {
@@ -7795,7 +7799,7 @@ function renderEvFn(list) {
    „🕒 jetzt · Zeit ändern“ zum Aufklappen. Alles Einstellbare (Rubriken, Tasten, Bereiche, Überschrift, Uhr, Dichte, Tasten-Stil)
    gilt nur für GLighter: Tasten und Rubriken in schnellwahl.json, der Rest in layout.json („cap“). Sofort tippbar; „von“ = Moment der ersten Eingabe. */
 const FC_GROUPS = ['src', 'kind', 'lvl', 'eff', 'act', 'misc', 'own'];
-const FC_GDEF = { src: '#0c8a6a', kind: '#d6336c', lvl: '#e67700', eff: '#6741d9', act: '#1c6fd6', misc: '#5f6b78', own: '#a61e4d' };
+const FC_GDEF = { src: '#0c8a6a', kind: '#d6336c', lvl: '#e67700', eff: '#6741d9', act: '#1c6fd6', misc: '#5f6b78', when: '#0b7285', own: '#a61e4d' };
 const FC_PAL = ['#2f9e44', '#1098ad', '#7048e8', '#e8590c', '#c2255c', '#5c7cfa', '#868e96'];
 const gInfo = g => (NTS.gall || []).find(x => x.g === g);
 const gIds = () => NTS.gall && NTS.gall.length ? NTS.gall.map(x => x.g) : FC_GROUPS.slice();
@@ -7806,7 +7810,7 @@ function gAttr(g) { if (!gCustom(g)) return `g-${g}"`; const c = gColor(g); retu
 function fcColApply() {                                // eigene Rubrikfarben als CSS-Variablen (auch im abgedockten Fenster)
   for (const doc of [document, FNPOP && !FNPOP.closed ? FNPOP.document : null]) {
     if (!doc) continue; const r = doc.documentElement.style;
-    for (const g of FC_GROUPS) { const c = (NTS.gcol || {})[g]; if (c) { r.setProperty('--u-' + g, c); r.setProperty('--ud-' + g, `color-mix(in srgb, ${c} 72%, #fff)`); } else { r.removeProperty('--u-' + g); r.removeProperty('--ud-' + g); } }
+    for (const g of FC_GROUPS.concat('when')) { const c = (NTS.gcol || {})[g]; if (c) { r.setProperty('--u-' + g, c); r.setProperty('--ud-' + g, `color-mix(in srgb, ${c} 72%, #fff)`); } else { r.removeProperty('--u-' + g); r.removeProperty('--ud-' + g); } }
   }
 }
 function ntAll() { const out = []; for (const g in NOTE_TAGS) out.push(...NOTE_TAGS[g]); for (const k in NTS.own) if (!NTS.del.has(k)) out.push(k); return out; }
@@ -7984,11 +7988,14 @@ function fnpTags() {
   let h = ''; const w = NTS.sug[0];
   if (w) h += `<div class="sugline">💡 ${esc(t('qt_sug', { w: w.w, n: w.n }))} <button type="button" class="sugy">＋ ${esc(t('qt_create'))}</button><button type="button" class="sugn" aria-label="${esc(t('qt_sug_no'))}" title="${esc(t('qt_sug_no'))}">✕</button></div>`;
   const whenRow = () => {                                 // Rubrik „Zeitpunkt“ (ab 1.85.56, wie GReport): Tasten setzen die Zeit, kein Wort in der Notiz
-    const ws = (NTS.when || []).filter(w => !w.hide || FNP.when === w.k); if (!ws.length) return '';
-    return `<div class="grp" data-g="when"><span>${esc(t('fc_g_when'))}</span><div role="group" aria-label="${esc(t('fc_g_when'))}">${ws.map(w => `<button type="button" class="tag g-when${FNP.when === w.k ? ' on' : ''}" data-w="${esc(w.k)}" aria-pressed="${FNP.when === w.k}">${esc(w.l)}</button>`).join('')}</div></div>`;
+    const byK = new Map((NTS.when || []).map(w => [w.k, w])), ws = whenOrdered().map(k => byK.get(k)).filter(w => w && (!w.hide || FNP.when === w.k));
+    if (!ws.length || (gHid('when') && !FNP.when)) return '';
+    const rq = NTS.req && NTS.req.has('when'), gl = gLabel('when');   // ab 1.85.76: Name, Pflicht und Hilfe wie jede Rubrik
+    return `<div class="grp${rq ? ' req' : ''}" data-g="when"><span>${esc(gl)}${rq ? '<i class="reqm" title="' + esc(t('fc_req_tip')) + '"> *</i>' : ''}${(NTS.ghelp || {}).when ? `<small class="ghelp">${esc(NTS.ghelp.when)}</small>` : ''}</span><div role="group" aria-label="${esc(gl)}">${ws.map(w => `<button type="button" class="tag g-when${FNP.when === w.k ? ' on' : ''}" data-w="${esc(w.k)}" aria-pressed="${FNP.when === w.k}">${esc(w.l)}</button>`).join('')}</div></div>`;
   };
   let whenDone = false;
   for (const g of ids) {
+    if (g === 'when') { if (!whenDone) h += whenRow(); whenDone = true; continue; }   // ab 1.85.76: an ihrer Stelle in der Reihenfolge der Rubriken
     if (g === 'own' && !whenDone) { h += whenRow(); whenDone = true; }
     const gi = gInfo(g) || {}, ks = by[g] || []; if (!ks.length && g !== 'own') continue;
     if (gHid(g) && !ks.some(k => FNP.tags.has(k))) continue;                 // ausgeblendete Rubrik dieser Ansicht (gewählte Tasten bleiben sichtbar)
@@ -8057,9 +8064,10 @@ function tagInBind(box, manage, keep) {
     upd(); i.oninput = upd;
     const go = async () => {
       const l = i.value.trim(); if (!l || w._busy) return; w._busy = true;
-      try { const j = await ntsPost({ action: 'add', l, g }); i.value = ''; if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l }));
+      i.value = ''; upd();                                // vorher leeren: ntsPost zeichnet schon neu (sonst käme der Text in die neue Pille)
+      try { const j = await ntsPost({ action: 'add', l, g }); if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l }));
         const n = box.querySelector(`.tag.tagin[data-g="${CSS.escape(g)}"] input`); if (n) n.focus(); }   // gleich die nächste eintippen
-      catch (e) { alert(e.message); i.focus(); } finally { w._busy = false; }
+      catch (e) { const n = box.querySelector(`.tag.tagin[data-g="${CSS.escape(g)}"] input`) || i; n.value = l; alert(e.message); n.focus(); } finally { w._busy = false; }
     };
     i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); i.value = ''; upd(); i.blur(); } };
     if (ok) { ok.onmousedown = e => e.preventDefault(); ok.onclick = go; }
@@ -8170,10 +8178,13 @@ function fclBuild(prof) {
     const gi = gInfo(g) || {}, col = (NTS.gcol || {})[g] || '';
     const one = !!(NTS.gone && NTS.gone.has(g)), hp = (NTS.ghelp || {})[g] || '';
     return { g, l: gLabel(g), l0: gLabel(g), custom: gCustom(g), hide: !!gi.hide, hide0: !!gi.hide, req: !!(NTS.req && NTS.req.has(g)), req0: !!(NTS.req && NTS.req.has(g)), one, one0: one, h: hp, h0: hp, col, col0: col, isNew: false, del: false,
-      keys: ntOrdered(ntAll().filter(k => (gIds().includes(ntGroup(k)) ? ntGroup(k) : 'own') === g)) };
+      keys: g === 'when' ? whenOrdered() : ntOrdered(ntAll().filter(k => { const gg = gIds().includes(ntGroup(k)) && ntGroup(k) !== 'when' ? ntGroup(k) : 'own'; return gg === g; })) };
   });
   const keys = {};
-  for (const gr of groups) for (const k of gr.keys) keys[k] = { k, l: ntLabel(k), l0: ntLabel(k), own: NTS.own[k] != null, hide: NTS.hide.has(k), hide0: NTS.hide.has(k), g0: gr.g, isNew: false, del: false };
+  for (const gr of groups) for (const k of gr.keys) {   // ab 1.85.76: Zeitpunkt-Tasten (kind „when“) wie in GReport
+    const w = gr.g === 'when' ? (NTS.when || []).find(x => x.k === k) : null;
+    keys[k] = { k, l: ntLabel(k), l0: ntLabel(k), kind: w ? 'when' : 'tag', own: w ? !!w.own : NTS.own[k] != null, hide: w ? !!w.hide : NTS.hide.has(k), hide0: w ? !!w.hide : NTS.hide.has(k), g0: gr.g, isNew: false, del: false };
+  }
   const secs = capOrder(null, CAP.order || []);
   const fb = JSON.parse(JSON.stringify({ blocks: FBS.defs, sec: FBS.sec, kinds: (FBS.kinds || []).filter(k => !k.gr), kind_def: FBS.kind_def || '', kind_keep: !!FBS.kind_keep })), hide = new Set(CAP.hide || []);
   for (const k of Object.keys(SEC_EL)) if (hide.has(k)) (fb.sec[k] = fb.sec[k] || {}).hide = true;     // „zeigen“ der eingebauten Bereiche = cap.hide
@@ -8323,7 +8334,7 @@ function fclDraw() {
         <input type="color" class="lgc" value="${esc(/^#[0-9a-f]{6}$/i.test(col) ? col : '#5f6b78')}" aria-label="${esc(t('fc_gcol', { g: gr.l }))}" title="${esc(t('fc_gcol', { g: gr.l }))}">
         <label class="check"><input type="checkbox" class="lgh"${gr.hide ? '' : ' checked'}> ${esc(t('fc_shown'))}</label>
         <label class="check" title="${esc(t('fc_req_tip'))}"><input type="checkbox" class="lgr"${gr.req ? ' checked' : ''}> ${esc(t('fc_req'))}</label>
-        <label class="check"><input type="checkbox" class="lgo"${gr.one ? ' checked' : ''}> ${esc(t('fb_g_one'))}</label>
+        ${gr.g === 'when' ? '' : `<label class="check"><input type="checkbox" class="lgo"${gr.one ? ' checked' : ''}> ${esc(t('fb_g_one'))}</label>`}
         ${gr.custom ? `<button type="button" class="lgd" aria-label="${esc(t('fc_lay_gdel', { g: gr.l }))}" title="${esc(t('fc_lay_gdel', { g: gr.l }))}">🗑</button>` : ''}</div>
       <div class="laygx"><input type="text" class="lgx" maxlength="160" value="${esc(gr.h || '')}" placeholder="${esc(t('fb_ed_help'))}" aria-label="${esc(t('fb_g_help', { g: gr.l }))}"></div>
       <div class="laykeys">${gr.keys.map(k => d.keys[k]).filter(x => x && !x.del).map(x => `<span class="layk tag ${gAttr(gr.g).replace('"', x.hide ? ' off"' : '"')} data-k="${esc(x.k)}"><button type="button" class="lkn" data-drag="key" aria-label="${esc(t('fc_lay_key_a', { k: x.l, g: gr.l }) + (x.hide ? ', ' + t('fc_lay_hidden') : ''))}">${esc(x.l)}</button><button type="button" class="lkx" aria-label="${esc(t(x.own ? 'fc_lay_kdel' : x.hide ? 'fc_lay_kshow' : 'fc_lay_khide', { k: x.l }))}" title="${esc(t(x.own ? 'fc_lay_kdel' : x.hide ? 'fc_lay_kshow' : 'fc_lay_khide', { k: x.l }))}">${x.own ? '✕' : x.hide ? '○' : '●'}</button></span>`).join('')}<button type="button" class="tag add lka">＋ ${esc(t('fc_lay_kadd'))}</button></div>
@@ -8337,7 +8348,7 @@ function fclDraw() {
     row.querySelector('.lgc').oninput = e => { gr.col = e.target.value; row.style.setProperty('--gc', gr.col); };
     row.querySelector('.lgh').onchange = e => { gr.hide = !e.target.checked; row.classList.toggle('off', gr.hide); };
     row.querySelector('.lgr').onchange = e => { gr.req = e.target.checked; };
-    row.querySelector('.lgo').onchange = e => { gr.one = e.target.checked; };
+    { const o = row.querySelector('.lgo'); if (o) o.onchange = e => { gr.one = e.target.checked; }; }
     row.querySelector('.lgx').oninput = e => { gr.h = e.target.value.trim(); };
     const del = row.querySelector('.lgd'); if (del) del.onclick = () => {   // Rückfrage im Knopf (kein Browser-Fenster)
       Felder.sure(del, t('fc_lay_gdel_q', { g: gr.l }), () => {
@@ -8376,16 +8387,19 @@ function fclRename(chip, x) {
   inp.onblur = () => fin(true);
 }
 function fclAddKey(row, gr) {
-  const add = row.querySelector('.lka'), f = el('span', { className: 'lkform' });
-  f.innerHTML = `<input type="text" class="lkin" maxlength="30" aria-label="${esc(t('fc_lay_kname'))}" placeholder="${esc(t('fc_lay_kname'))}"><button type="button" class="chip">${esc(t('qt_create'))}</button>`;
-  add.replaceWith(f); const n = f.querySelector('input'); n.focus();
+  const add = row.querySelector('.lka'), f = el('span', { className: 'lkform' }), when = gr.g === 'when';
+  f.innerHTML = `<input type="text" class="lkin" maxlength="30" aria-label="${esc(t('fc_lay_kname'))}" placeholder="${esc(t('fc_lay_kname'))}">${when ? `<input type="text" class="lkin lkt" maxlength="5" aria-label="${esc(t('fc_lay_wspec'))}" placeholder="${esc(t('fc_lay_wspec_ph'))}" title="${esc(t('fc_lay_wspec'))}">` : ''}<button type="button" class="chip">${esc(t('qt_create'))}</button>`;
+  add.replaceWith(f); const n = f.querySelector('input'), sp = f.querySelector('.lkt'); n.focus();
   const go = () => {
     const l = n.value.trim(); if (!l) { fclDraw(); return; }
-    const k = 'c_' + hex6(); FCL.d.keys[k] = { k, l: l.slice(0, 30), l0: l, own: true, hide: false, g0: gr.g, isNew: true, del: false }; gr.keys.push(k);
+    const k = (when ? 't_' : 'c_') + hex6(), x = { k, l: l.slice(0, 30), l0: l, kind: when ? 'when' : 'tag', own: true, hide: false, g0: gr.g, isNew: true, del: false };
+    if (when) { const v = (sp.value || '').trim(); if (/^\d{1,2}:\d\d$/.test(v)) x.at = v; else if (/^\d+$/.test(v)) x.m = +v; else { sp.focus(); sp.setAttribute('aria-invalid', 'true'); fclSay(t('fc_lay_wspec_bad')); return; } }
+    FCL.d.keys[k] = x; gr.keys.push(k);
     FCL.focus = `.layg[data-g="${gr.g}"] .lka`; fclDraw(); fclSay(t('fc_lay_kadded', { k: l }));
   };
   f.querySelector('button').onclick = go;
   n.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fclDraw(); } };
+  if (sp) sp.onkeydown = n.onkeydown;
 }
 function fclMoveKey(e, x) {                            // ←/→ innerhalb der Rubrik, ↑/↓ in die vorige/nächste Rubrik
   const d = FCL.d, gr = fclFind(x.k); if (!gr) return;
@@ -8395,8 +8409,8 @@ function fclMoveKey(e, x) {                            // ←/→ innerhalb der 
     const a = gr.keys.indexOf(x.k), b = gr.keys.indexOf(vis[j]); [gr.keys[a], gr.keys[b]] = [gr.keys[b], gr.keys[a]];
     fclSay(t('fc_lay_moved', { s: x.l, i: j + 1, n: vis.length }));
   } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-    e.preventDefault();
-    const gs = d.groups.filter(g => !g.del), gi = gs.indexOf(gr), ng = gs[gi + (e.key === 'ArrowUp' ? -1 : 1)]; if (!ng) return;
+    e.preventDefault(); if (x.kind === 'when') return;
+    const gs = d.groups.filter(g => !g.del && g.g !== 'when'), gi = gs.indexOf(gr), ng = gs[gi + (e.key === 'ArrowUp' ? -1 : 1)]; if (!ng) return;
     gr.keys = gr.keys.filter(k => k !== x.k); ng.keys.splice(Math.min(i, ng.keys.length), 0, x.k);
     fclSay(t('fc_lay_moved_g', { k: x.l, g: ng.l }));
   } else return;
@@ -8432,6 +8446,7 @@ function fclPointer(e) {                               // Ziehen mit Maus, Stift
     const u = doc.elementFromPoint(ev.clientX, ev.clientY); if (!u) return;
     if (kind === 'key') {
       const box = u.closest('.laykeys'); if (!box) return;
+      { const xk = FCL.d.keys[item.dataset.k], bg = box.closest('.layg'); if (xk && bg && (bg.dataset.g === 'when') !== (xk.kind === 'when')) return; }   // ab 1.85.76
       const tg = u.closest('.layk');
       if (tg && tg !== item) { const r = tg.getBoundingClientRect(); box.insertBefore(item, ev.clientX > r.left + r.width / 2 ? tg.nextSibling : tg); }
       else if (!tg && item.parentNode !== box) box.insertBefore(item, box.querySelector('.lka, .lkform'));
@@ -8460,11 +8475,11 @@ async function fclSave() {
   const where = {}; for (const gr of d.groups) for (const k of gr.keys) where[k] = gr.g;
   for (const gr of d.groups) if (gr.isNew && !gr.del) ops.push({ action: 'gadd', g: gr.g, l: gr.l });
   for (const x of Object.values(d.keys)) {
-    if (x.isNew) { if (!x.del) ops.push({ action: 'add', k: x.k, l: x.l, g: where[x.k] }); continue; }
+    if (x.isNew) { if (!x.del) ops.push(x.kind === 'when' ? Object.assign({ action: 'wadd', k: x.k, l: x.l }, x.at ? { at: x.at } : { m: x.m || 0 }) : { action: 'add', k: x.k, l: x.l, g: where[x.k] }); continue; }
     if (x.del) { ops.push({ action: 'del', k: x.k }); continue; }
-    if (x.l !== x.l0) ops.push({ action: 'ren', k: x.k, l: !x.own && x.l === t('nt_' + x.k) ? '' : x.l });
+    if (x.l !== x.l0) ops.push({ action: 'ren', k: x.k, l: x.kind !== 'when' && !x.own && x.l === t('nt_' + x.k) ? '' : x.l });
     if (x.hide !== x.hide0 && !x.own) ops.push({ action: 'hide', k: x.k, on: x.hide });
-    if (where[x.k] && where[x.k] !== x.g0) ops.push({ action: 'grp', k: x.k, g: where[x.k] });
+    if (x.kind !== 'when' && where[x.k] && where[x.k] !== x.g0 && where[x.k] !== 'when') ops.push({ action: 'grp', k: x.k, g: where[x.k] });
   }
   for (const gr of d.groups) {
     if (gr.del) { if (!gr.isNew) ops.push({ action: 'gdel', g: gr.g }); continue; }

@@ -147,6 +147,16 @@ def main():
                     fails.append("nach dem Anlegen ist die Pille nicht leer und bereit für die nächste")
                 if not pg.locator('#fnptags .grp[data-g="own"] .tag[data-t]:has-text("Waschmaschine")').count():
                     fails.append("eigene Schnellwahl-Taste erscheint nicht")
+            if not pg.locator("#fnptags .grp[data-g='when'] .tag[data-w]").count():          # ab 1.85.76: Zeitpunkt wie jede Rubrik
+                fails.append("Rubrik Zeitpunkt fehlt in der Erfassung")
+            if pg.locator("#caplay").is_visible():
+                pg.click("#caplay"); pg.wait_for_timeout(700)
+                wg = pg.locator("#fnptags .layg[data-g='when']")
+                if not wg.count() or wg.locator(".layk").count() < 5:
+                    fails.append("Zeitpunkt fehlt im Layout-Editor oder ohne Tasten")
+                elif wg.locator(".lgo").count() or not wg.locator(".lgn").count():
+                    fails.append("Zeitpunkt im Layout-Editor nicht wie die anderen Rubriken (Name) bzw. mit „nur eine Auswahl“")
+                pg.click("#caplay"); pg.wait_for_timeout(500)
             mp = b.new_context(locale="de-DE", viewport={"width": 375, "height": 760}, is_mobile=True, has_touch=True).new_page()   # Handy: nichts breiter als der Bildschirm
             mp.on("pageerror", lambda e: errors.append("pageerror (Handy): " + str(e)))
             mp.goto(url); mp.wait_for_selector("#tab_prot"); mp.wait_for_timeout(1200)

@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.75"
+VERSION = "1.85.76"
 
 # =====================================================================
 # Einstellungen
@@ -7038,7 +7038,7 @@ def qt_word_groups():
 
 
 def qt_groups_all():
-    base = QT_GROUPS[:-1] + list(qt_group_custom()) + ["own"]
+    base = QT_GROUPS[:-1] + list(qt_group_custom()) + ["when", "own"]   # ab 1.85.76: Zeitpunkt ist eine normale Rubrik (Layout, Name, Farbe, Reihenfolge)
     pos = {g: i for i, g in enumerate(qt_x("gorder", list))}
     return sorted(base, key=lambda g: (pos.get(g, 10 ** 6), base.index(g)))
 
@@ -7149,6 +7149,14 @@ WHEN_EN = {"w_now": "just now", "w_5": "5 min ago", "w_15": "15 min ago", "w_60"
            "w_eve": "yesterday evening", "w_none": "no time"}
 
 
+def when_known(k):
+    """Zeitpunkt-Taste: eingebaut oder eigene (t_xxxxxx), auch gelöschte (für Reihenfolge und Anzeige)."""
+    return isinstance(k, str) and (k in WHEN_DEF or (re.fullmatch(r"t_[0-9a-f]{6}", k) is not None and isinstance(qt_x("when").get(k), dict)))
+
+
+WHEN_MAX = 30
+
+
 def when_list():
     """Zeitpunkt-Tasten für die Erfassung: eingebaute (umbenennbar, ausblendbar) und eigene aus GReport."""
     d = qt_all(); ren = qt_x("ren"); hide = d.get("hide") or {}; own = qt_x("when")
@@ -7210,7 +7218,7 @@ def qt_state():
         return {"ok": True, "tags": NOTE_TAGS, "groups": QT_GROUPS,
                 "ren": {k: v for k, v in qt_x("ren").items() if k in NOTE_TAG_SET and isinstance(v, str) and v},
                 "grp": {k: v for k, v in qt_x("grp").items() if v in qt_word_groups()},
-                "order": [k for k in qt_x("order", list) if tag_known(k)], "mode": "fixed" if d.get("mode") == "fixed" else "use",
+                "order": [k for k in qt_x("order", list) if tag_known(k) or when_known(k)], "mode": "fixed" if d.get("mode") == "fixed" else "use",
                 "gcol": {g: c for g, c in qt_x("gcol").items() if g in qt_groups_all() and re.fullmatch(r"#[0-9a-fA-F]{6}", str(c))},
                 "req": sorted(g for g, v in qt_x("req").items() if v and g in qt_groups_all()),
                 "gone": sorted(g for g, v in qt_x("gone").items() if v and g in qt_groups_all()),
@@ -7267,7 +7275,7 @@ def qt_change_one(data):
             qt_save()
             return qt_state()
         if a == "order":
-            keys = [x for x in data.get("keys") if tag_known(x)] if isinstance(data.get("keys"), list) else None
+            keys = [x for x in data.get("keys") if tag_known(x) or when_known(x)] if isinstance(data.get("keys"), list) else None
             if keys is None:
                 return {"ok": False, "error": "bad request"}
             d["order"] = list(dict.fromkeys(keys))[:200]; d["mode"] = "fixed"
@@ -7346,6 +7354,49 @@ def qt_change_one(data):
                 d.pop(x, None)
             qt_save()
             return qt_state()
+        if a == "ren" and k in WHEN_DEF:                     # ab 1.85.76: eingebaute Zeitpunkt-Taste umbenennen
+            l = qt_clean_label(data.get("l"))
+            if not l or l in (WHEN_DE.get(k), WHEN_EN.get(k)):
+                qt_x("ren").pop(k, None)
+            else:
+                qt_xset("ren", qt_x("ren"))[k] = l
+            qt_save()
+            return qt_state()
+        if a in ("ren", "del", "undel") and when_known(k) and k not in WHEN_DEF:   # eigene Zeitpunkt-Taste
+            o = qt_x("when")[k]
+            if a == "ren":
+                l = qt_clean_label(data.get("l"))
+                if not l:
+                    return {"ok": False, "error": "empty"}
+                o["l"] = l
+            else:
+                o["del"] = a == "del"
+            qt_save()
+            return qt_state()
+        if a == "wadd":                                      # eigene Zeitpunkt-Taste (wie GReport): Name + Minuten zurück oder feste Uhrzeit
+            l = qt_clean_label(data.get("l"))
+            if not l:
+                return {"ok": False, "error": "empty"}
+            sp = {}
+            at = str(data.get("at") or "").strip()
+            if re.fullmatch(r"([01]?\d|2[0-3]):[0-5]\d", at):
+                sp["at"] = "%02d:%s" % (int(at.split(":")[0]), at.split(":")[1])
+            else:
+                try:
+                    sp["m"] = max(0, min(7 * 24 * 60, int(data.get("m"))))
+                except (TypeError, ValueError):
+                    return {"ok": False, "error": "bad request"}
+            ws = qt_xset("when", qt_x("when"))
+            if sum(1 for o in ws.values() if isinstance(o, dict) and not o.get("del")) >= WHEN_MAX:
+                return {"ok": False, "error": "limit"}
+            k_ = str(data.get("k") or "")
+            if not re.fullmatch(r"t_[0-9a-f]{6}", k_) or k_ in ws:
+                k_ = "t_" + secrets.token_hex(3)
+            ws[k_] = dict(sp, l=l, ts=dt.datetime.now().astimezone().isoformat(timespec="seconds"))
+            if d.get("mode") == "fixed":
+                qt_xset("order", qt_x("order", list)).append(k_)
+            qt_save()
+            return dict(qt_state(), k=k_)
         if a == "ren" and k in NOTE_TAG_SET:                 # eingebaute Taste umbenennen
             l = qt_clean_label(data.get("l"))
             if not l or l == NOTE_TAG_DE.get(k):
@@ -7389,7 +7440,7 @@ def qt_change_one(data):
             qt_save()
             return qt_state()
         if a == "hide":
-            if k not in NOTE_TAG_SET:
+            if k not in NOTE_TAG_SET and not when_known(k):   # ab 1.85.76: auch Zeitpunkt-Tasten
                 return {"ok": False, "error": "not found"}
             if data.get("on"):
                 d["hide"][k] = True

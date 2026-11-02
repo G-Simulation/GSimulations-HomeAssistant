@@ -320,9 +320,10 @@ function tagInBind(box, manage, keep) {
     upd(); i.oninput = upd;
     const go = async () => {
       const l = i.value.trim(); if (!l || w._busy) return; w._busy = true;
-      try { const j = await ntsPost({ action: 'add', l, g }); i.value = ''; if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l }));
+      i.value = ''; upd();                                // vorher leeren: ntsPost zeichnet schon neu (sonst käme der Text in die neue Pille)
+      try { const j = await ntsPost({ action: 'add', l, g }); if (j.k) { FNP.tags.add(j.k); fnpStart(); } fnpTags(); reqCheck(); toast('✓ ' + t('qt_added', { l }));
         const n = box.querySelector(`.tag.tagin[data-g="${CSS.escape(g)}"] input`); if (n) n.focus(); }   // gleich die nächste eintippen
-      catch (e) { alert(e.message); i.focus(); } finally { w._busy = false; }
+      catch (e) { const n = box.querySelector(`.tag.tagin[data-g="${CSS.escape(g)}"] input`) || i; n.value = l; alert(e.message); n.focus(); } finally { w._busy = false; }
     };
     i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); go(); } else if (e.key === 'Escape') { e.preventDefault(); i.value = ''; upd(); i.blur(); } };
     if (ok) { ok.onmousedown = e => e.preventDefault(); ok.onclick = go; }
