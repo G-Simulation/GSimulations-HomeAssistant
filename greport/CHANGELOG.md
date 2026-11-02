@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.15
+- Schnellwahl: die Pille mit „+“ ist so groß wie die anderen Pillen (Höhe, Breite, Schrift), nur mit gestricheltem Rahmen – vorher ein kleiner Kreis.
+
 ## 1.12.14
 - Schnellwahl: statt „＋“ eine leere Pille mit „+“ in jeder Rubrik – direkt hineinschreiben, Enter (oder ✓) legt die Taste an und wählt sie, die Pille ist gleich wieder bereit für die nächste. Rechtsklick auf die leere Pille = Schnellwahl bearbeiten.
 

@@ -147,6 +147,10 @@ def main():
                     fails.append("nach dem Anlegen ist die Pille nicht leer und bereit für die nächste")
                 if not pg.locator('#fnptags .grp[data-g="own"] .tag[data-t]:has-text("Waschmaschine")').count():
                     fails.append("eigene Schnellwahl-Taste erscheint nicht")
+            sz = pg.evaluate("""() => { const p = document.querySelector('#fnptags .tag.tagin'), t = document.querySelector('#fnptags .tag[data-t]'); if (!p || !t) return null;
+                const a = p.getBoundingClientRect(), c = t.getBoundingClientRect(); return [Math.round(a.height), Math.round(c.height), Math.round(a.width), getComputedStyle(p).borderTopStyle]; }""")
+            if sz and (sz[0] != sz[1] or sz[2] < 60 or sz[3] != "dashed"):                    # ab 1.85.77: „+“-Pille so groß wie die anderen, gestrichelt
+                fails.append("Pille mit + nicht so groß wie die anderen bzw. nicht gestrichelt: %s" % sz)
             if not pg.locator("#fnptags .grp[data-g='when'] .tag[data-w]").count():          # ab 1.85.76: Zeitpunkt wie jede Rubrik
                 fails.append("Rubrik Zeitpunkt fehlt in der Erfassung")
             if pg.locator("#caplay").is_visible():

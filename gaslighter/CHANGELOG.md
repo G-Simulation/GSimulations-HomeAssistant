@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.77
+- Schnellwahl: die Pille mit „+“ ist so groß wie die anderen Pillen (Höhe, Breite, Schrift), nur mit gestricheltem Rahmen – vorher ein kleiner Kreis.
+
 ## 1.85.76
 - Erfassung: „Zeitpunkt“ ist jetzt eine normale Rubrik wie alle anderen – im Layout-Editor mit Name, Farbe, Anzeigen/Ausblenden, Pflicht, Hilfetext und Reihenfolge. Seine Tasten lassen sich umbenennen, ausblenden, sortieren und eigene anlegen (Name + Minuten zurück oder Uhrzeit), wie in GReport.
 - Schnellwahl: statt „＋“ eine leere Pille mit „+“ in jeder Rubrik – direkt hineinschreiben, Enter (oder ✓) legt die Taste an und wählt sie, die Pille ist gleich wieder bereit für die nächste. Rechtsklick auf die leere Pille = Schnellwahl bearbeiten.
