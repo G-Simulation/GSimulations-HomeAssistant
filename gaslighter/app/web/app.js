@@ -6568,7 +6568,7 @@ function dtZoom(S, k, fx) {                          // k < 1 hinein, > 1 heraus
 function dtBar(S) {
   const bar = $('ndbar'); if (!bar) return;
   const [b0, b1] = dtBase(S), [wf, wt] = dtWin(S), on = S.from != null;
-  bar.hidden = !on || !(S.subs || []).some(x => x.data); if (bar.hidden) return;
+  bar.hidden = !on || !((S.subs || []).some(x => x.data) || slShown(S)); if (bar.hidden) return;
   const th = $('ndthumb'), a = clamp((wf - b0) / (b1 - b0), 0, 1), w = clamp((wt - wf) / (b1 - b0), 0, 1);
   th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 2) + '%';
 }
@@ -6584,6 +6584,14 @@ function initDtBar(S) {
   tr.addEventListener('pointermove', e => { if (!dg) return; const [b0, b1] = dtBase(S), f = dg.f + (pos(e) - dg.x) * (b1 - b0); dtSetWin(S, f, f + dg.sp); });
   const up = () => { if (dg) { dg = null; dtLoad(S, true); } };
   tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up);
+  // ab 1.85.61: Mausrad auf der Leiste = in der Zeit scrollen (nie zoomen, keine Strg-Taste nötig); ein Raster ≈ 15 % des Ausschnitts
+  let wl = 0;
+  bar.addEventListener('wheel', e => {
+    if (S.from == null) return; e.preventDefault();
+    const u = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, [wf, wt] = dtWin(S), sp = wt - wf;
+    const sh = clamp(u * dz, -400, 400) / 100 * 0.15 * sp; dtSetWin(S, wf + sh, wt + sh);
+    clearTimeout(wl); wl = setTimeout(() => dtLoad(S, true), 250);
+  }, { passive: false });
   $('ndzin').onclick = () => dtZoom(S, 0.5, 0.5); $('ndzout').onclick = () => dtZoom(S, 2, 0.5);
   $('ndleft').onclick = () => { const [wf, wt] = dtWin(S), sp = wt - wf; dtSetWin(S, wf - sp * 0.8, wt - sp * 0.8, 'now'); };
   $('ndright').onclick = () => { const [wf, wt] = dtWin(S), sp = wt - wf; dtSetWin(S, wf + sp * 0.8, wt + sp * 0.8, 'now'); };

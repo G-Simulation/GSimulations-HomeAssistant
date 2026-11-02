@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.61
+
+- **Scrollbalken unter dem Verlauf:** steht unter Pegelspur, Spektrogramm und Sensor-Spuren (sobald hineingezoomt). Mausrad auf dem Balken scrollt in der Zeit – ohne Strg, nie zoomen; Ziehen und Klicken wie gewohnt. Größer und mit Griff.
+- **Ruhigerer Verlauf:** Die Auswahl über jeder Zeile (Gerät, Pegelspur/Spektrogramm, Ebenen, Sensoren) erscheint nur noch in „Layout anpassen“, wie „＋ Zeile hinzufügen“.
+
 ## 1.85.60
 
 - **Verlauf:** „＋ Zeile hinzufügen“ erscheint nur noch in „Layout anpassen“, sonst stand der Knopf dauerhaft zwischen den Zeilen und den Sensor-Spuren.

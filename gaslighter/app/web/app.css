@@ -596,7 +596,7 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 #plrmsel[hidden]{display:none}
 .ndchips{display:inline-flex;gap:6px;flex-wrap:wrap}.ndchip{font-size:12px;padding:4px 8px;display:inline-flex;gap:5px;align-items:center;cursor:pointer}
 @media(max-width:600px){.nfbar .nexp{margin-left:0}.nfbar select{max-width:160px}.night .nper{flex-wrap:wrap}}
-.ndrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}
+.ndrow{display:none;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}.dashedit .ndrow{display:flex}   /* ab 1.85.61: Gerät/Darstellung/Sensoren je Zeile nur in „Layout anpassen“ */
 .ndrow select{font-size:13px;padding:4px 8px;max-width:200px}.ndrow .chip{padding:4px 8px;font-size:12px}
 .ndrlay{display:inline-flex;gap:4px;flex-wrap:wrap}.ndrlay[hidden]{display:none}
 .ndsw{display:inline-block;width:9px;height:9px;border-radius:2px}.ndrgap{flex:1}
@@ -612,9 +612,9 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 #diagbox[hidden]{display:none}#diagset .bkchk{display:flex;gap:8px;align-items:center;margin:8px 0}#diagset .bkhelp{display:block;color:var(--mut)}
 /* Verlauf im Reiter Protokolle: zoomen und scrollen */
 .ndayhd .ndzoom{margin-left:0}.ndayhd #ndreset{margin-left:0}.ndzoom button{min-width:34px}
-.ndbar{margin:4px 0 2px 44px;padding-right:10px}.ndbar[hidden]{display:none}
-.ndtrack{position:relative;height:14px;border-radius:7px;background:var(--bd);cursor:pointer;touch-action:none}
-.ndthumb{position:absolute;top:1px;bottom:1px;border-radius:6px;background:var(--acc);opacity:.75;cursor:grab;min-width:10px}
+.ndbar{margin:8px 0 2px 44px;padding:4px 10px 4px 0}.ndbar[hidden]{display:none}
+.ndtrack{position:relative;height:18px;border-radius:9px;background:var(--bd);cursor:pointer;touch-action:none}
+.ndthumb{position:absolute;top:2px;bottom:2px;border-radius:7px;background:var(--acc);opacity:.75;cursor:grab;min-width:14px;background-image:repeating-linear-gradient(90deg,transparent 0 3px,rgba(255,255,255,.45) 3px 4px);background-size:16px 8px;background-position:center;background-repeat:no-repeat}.ndthumb:hover{opacity:.9}
 .ndthumb:active{cursor:grabbing;opacity:1}
 /* Dashboard: Ereignisse heute */
 .ldevcard .row{flex-wrap:wrap}.ldevn{color:var(--mut)}.ldevsrc{margin-left:auto}
