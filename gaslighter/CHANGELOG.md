@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.70
+
+- **Graph springt nicht mehr, wenn Symbole kommen:** Sobald das erste KI-Symbol oder Sensor-Fähnchen in den Ausschnitt kam, machte der Graph oben Platz – er rutschte nach unten, der Live-Punkt sprang mit. Jetzt ist der Platz immer reserviert (Live-Bild und Verlauf).
+- **Sensor-Spuren blinken nicht:** Beim Laden oder beim Wechsel kurz ⇄ lang wurde der Bereich kurz aus- und wieder eingeblendet, alles darunter sprang. Jetzt bleibt er stehen, sobald einmal Sensoren da waren, und hält beim Wechsel seine Höhe.
+
 ## 1.85.69
 
 - **Zeitleiste:** Nach dem Loslassen bleibt das Fenster an der neuen Stelle stehen, statt kurz zum alten Ausschnitt zurückzuspringen, bis die Daten geladen sind.

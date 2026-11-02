@@ -723,8 +723,8 @@ function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
 function drawLevel(cv, t0, t1) {
   fit(cv);
   const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height;
-  lovFetch(t0, t1); const ov = lovHas() ? 1 : 0, Tp = ov ? 30 : 10; LOV.geo = [Tp, ov ? 30 : 22];   // oben Platz für KI-Symbole und Fähnchen
-  const L = AXL() * d, R = 14 * d, T = Tp * d, B = (ov ? 30 : 22) * d, pw = w - L - R, ph = h - T - B;   // unten Platz für die Zeitachse (und rote Marken)
+  lovFetch(t0, t1); const ov = lovHas() ? 1 : 0, Tp = 30; LOV.geo = [Tp, 30];   // ab 1.85.70: Platz für KI-Symbole und Fähnchen immer reserviert – sonst rutscht der Graph, sobald das erste Symbol kommt
+  const L = AXL() * d, R = 14 * d, T = Tp * d, B = 30 * d, pw = w - L - R, ph = h - T - B;   // unten Platz für die Zeitachse (und rote Marken)
   const X = ts => L + pw * (ts - t0) / (t1 - t0);
   const i0 = Math.max(0, lowerBound(t0 - 200)), i1 = Math.min(recs.length - 1, lowerBound(t1 + 200));
   // Auto-Zoom
@@ -1775,11 +1775,14 @@ function slBind(id, cv) {
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 }
 function slShown(S) { const id = S === LDT ? 'scld' : S && (S === DT || S.parent === DT) ? 'scnd' : null; const h = id && $(id); return !!(h && !h.hidden && SL.c[id] && SL.c[id].data && (SL.c[id].data.lanes || []).length); }
-function slHide(id) { const h = $(id); if (h) h.hidden = true; const c = SL.c[id]; if (c) c.last = null; }
+function slHide(id) { const h = $(id); { const vp = h && h.closest('.slidevp'); if (vp && h && !h.hidden && vp.offsetHeight) { vp.style.minHeight = vp.offsetHeight + 'px'; clearTimeout(vp._mh); vp._mh = setTimeout(() => { vp.style.minHeight = ''; }, 2500); } }   // ab 1.85.70: Höhe halten, bis die andere Spur (kurz/lang) gezeichnet ist
+  if (h) h.hidden = true; const c = SL.c[id]; if (c) c.last = null; }
 function slPaint(id, from, to, L, R, ax) {
   const host = $(id), c0 = SL.c[id], j = c0 && c0.data; if (!host) return;
-  const lanes = j && j.on ? j.lanes || [] : [];
+  if (!j) { if (SL.ever) return; host.hidden = true; return; }   // ab 1.85.70: noch keine Antwort (Laden, Gerätewechsel): nicht aus- und wieder einblenden – die Seite springt sonst
+  const lanes = j.on ? j.lanes || [] : [];
   if (!lanes.length) { host.hidden = true; return; }
+  SL.ever = true;
   host.hidden = false;
   let cv = host.querySelector('canvas'), lg = host.querySelector('.sclg');
   if (!cv) { cv = el('canvas'); cv.setAttribute('aria-hidden', 'true'); lg = el('div', { className: 'sclg' }); lg.setAttribute('aria-hidden', 'true'); host.append(cv, lg); }
@@ -2529,7 +2532,7 @@ function dashDefs() {
       { id: 'live', t: 'pn_stats', nodes: [$('srcbar') && $('srcbar').parentElement, $('tilebar'), $('vp0')], w: 12 },
       { id: 'video', t: 'pn_video', nodes: [$('vpvid')], w: 12, auto: true, emp: () => $('vidlive').hidden },   // ab 1.84.0: Video, Spuren und Spektrogramm eigene Bereiche
       { id: 'graph', t: 'livetitle', nodes: [$('vp1')], w: 12 },   // ab 1.83.2 eigener Bereich: Notizen u. a. lassen sich zwischen Kacheln und Graph schieben
-      { id: 'lanes', t: 'pn_lanes', nodes: [$('vpsc')], w: 12, auto: true, emp: () => $('scmain').hidden && $('scld').hidden },
+      { id: 'lanes', t: 'pn_lanes', nodes: [$('vpsc')], w: 12, auto: true, emp: () => !SL.ever && $('scmain').hidden && $('scld').hidden },   // ab 1.85.70: einmal Sensoren gesehen, bleibt der Bereich (kein Springen beim Umschalten)
       { id: 'spec', t: 'pn_spec', nodes: [$('vpsp')], w: 12 },
       { id: 'ldev', t: 'lev_title', nodes: [$('ldevcard')], w: 12 }],
     prot: [
@@ -6122,7 +6125,7 @@ function dtDraw(S, hoverX) {
   S = S || DT; const r = S.data, cv = $(S.el.cv); if (!r || !cv || !cv.offsetParent) return;
   fit(cv); readNC();
   const art = (r.art || []).length || (r.subs || []).length || (r.pa || []).length;          // Zeile für die KI-Arten (Muster über den Tag)
-  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = (art ? 30 : 12) * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
+  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = 30 * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
   const span = r.to - r.from, X = t2 => L + pw * (t2 - r.from) / span;
   let lo = 1e9, hi = -1e9; for (const p of r.pts) for (const v of [p[1], p[2], p[3]]) if (v != null && v > -125) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   if (lo > hi) { lo = -90; hi = -30; }               // unten bündig am tiefsten Wert (Schwelle zählt nicht), zu wenig Spanne nur nach oben ergänzen
