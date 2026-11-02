@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.69
+
+- **Zeitleiste:** Nach dem Loslassen bleibt das Fenster an der neuen Stelle stehen, statt kurz zum alten Ausschnitt zurückzuspringen, bis die Daten geladen sind.
+- **Legende:** Die Symbole der Sensoren haben Abstand zum Namen.
+
 ## 1.85.68
 
 - **Seite scrollt nicht mehr weg, wenn der Graph umschaltet** (Live-Bild ⇄ Verlauf, Laden, Zeitleiste ein/aus): Über dem ganzen Graph-Bereich (Graph, Kopf, Achsen, Zeitleiste, Legende, Spektrogramm, Sensor-Spuren) geht das Mausrad immer an den gerade aktiven Graphen, nie an die Seite – bei der Einstellung „Mausrad im Diagramm: immer“. Und wird die Seite kürzer, schrumpft sie nur so weit, dass das Sichtbare stehen bleibt. Getestet: 40 Mausrad-Schritte über den Wechsel hinweg, die Seite bewegte sich keinen Pixel.

@@ -6632,7 +6632,10 @@ function mkRanger(cfg) {
   };
   R.draw = () => {
     const box = cfg.box(); if (!box || box.hidden || !box.offsetParent) return;
-    const [b0, b1] = cfg.base(), [wf, wt] = R.pend || cfg.win(), j = R.data, xs = [], pk = [], bg = [], ac = [];
+    let w0 = R.pend || cfg.win();
+    if (!R.pend && R.hold) { const [hf, ht] = R.hold, sp = Math.max(1, ht - hf);   // nach dem Loslassen: Fenster bleibt stehen, bis der Graph dort angekommen ist (kein Zurückspringen)
+      if (Date.now() > R.holdT || (Math.abs(w0[0] - hf) < sp * 0.05 && Math.abs(w0[1] - ht) < sp * 0.05)) R.hold = null; else w0 = R.hold; }
+    const [b0, b1] = cfg.base(), [wf, wt] = w0, j = R.data, xs = [], pk = [], bg = [], ac = [];
     if (j && j.pts) { const ev = (j.ev || []).map(e => [e[0], e[0] + (e[1] || 0)]);
       for (const p of j.pts) { xs.push(p[0]); pk.push(p[1]); bg.push(p[3]); ac.push(p[1] != null && ev.some(([a, b]) => p[0] >= a - 30000 && p[0] <= b + 30000) ? p[1] : null); } }
     const W = Math.max(100, box.clientWidth);
@@ -6676,9 +6679,10 @@ function mkRanger(cfg) {
       else if (dg.edge === 'r') { dg.f = dg.wf; dg.to = Math.max(t2, dg.wf + 30000); put(dg.f, dg.to); }
       else { const a = Math.min(dg.t, t2), b = Math.max(dg.t, t2); dg.sel = [a, b]; const la = u.valToPos(a, 'x'), lb = u.valToPos(b, 'x'); u.setSelect({ left: la, width: Math.max(2, lb - la), top: 0, height: ov.clientHeight }, false); }
     });
+    const fin = (f, t2) => { R.hold = [f, t2]; R.holdT = Date.now() + 6000; cfg.done(f, t2); R.draw(); };
     const up = () => { if (!dg) return; const d0 = dg; dg = null; R.pend = null;
-      if (d0.edge === 'n') { if (d0.sel && d0.sel[1] - d0.sel[0] > 30000) cfg.done(d0.sel[0], d0.sel[1]); else { const sp = d0.wt - d0.wf; cfg.done(d0.t - sp / 2, d0.t + sp / 2); } }
-      else cfg.done(d0.f, d0.to); };
+      if (d0.edge === 'n') { if (d0.sel && d0.sel[1] - d0.sel[0] > 30000) fin(d0.sel[0], d0.sel[1]); else { const sp = d0.wt - d0.wf; fin(d0.t - sp / 2, d0.t + sp / 2); } }
+      else fin(d0.f, d0.to); };
     ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
     ov.addEventListener('wheel', e => {
       e.preventDefault(); const uu = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!dz) return;
@@ -6686,7 +6690,7 @@ function mkRanger(cfg) {
       const [wf, wt] = R.pend || cfg.win(), sp = wt - wf, [b0, b1] = cfg.base();
       if (wf <= b0 + 1000 && wt >= b1 - 1000) { cfg.zoom(0.5, 0.5); return; }   // ganzer Zeitraum: erst auf die Hälfte, dann scrollt das Rad
       const sh = clamp(uu * dz, -400, 400) / 100 * Math.max(0.15 * sp, cfg.minStep || 0), f = clamp(wf + sh, b0, b1 - sp);
-      put(f, f + sp); clearTimeout(wl); wl = setTimeout(() => { const p = R.pend || cfg.win(); R.pend = null; cfg.done(p[0], p[1]); }, 250);
+      put(f, f + sp); clearTimeout(wl); wl = setTimeout(() => { const p = R.pend || cfg.win(); R.pend = null; fin(p[0], p[1]); }, 250);
     }, { passive: false });
     ov.addEventListener('dblclick', () => cfg.all());
   };
@@ -7015,7 +7019,8 @@ function syncLongSpan() {
 /* ab 1.85.62: Bildlaufleiste im Live – zeigt den Ausschnitt in den letzten 24 Stunden; Ziehen, Klicken und Mausrad = in der Zeit scrollen.
    Rechts angekommen = wieder live. */
 const LBAR = { span: 86400000 };
-function lbWin() { const now = nowServer(); if (histOn() && LDT.data && LDT.data.from) return [LDT.data.from, Math.min(LDT.data.to, now)]; return [now - view.span * 1000, now]; }
+function lbWin() { const now = nowServer(); if (LDT.hist && LDT.from != null) return [LDT.from, Math.min(LDT.to, now)];   // ab 1.85.69: gewünschter Ausschnitt sofort, nicht erst nach dem Laden
+  if (histOn() && LDT.data && LDT.data.from) return [LDT.data.from, Math.min(LDT.data.to, now)]; return [now - view.span * 1000, now]; }
 function lbSet(f, t2) {
   const now = nowServer(), sp = t2 - f, b0 = now - LBAR.span; if (f < b0) { f = b0; t2 = f + sp; }
   if (t2 >= now - 2000) { if (histOn() && LDT.hist) { histExit(); goLive(); } return lbDraw(); }
