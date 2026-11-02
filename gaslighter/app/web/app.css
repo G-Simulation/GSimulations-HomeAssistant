@@ -600,7 +600,7 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 .ndrow select{font-size:13px;padding:4px 8px;max-width:200px}.ndrow .chip{padding:4px 8px;font-size:12px}
 .ndrlay{display:inline-flex;gap:4px;flex-wrap:wrap}.ndrlay[hidden]{display:none}
 .ndsw{display:inline-block;width:9px;height:9px;border-radius:2px}.ndrgap{flex:1}
-.ndrnone{color:var(--mut)}.ndradd{margin-top:8px;justify-self:start}
+.ndrnone{color:var(--mut)}.ndradd{margin-top:8px;justify-self:start;display:none}.dashedit .ndradd{display:inline-flex}
 @media(max-width:600px){.ndrow{gap:4px}.ndrow select{font-size:12px;padding:3px 6px;max-width:140px}.ndrlay{gap:3px}.ndrlay .chip{font-size:11px;padding:2px 6px;min-height:0}.ndrow .chip{padding:2px 8px;min-height:28px}.ndrgap{display:none}}
 /* Freie Notiz */
 .fndlg .fnrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}.fndlg .fnrow label{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}

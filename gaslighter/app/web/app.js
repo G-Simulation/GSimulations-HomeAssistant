@@ -6519,10 +6519,11 @@ function dtRowsRender(S) {
     rz.addEventListener('pointerup', rzUp); rz.addEventListener('pointercancel', rzUp);
     rz.addEventListener('dblclick', () => { delete (S.rows[i] || row).h; cv.style.height = ''; dtRowsSave(S.rows); if (sub.data) dtDraw(sub); });
   });
+  // ab 1.85.60: „＋ Zeile hinzufügen“ nur in „Layout anpassen“ (CSS: .dashedit), sonst nicht dauerhaft zwischen Zeilen und Sensor-Spuren
   const add = el('button', { type: 'button', className: 'chip ndradd', textContent: '＋ ' + t('dt_add') });
+  box.appendChild(add);
   add.disabled = S.rows.length >= 12;
   add.onclick = () => { const used = new Set(S.rows.map(r => r.src)), nx = SOURCES.find(s => !used.has(s.id)) || SOURCES[0]; if (!nx) return; S.rows.push({ src: nx.id, mode: 'level', lay: {} }); dtRowsSave(S.rows); dtRowsRender(S); };
-  box.appendChild(add);
   for (const sub of S.subs) if (sub.data) dtDraw(sub);
   requestAnimationFrame(() => { for (const sub of S.subs) if (sub.data) dtDraw(sub); });   // nach dem Layout noch einmal in voller Breite
 }

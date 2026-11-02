@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.60
+
+- **Verlauf:** „＋ Zeile hinzufügen“ erscheint nur noch in „Layout anpassen“, sonst stand der Knopf dauerhaft zwischen den Zeilen und den Sensor-Spuren.
+
 ## 1.85.59
 
 - **Sensor-Spuren im Verlauf** (Protokolle): stehen jetzt direkt unter Pegelspur und Spektrogramm im selben Bereich, mit derselben Zeitachse. Mausrad zoomt, Ziehen verschiebt – auch auf den Spuren selbst, alles bewegt sich zusammen. Der eigene Bereich „Sensor-Spuren“ darunter entfällt.
