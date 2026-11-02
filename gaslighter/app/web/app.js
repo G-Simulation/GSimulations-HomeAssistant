@@ -245,6 +245,7 @@ function viewRange() {
   return [view.end - view.span * 1000, view.end];
 }
 function setLive(on) {
+  setTimeout(() => { if (typeof lbDraw === 'function') lbDraw(); }, 0);   // Zeitleiste sofort ein-/ausblenden
   view.live = on;
   const b = $('livebtn'); b.classList.toggle('paused', !on);
   b.querySelector('b').textContent = t(on ? 'live' : 'paused');
@@ -2782,6 +2783,7 @@ function dashInit() {
 }
 function pg_cleanup(host) { const pg = host.querySelector('.pgrid'); if (pg && !pg.children.length) pg.remove(); }
 function dashApply(v) {
+  setTimeout(() => { try { wheelTraps(); } catch (e) { } }, 0);   // neu angelegte Bereiche bekommen die Mausrad-Falle
   const g = DASH.grids[v], st = DASH.st[v]; if (!g) return;
   dashAll(g).forEach(it => { const id = it.getAttribute('gs-id'), pn = it.querySelector('.pnl');
     pn.classList.toggle('pcolx', !!st.col[id]); pn.querySelector('.pcol').textContent = st.col[id] || (pn.classList.contains('pquiet') && !pn.classList.contains('pqopen')) ? '▸' : '▾';
@@ -6651,7 +6653,8 @@ function mkRanger(cfg) {
     }
     const u = R.u; u.setData([xs, pk, bg, ac], false); u.setScale('x', { min: b0, max: b1 });
     const l = u.valToPos(clamp(wf, b0, b1), 'x'), r = u.valToPos(clamp(wt, b0, b1), 'x');
-    u.setSelect({ left: l, width: Math.max(4, r - l), top: 0, height: u.over.clientHeight }, false);
+    const mw = 10, ww = Math.max(mw, r - l), ll = clamp(r - l < mw ? (l + r) / 2 - mw / 2 : l, 0, Math.max(0, u.over.clientWidth - ww));   // Fenster mindestens 10 px, damit man es greifen kann
+    u.setSelect({ left: ll, width: ww, top: 0, height: u.over.clientHeight }, false);
     box.classList.toggle('full', wf <= b0 + 1000 && wt >= b1 - 1000);
   };
   R.bind = () => {
@@ -6935,7 +6938,7 @@ function initDayTrack() {
   initPrint(); initPt();
   if (!$('ndcv')) return;
   bindDay(DT, () => { DT.from = DT.to = null; DT.yk = 1; dtLoad(DT, true); });
-  initDtBar(DT); initLiveBar();
+  initDtBar(DT); initLiveBar(); wheelTraps(); setTimeout(wheelTraps, 3000);   // Bereiche des Layouts entstehen teils später
   $('ndreset').onclick = () => { DT.from = DT.to = null; DT.yk = 1; dtLoad(DT, true); };
   bindLive();
   document.querySelectorAll('.mkbtn').forEach(b => b.onclick = () => mkSet(!MK.on));
@@ -6957,10 +6960,42 @@ var KEEPH = { max: 0, tm: 0 };   // var: showTab kann vor dieser Zeile laufen
   new ResizeObserver(() => {
     const h = ct.offsetHeight;
     if (h >= KEEPH.max) { KEEPH.max = h; apply(h); clearTimeout(KEEPH.tm); return; }
-    clearTimeout(KEEPH.tm); KEEPH.tm = setTimeout(() => { KEEPH.max = ct.offsetHeight; apply(KEEPH.max); }, 3000);   // dauerhaft kleiner: nach 3 s nachgeben
+    clearTimeout(KEEPH.tm); KEEPH.tm = setTimeout(KEEPH.shrink, 3000);   // dauerhaft kleiner: nach 3 s nachgeben – aber nie so, dass die Ansicht verrutscht
   }).observe(ct);
+  KEEPH.shrink = () => {                              // ab 1.85.68: nur so weit schrumpfen, dass das Sichtbare stehen bleibt; der Rest, sobald man selbst nach oben scrollt
+    const top = ct.getBoundingClientRect().top + scrollY, need = scrollY + innerHeight - top;
+    KEEPH.max = Math.max(ct.offsetHeight, need); apply(KEEPH.max);
+  };
+  addEventListener('scroll', () => { if (KEEPH.max > ct.offsetHeight + 2) { clearTimeout(KEEPH.st); KEEPH.st = setTimeout(KEEPH.shrink, 400); } }, { passive: true });
   KEEPH.reset = () => { KEEPH.max = 0; clearTimeout(KEEPH.tm); wrap.style.minHeight = ''; };   // Reiter gewechselt: andere Seite, nicht festhalten
 })();
+/* ab 1.85.68: Mausrad-Falle über dem ganzen Graph-Bereich (Graph, Kopf, Achsen, Zeitleiste, Legende, Spektrogramm, Sensor-Spuren).
+   Beim Umschalten (Live-Bild ⇄ Verlauf, Laden, Zeitleiste ein/aus) wechselt das Element unter der Maus – vorher ging das Rad dann an die Seite,
+   und sie scrollte weg. Jetzt: hat kein Graph das Rad genommen, geht es an den gerade aktiven Graphen. Die Seite scrollt hier nie
+   (nur bei der Einstellung „Mausrad im Diagramm: nur mit Strg“ wie gewohnt). */
+const WTRAP = { fw: false };
+function wheelTrap(area, active) {
+  if (!area || area._wtrap) return; area._wtrap = true;
+  area.addEventListener('wheel', e => {
+    if (WTRAP.fw || e.defaultPrevented) return;
+    if (!(CUR && CUR.wheel_zoom === 'always') && !e.ctrlKey && !e.shiftKey && Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    if (e.target.closest && e.target.closest('select, textarea, .ag-root-wrapper, .hmenu, dialog, .ntlist')) return;
+    e.preventDefault();
+    const cv = active(); if (!cv || !cv.offsetParent) return;
+    const r = cv.getBoundingClientRect(); WTRAP.fw = true;
+    try { cv.dispatchEvent(new WheelEvent('wheel', { deltaX: e.deltaX, deltaY: e.deltaY, deltaMode: e.deltaMode, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey,
+      clientX: clamp(e.clientX, r.left + 60, r.right - 16), clientY: r.top + r.height / 2, bubbles: true, cancelable: true })); }
+    finally { WTRAP.fw = false; }
+  }, { passive: false });
+}
+function wheelTraps() {
+  const liveCv = () => histOn() ? $('ldcv') : $('main'), dayCv = () => { const s = (DT.subs || []).find(x => x.data); return s ? $(s.el.cv) : $('ndcv'); };
+  const pn = el_ => el_ && (el_.closest('.grid-stack-item') || el_.closest('.card'));
+  wheelTrap(pn($('main')), liveCv);                    // Live-Graph mit Kopf, Zeitleiste, Legende
+  wheelTrap(pn($('vpsp')), liveCv);                    // Live: Spektrogramm-Bereich
+  wheelTrap(pn($('vpsc')), liveCv);                    // Live: Sensor-Spuren-Bereich
+  wheelTrap(pn($('ndaybox')), dayCv);                  // Protokolle: Verlauf mit allen Zeilen, Spuren, Zeitleiste
+}
 const WHEEL_HOLD = { until: 0 };                     // ab 1.85.63: kurz nach dem Wechsel Live ⇄ Verlauf scrollt das Mausrad nicht die Seite weg
 document.addEventListener('wheel', e => { if (Date.now() < WHEEL_HOLD.until && e.target && e.target.closest && e.target.closest('#liveview')) e.preventDefault(); }, { passive: false, capture: true });
 function syncLongSpan() {
@@ -6975,6 +7010,7 @@ function syncLongSpan() {
     LDT.timer = setInterval(() => { if (!document.hidden && !NV.open && !PV.open && !LDT.zoom && !LDT.drag) dtLoad(LDT, true); }, 10000);
   }
   markDirty();
+  setTimeout(lbDraw, 0);
 }
 /* ab 1.85.62: Bildlaufleiste im Live – zeigt den Ausschnitt in den letzten 24 Stunden; Ziehen, Klicken und Mausrad = in der Zeit scrollen.
    Rechts angekommen = wieder live. */
@@ -6991,7 +7027,11 @@ const TLL = mkRanger({                                  // Live: letzte 24 h; be
   zoom: (k) => { const [wf, wt] = lbWin(), now = nowServer(), sp = clamp((wt - wf) * k, 5000, LBAR.span);
     if (wt >= now - 3000 && !LDT.hist) setSpan(clamp(Math.round(sp / 1000), 5, LBAR.span / 1000)); else { const c = (wf + wt) / 2; lbSet(c - sp / 2, c + sp / 2); } },
   all: () => { histExit(); goLive(); } });
-function lbDraw() { const h = $('ldhint'); if (h) h.hidden = !histOn(); TLL.load(); TLL.draw(); }
+function lbDraw() {                                  // ab 1.85.68: Zeitleiste im Live nur, wenn Live gestoppt ist (zurückgespult, in die Vergangenheit gezoomt, angehalten)
+  const h = $('ldhint'); if (h) h.hidden = !histOn();
+  const box = $('ltl'), stop = !!(LDT.hist || LDT.zoom || !view.live); if (box && box.hidden !== !stop) { box.hidden = !stop; if (stop) TLL.w = 0; }
+  if (stop) { TLL.load(); TLL.draw(); }
+}
 function initLiveBar() { setInterval(lbDraw, 2000); setTimeout(lbDraw, 800); }
 function histEnter(from, to) {                      // aus dem Live-Bild weiter zurückgespult als der Arbeitsspeicher reicht
   LDT.hist = true; LDT.zoom = true; LDT.from = from; LDT.to = to;

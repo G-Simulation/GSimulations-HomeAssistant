@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.67"
+VERSION = "1.85.68"
 
 # =====================================================================
 # Einstellungen
@@ -10289,6 +10289,8 @@ def lock_wait(on_ready=None):
     def beat():
         while True:
             time.sleep(10)
+            if LOCK.get("closing"):
+                return
             try:
                 o = lock_other(p)
                 if o:                                  # jemand anderes schreibt jetzt hierher: sofort aufhören, nichts beschädigen
@@ -10360,14 +10362,27 @@ def main():
     start_phone_server()
 
     def shutdown(signum, frame):
+        if LOCK.get("closing"):                      # ab 1.85.68: zweites Signal – läuft schon
+            return
+        LOCK["closing"] = True                       # Herzschlag der Sperre hört sofort auf
         log("Beende: offene Ereignisse werden gespeichert ...")
-        with SRC_LOCK:
+
+        def deadline():                              # hängt etwas (lange Berechnung, Sperre, Netz): nach 5 s trotzdem freigeben und beenden
+            time.sleep(5)
+            log("Beenden dauert zu lange – Datenordner wird freigegeben")
+            lock_release(); os._exit(0)
+        threading.Thread(target=deadline, daemon=True).start()
+        got = SRC_LOCK.acquire(timeout=2)
+        try:
             runners = list(RUNNERS.values())
+        finally:
+            if got:
+                SRC_LOCK.release()
         for r in runners:
             r.stop.set()
         for r in runners:
             if r.thread:
-                r.thread.join(timeout=4)
+                r.thread.join(timeout=2)
         try:
             if ART_TIMER["t"] is not None:
                 art_write()                          # noch nicht gespeicherte Einordnungen sichern
@@ -14899,6 +14914,8 @@ class Handler(BaseHandler):
                     return self.js({"ok": False, "error": str(e)}, 400)
             if name == "data":
                 r = get_runner(q)
+                if r is None:                          # ab 1.85.68: gleich nach dem Start, Geräte noch nicht da
+                    return self.js({"now": int(time.time() * 1000), "first": 0, "last": 0, "boot": BOOT, "src": "", "st": None, "r": []})
                 since = int(q.get("since", ["-1"])[0]); before = int(q.get("before", ["0"])[0])
                 limit = max(1, min(6000, int(q.get("limit", ["1200"])[0])))
                 with r.rlock:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.68
+
+- **Seite scrollt nicht mehr weg, wenn der Graph umschaltet** (Live-Bild ⇄ Verlauf, Laden, Zeitleiste ein/aus): Über dem ganzen Graph-Bereich (Graph, Kopf, Achsen, Zeitleiste, Legende, Spektrogramm, Sensor-Spuren) geht das Mausrad immer an den gerade aktiven Graphen, nie an die Seite – bei der Einstellung „Mausrad im Diagramm: immer“. Und wird die Seite kürzer, schrumpft sie nur so weit, dass das Sichtbare stehen bleibt. Getestet: 40 Mausrad-Schritte über den Wechsel hinweg, die Seite bewegte sich keinen Pixel.
+- **Keine Aufnahmelücke mehr beim Update:** Hing die alte Fassung beim Beenden, hielt ihr Herzschlag die Sperre des Datenordners frisch – die neue wartete bis zu 100 s. Jetzt hört der Herzschlag beim Beenden sofort auf, und spätestens nach 5 s wird der Datenordner freigegeben. (Greift ab dem nächsten Update, weil das Beenden die alte Fassung übernimmt.)
+- **Live:** Die Zeitleiste erscheint nur, wenn Live gestoppt ist (zurückgespult, in die Vergangenheit gezoomt oder angehalten). Ihr Fenster ist mindestens 10 Pixel breit.
+
 ## 1.85.67
 
 - **Legenden unten:** Kurven-Legende (Pegel, Störung, Hintergrund, Schwelle, Sensor-Ereignis) und die Namen der Sensoren stehen unter der Zeitleiste – in Live und Protokolle. Oben im Graphen bleibt nur die Zeile der KI-Symbole, der Graph bekommt mehr Höhe.
