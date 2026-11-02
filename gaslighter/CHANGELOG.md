@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.74
+- Live (zurückgespult) und Verlauf: „Lädt … (Netzlaufwerk wacht evtl. gerade auf)“ blieb endlos stehen, obwohl die Daten schon da waren. Kam eine zweite Abfrage während des Ladens und lag sie schon im Vorrat, wurde die Anzeige nie zurückgesetzt.
+
 ## 1.85.73
 - Live hängt nicht mehr alle paar Sekunden: Jede neue Störung (und deren KI-Einordnung) ließ die 30-Tage-Ereignisliste 15–40 s lang neu rechnen; währenddessen kamen die Live-Daten stockend. Lange Zeiträume (über 2 Tage) warten damit jetzt bis zu 5 min; Änderungen über die Oberfläche rechnen weiter sofort neu.
 - Server: lange Berechnungen geben Aufnahme und Live-Abruf öfter den Vortritt.

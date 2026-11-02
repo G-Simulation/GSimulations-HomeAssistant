@@ -6048,7 +6048,7 @@ async function dtLoad(S, keep) {
       if (S.zoom && (S.from !== f0 || S.to !== t0_) && r && r.has) { r.from = S.from; r.to = S.to; } S.data = r; dtRender(S); }
     if (S === LDT) ldDown(f0, t0_);
   } catch (e) { }
-  finally { S.busy = false; if (S.pend) { S.pend = false; dtLoad(S, true); } else dtBusy(S, false); }
+  finally { S.busy = false; if (S.pend) { S.pend = false; dtLoad(S, true); } if (!S.busy) dtBusy(S, false); }   // ab 1.85.74: kam die nachgereichte Abfrage aus dem Vorrat (ohne Laden), lief „Lädt …“ sonst endlos
 }
 /* Live-Verlauf: Unterbrechungen (Strom weg, Neustart, Lücke) des sichtbaren Zeitfensters laden, damit sie schraffiert und benennbar sind */
 let LDDK = '';
@@ -6407,7 +6407,7 @@ function dtBusy(S, on) {
 async function dtLoadAll(S) {
   if (S.busy) { S.pend = true; return; }
   S.busy = true; S.pend = false; dtBusy(S, true);
-  try { await dtLoadAll1(S); } finally { S.busy = false; if (S.pend) { S.pend = false; dtLoadAll(S); } else dtBusy(S, false); }
+  try { await dtLoadAll1(S); } finally { S.busy = false; if (S.pend) { S.pend = false; dtLoadAll(S); } if (!S.busy) dtBusy(S, false); }
 }
 /* ================= Prüf-Schwelle (Protokolle → Verlauf): frei wählbarer Wert; zeigt, welche Spitzen darüber liegen.
    Nur Anzeige – gespeicherte Daten, Störungen und Prüfsummen bleiben unverändert. Gezählt wird auf dem Server aus den 125-ms-Werten,
