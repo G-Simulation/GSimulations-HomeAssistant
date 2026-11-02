@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.62
+
+- **Regeln „nur ohne“ / „nur zusammen mit“** (Einstellungen → Regeln, bei „als Ereignis“ und „nur festhalten“): „Melden: nur ohne Radar Flur“ zeigt z. B. Erschütterungen an der Haustür nur, wenn du nicht selbst im Flur warst; „nur zusammen mit“ z. B. den PIR nur, wenn auch der Radar anschlug (gegen Fehlauslöser). Toleranz in Sekunden (Standard 30). Für „einer ohne den anderen“ bei beiden Regeln „nur ohne“. Gilt für Graph, Tabelle und Protokoll; nur Anzeige – alles Gemeldete bleibt gespeichert. An der Regel steht, wie viele Meldungen der letzten 24 h ausgeblendet sind. Mit Tests.
+- **Sensor-Spuren in den Farben des Graphen** (statt blau/orange nach Rolle); „eigene Aktivität“ steht als Zusatz am Namen.
+- **Scrollbalken:** im Verlauf immer sichtbar (ganzer Zeitraum: Mausrad zoomt erst auf die Hälfte, dann scrollt es). Neu im Live: Leiste über die letzten 24 Stunden unter dem Live-Bild – ziehen, klicken oder Mausrad = zurück in der Zeit, ganz rechts = wieder live.
+
 ## 1.85.61
 
 - **Scrollbalken unter dem Verlauf:** steht unter Pegelspur, Spektrogramm und Sensor-Spuren (sobald hineingezoomt). Mausrad auf dem Balken scrollt in der Zeit – ohne Strg, nie zoomen; Ziehen und Klicken wie gewohnt. Größer und mit Griff.

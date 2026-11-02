@@ -616,6 +616,7 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 .ndtrack{position:relative;height:18px;border-radius:9px;background:var(--bd);cursor:pointer;touch-action:none}
 .ndthumb{position:absolute;top:2px;bottom:2px;border-radius:7px;background:var(--acc);opacity:.75;cursor:grab;min-width:14px;background-image:repeating-linear-gradient(90deg,transparent 0 3px,rgba(255,255,255,.45) 3px 4px);background-size:16px 8px;background-position:center;background-repeat:no-repeat}.ndthumb:hover{opacity:.9}
 .ndthumb:active{cursor:grabbing;opacity:1}
+.ndbar.full .ndthumb{opacity:.35}.lbar{display:flex;align-items:center;gap:8px;margin-left:44px}.lbar .ndtrack{flex:1}.lbarl{color:var(--mut);font-size:11px;white-space:nowrap}.lbar.atlive .ndthumb{background-color:var(--red,#e03131)}
 /* Dashboard: Ereignisse heute */
 .ldevcard .row{flex-wrap:wrap}.ldevn{color:var(--mut)}.ldevsrc{margin-left:auto}
 .ldevcols{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.ldevcols[hidden]{display:none}.ldevcols .chip{cursor:pointer;gap:4px}
@@ -1352,7 +1353,7 @@ body.qthover .qtip.u .qtb::before{top:auto;bottom:-8px}
 .sclanes.inday{margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)}
 .sclg{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px;font-size:11.5px;color:var(--mut);padding-top:2px}
 .sclk{display:inline-block;width:12px;height:10px;margin-right:4px;vertical-align:-1px}
-.sclk.ed{width:3px;background:var(--acc)}.sclk.ed.own{background:var(--thr)}
+.sclk.ed{width:3px;background:var(--mut)}.sclk.ed.own{background:var(--thr)}
 .sclk.on{height:4px;vertical-align:2px;background:color-mix(in srgb,var(--acc) 35%,transparent)}
 .sclk.off{background:repeating-linear-gradient(135deg,transparent 0 3px,color-mix(in srgb,var(--mut) 70%,transparent) 3px 4px);outline:1px solid color-mix(in srgb,var(--mut) 40%,transparent)}
 .sclk.win{background:color-mix(in srgb,var(--tx) 13%,transparent);border-left:1px solid color-mix(in srgb,var(--tx) 60%,transparent)}

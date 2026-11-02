@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.61"
+VERSION = "1.85.62"
 
 # =====================================================================
 # Einstellungen
@@ -1383,6 +1383,15 @@ def clean_rules(lst):
                     "src": src, "enabled": d.get("enabled", True) is not False, "label": re.sub(r"[\x00-\x1f]", "", str(d.get("label") or ""))[:60],
                     "big": d.get("big") is True, "pre_s": round(pre, 1) if mode == "quiet" else 0.0,                       # hervorgehoben: doppelt so grosses Faehnchen im Verlauf (nur „als Ereignis“)
                     "color": d.get("color") if re.fullmatch(r"#[0-9a-fA-F]{6}", str(d.get("color") or "")) else ""})   # Farbe im Verlauf (leer = automatisch)
+        if mode in ("note", "event"):                    # ab 1.85.62: „nur melden, wenn nicht gleichzeitig …“ (andere Regeln, Toleranz in s) – nur Anzeige
+            ul = [re.sub(r"[^a-z0-9]", "", str(x))[:12] for x in (d.get("unless") or [] if isinstance(d.get("unless"), list) else [])]
+            ul = [x for x in dict.fromkeys(ul) if x and x != rid][:4]
+            if ul:
+                try:
+                    us = max(0.0, min(600.0, float(d.get("unless_s", 30))))
+                except (TypeError, ValueError):
+                    us = 30.0
+                out[-1].update(unless=ul, unless_s=round(us, 1), unless_how="with" if d.get("unless_how") == "with" else "not")   # not = nur ohne, with = nur mit
         if mode in ("note", "event"):                    # Dauer (ab 1.83.2): „pulse“ = einmal auslösen mit fester Länge (z. B. MQTT-Sensoren, die lange „an“ bleiben), „state“ = solange gemeldet (höchstens cap_min, 0 = ohne Grenze)
             try:
                 ds = max(1.0, min(3600.0, float(d.get("dur_s", 5))))
@@ -2022,7 +2031,41 @@ def ha_len_caps():
 
 
 def ha_intervals(src_id, t_from, t_to):
-    """Zeitraeume „an“ der Festhalte-Regeln fuer ein Geraet: [[von_ms, bis_ms, Name]]."""
+    """Zeitraeume „an“ der Festhalte-Regeln fuer ein Geraet: [[von_ms, bis_ms, Name, Regel, Notiz, Art, Farbe, gross]].
+    ab 1.85.62: Regeln mit „nur melden, wenn nicht gleichzeitig …“ (unless): Zeiträume, die (± Toleranz) einen Zeitraum einer dieser
+    Regeln berühren, fallen weg. Nur Anzeige – ha_zustand.csv bleibt vollständig."""
+    with HA_LOCK:
+        unl = {r["id"]: (r.get("unless") or [], float(r.get("unless_s") or 30) * 1000, r.get("unless_how") == "with") for r in HA_RULES if r.get("unless") and r.get("enabled", True)}
+    if not unl:
+        return _ha_iv(src_id, t_from, t_to)
+    pad = int(max(u[1] for u in unl.values())) + 600000
+    allv = _ha_iv("*", t_from - pad, t_to + pad)
+    by = {}
+    for x in allv:
+        by.setdefault(x[3], []).append((x[0], x[1]))
+    out = []
+    for x in _ha_iv(src_id, t_from, t_to):
+        u = unl.get(x[3])
+        if u:
+            hit = any(a - u[1] <= x[1] and b + u[1] >= x[0] for rid in u[0] for a, b in by.get(rid, []))
+            if hit != u[2]:                               # „nur ohne“: Treffer → weg; „nur mit“: kein Treffer → weg
+                continue
+        out.append(x)
+    return out
+
+
+def ha_suppressed(t_from, t_to):
+    """Wie viele Zeiträume je Regel durch „nur wenn nicht gleichzeitig“ ausgeblendet sind (für den Hinweis an der Regel)."""
+    a = _ha_iv("*", t_from, t_to); b = ha_intervals("*", t_from, t_to); n = {}
+    keep = {(x[0], x[3]) for x in b}
+    for x in a:
+        if (x[0], x[3]) not in keep:
+            n[x[3]] = n.get(x[3], 0) + 1
+    return n
+
+
+def _ha_iv(src_id, t_from, t_to):
+    """Zeitraeume „an“ der Festhalte-Regeln fuer ein Geraet (ungefiltert)."""
     f = ha_hist_path()
     try:
         stt = os.stat(f)
@@ -2468,7 +2511,8 @@ def sc_lanes(a_ms, b_ms, k=""):
         off = [[max(a, a_ms), min(b, b_ms)] for a, b in s.get("offl") or [] if a < b_ms and b > a_ms and [a, b] not in downs]
         on_ = [[max(a, a_ms), min(b, b_ms)] for a, b in s.get("on") or [] if a < b_ms and b > a_ms and b - a >= 2000][:SL_MAX]
         nod = s.get("since") is None or s["since"] > b_ms
-        out["lanes"].append({"id": s["id"], "name": s.get("name") or s["id"], "type": s.get("type"), "role": s.get("role"),
+        rc = next((r_.get("color") for r_ in HA_RULES if r_.get("color") and (r_.get("entity") == s["id"] or r_.get("id") == s["id"] or (r_.get("label") or "") == (s.get("name") or ""))), "")
+        out["lanes"].append({"id": s["id"], "name": s.get("name") or s["id"], "type": s.get("type"), "role": s.get("role"), "col": rc,   # ab 1.85.62: Farbe wie im Graphen
                              "pre": s.get("pre"), "post": s.get("post"), "edges": e_[:SL_MAX], "cut": cut, "off": off, "on": on_,
                              "since": s.get("since"), "nodata": nod})
     if k:
@@ -2758,7 +2802,11 @@ def ha_rules_payload():
                              hist=(None if r.get("mode") not in ("note", "event") else {"ok": HA_SYNC.get("ok"), "err": HA_SYNC.get("err", ""), "n": HA_SYNC["cnt"].get(r["id"], 0),
                                                                                          "last": HA_SYNC["lon"].get(r["id"])})))
     url, _ = ha_api()
-    return {"rules": rows, "available": bool(url), "ok": HA_INFO["ok"], "error": HA_INFO["error"], "pro": pro_ok(), "cal": cal_status()}
+    try:
+        supp = ha_suppressed(int((now - 86400) * 1000), int(now * 1000))   # ab 1.85.62: „nur wenn nicht gleichzeitig“ – ausgeblendet in den letzten 24 h
+    except Exception:
+        supp = {}
+    return {"rules": rows, "available": bool(url), "ok": HA_INFO["ok"], "error": HA_INFO["error"], "pro": pro_ok(), "cal": cal_status(), "supp": supp}
 
 
 HCAL = {"rid": None, "t0": 0.0, "srcs": [], "entity": ""}     # Einpegeln läuft (Taste gedrückt)

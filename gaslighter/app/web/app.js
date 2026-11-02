@@ -1765,7 +1765,7 @@ function slPaint(id, from, to, L, R, ax) {
   slBind(id, cv);
   const own = lanes.some(x => x.role === 'own'), hasOff = lanes.some(x => (x.off || []).some(([a, b]) => b > from && a < to)), hasDown = (j.down || []).some(([a, b]) => b > from && a < to),
     hasSel = !!(SL.sel && SL.sel.t0 >= from && SL.sel.t0 <= to), lk = [lang, own, hasOff, hasDown, hasSel].join();   // Legende: nur, was zu sehen ist (gleich live und im Verlauf)
-  if (lg.dataset.k !== lk) { lg.dataset.k = lk; lg.innerHTML = `<span><i class="sclk ed"></i>${esc(t('sl_edge'))}</span>${own ? `<span><i class="sclk ed own"></i>${esc(t('sl_edge_own'))}</span>` : ''}<span><i class="sclk on"></i>${esc(t('sl_on'))}</span>${hasOff ? `<span><i class="sclk off"></i>${esc(t('sl_off'))}</span>` : ''}${hasDown ? `<span><i class="sclk down"></i>${esc(t('sl_down'))}</span>` : ''}${hasSel ? `<span><i class="sclk win"></i>${esc(t('sl_win'))}</span>` : ''}`; }
+  if (lg.dataset.k !== lk) { lg.dataset.k = lk; lg.innerHTML = `<span><i class="sclk ed"></i>${esc(t('sl_edge'))}</span><span><i class="sclk on"></i>${esc(t('sl_on'))}</span>${hasOff ? `<span><i class="sclk off"></i>${esc(t('sl_off'))}</span>` : ''}${hasDown ? `<span><i class="sclk down"></i>${esc(t('sl_down'))}</span>` : ''}${hasSel ? `<span><i class="sclk win"></i>${esc(t('sl_win'))}</span>` : ''}`; }
   const LANE = SL_LH + SL_H + SL_GAP, H = lanes.length * LANE + SL_GAP + (ax ? 16 : 0); cv.style.height = H + 'px'; fit(cv);
   const d = DPR(), g = cv.getContext('2d'), w = cv.width, pw = w - (L + R) * d, X = t2 => L * d + pw * (t2 - from) / (to - from);
   g.clearRect(0, 0, w, cv.height); g.textBaseline = 'middle';
@@ -1774,7 +1774,7 @@ function slPaint(id, from, to, L, R, ax) {
     g.fillStyle = ca(C.mut, 0.14); g.fillRect(x0, 0, x1 - x0, lanes.length * LANE * d); }
   const sel = SL.sel && SL.sel.t0 >= from - 3600000 && SL.sel.t0 <= to + 3600000 ? SL.sel : null, say = [];
   lanes.forEach((ln, i) => {
-    const yl = (SL_GAP + i * LANE) * d, y = yl + SL_LH * d, hh = SL_H * d, col = ln.role === 'own' ? C.thr : ln.role === 'ctx' ? C.mut : C.acc;
+    const yl = (SL_GAP + i * LANE) * d, y = yl + SL_LH * d, hh = SL_H * d, col = ln.role === 'ctx' ? C.mut : sensCol([0, 0, ln.name, 0, 0, 0, ln.col || '']);   // ab 1.85.62: gleiche Farbe wie im Graphen; Rolle steht am Namen
     g.save(); g.beginPath(); g.rect(L * d, y, pw, hh); g.clip();
     g.fillStyle = ca(C.mut, i % 2 ? 0.05 : 0.09); g.fillRect(L * d, y, pw, hh);                         // Spur: leichtes Band (abwechselnd), damit man die Zeile mit dem Auge hält
     g.fillStyle = ca(C.mut, 0.25); g.fillRect(L * d, y + hh / 2 - 0.5 * d, pw, 1 * d);
@@ -1790,7 +1790,9 @@ function slPaint(id, from, to, L, R, ax) {
     g.restore();
     const nm = ln.name;                                                                           // Name über der Spur – verdeckt keine Marken
     g.font = '600 ' + (12 * d) + 'px system-ui'; g.fillStyle = C.tx; g.textAlign = 'left'; g.fillText(nm, L * d, yl + SL_LH * d / 2);
-    { const nE = (ln.edges || []).filter(e => e >= from && e <= to).length; if (nE) { const tw = g.measureText(nm).width; g.font = (11 * d) + 'px system-ui'; g.fillStyle = C.mut; g.fillText(nE + (ln.cut ? '+' : '') + '×', L * d + tw + 8 * d, yl + SL_LH * d / 2); } }   // wie oft im Ausschnitt
+    g.fillStyle = col; g.fillRect(L * d - 9 * d, yl + SL_LH * d / 2 - 3 * d, 6 * d, 6 * d);   // Farbpunkt wie in der Legende des Graphen
+    { const nE = (ln.edges || []).filter(e => e >= from && e <= to).length, ex = [nE ? nE + (ln.cut ? '+' : '') + '×' : '', ln.role === 'own' ? t('sl_own_tag') : ''].filter(Boolean).join(' · ');
+      if (ex) { const tw = g.measureText(nm).width; g.font = (11 * d) + 'px system-ui'; g.fillStyle = C.mut; g.fillText(ex, L * d + tw + 8 * d, yl + SL_LH * d / 2); } }   // wie oft im Ausschnitt
     if (ln.nodata) { const tw = g.measureText(nm).width; g.font = (10.5 * d) + 'px system-ui'; g.fillStyle = C.mut; g.fillText('· ' + t('sl_nodata'), L * d + tw + 6 * d, yl + SL_LH * d / 2); }
     const ne = (ln.edges || []).filter(e => e >= from && e <= to), no = (ln.off || []).filter(([a, b]) => b > from && a < to);
     say.push(t('sl_a_lane', { s: nm, n: ne.length + (ln.cut ? '+' : '') }) + (no.length ? ', ' + t('sl_a_off', { r: no.slice(0, 3).map(([a, b]) => hms(Math.max(a, from)).slice(0, 5) + '–' + hms(Math.min(b, to)).slice(0, 5)).join(', ') + (no.length > 3 ? ' …' : '') }) : '')
@@ -4028,6 +4030,25 @@ function haBody(r, idx) {
     } else {
       const cm = el('input', { type: 'number', min: 0, max: 1440, step: 1, value: r.cap_min ?? 0, className: 'n' }); cm.addEventListener('change', () => { r.cap_min = +cm.value || 0; save(); });
       g2.append(lab(t('ha_cap'), cm, 'min', t('ha_cap_tip')));
+    }
+    // ab 1.85.62: „nur melden, wenn nicht gleichzeitig …“ – z. B. Erschütterung an der Tür nur, wenn der Radar im Flur nicht an war (nur Anzeige)
+    const others = HAR.rules.filter(x => x !== r && x.id && x.entity && (x.mode === 'note' || x.mode === 'event'));
+    if (others.length) {
+      const hw = el('select', { className: 'haunlh' });   // immer / nur ohne / nur mit
+      for (const [v, l] of [['', t('ha_unl_none')], ['not', t('ha_unl_not')], ['with', t('ha_unl_with')]]) hw.appendChild(el('option', { value: v, textContent: l, selected: ((r.unless || []).length ? (r.unless_how || 'not') : '') === v }));
+      const us = el('select', { className: 'haunl' });
+      for (const o of others) us.appendChild(el('option', { value: o.id, textContent: haName(o), selected: (r.unless || [])[0] === o.id }));
+      us.hidden = !(r.unless || []).length;
+      hw.addEventListener('change', () => { if (!hw.value) { r.unless = []; delete r.unless_s; delete r.unless_how; } else { r.unless_how = hw.value; if (!(r.unless || []).length) r.unless = [us.value || others[0].id]; } save().then(haRender); });
+      us.addEventListener('change', () => { r.unless = [us.value]; save().then(haRender); });
+      const w2 = el('span', { className: 'haunlw' }); w2.append(hw, us);
+      g2.append(lab(t('ha_unl'), w2, '', t('ha_unl_tip')));
+      if ((r.unless || []).length) {
+        const ut = el('input', { type: 'number', min: 0, max: 600, step: 1, value: r.unless_s ?? 30, className: 'n' }); ut.addEventListener('change', () => { r.unless_s = Math.max(0, +ut.value || 0); save(); });
+        g2.append(lab(t('ha_unl_s'), ut, 's', t('ha_unl_s_tip')));
+        const n = ((HAR.info || {}).supp || {})[r.id];
+        if (n) g2.append(el('small', { className: 'mut', textContent: t('ha_unl_n', { n }) }));
+      }
     }
   }
   if (r.mode === 'event') {
@@ -6567,8 +6588,9 @@ function dtZoom(S, k, fx) {                          // k < 1 hinein, > 1 heraus
 /* Bildlaufleiste unter den Zeilen: zeigt den Ausschnitt im ganzen Zeitraum, ziehen = scrollen, Klick = dorthin */
 function dtBar(S) {
   const bar = $('ndbar'); if (!bar) return;
-  const [b0, b1] = dtBase(S), [wf, wt] = dtWin(S), on = S.from != null;
-  bar.hidden = !on || !((S.subs || []).some(x => x.data) || slShown(S)); if (bar.hidden) return;
+  const [b0, b1] = dtBase(S), [wf, wt] = dtWin(S);
+  bar.hidden = !((S.subs || []).some(x => x.data) || slShown(S)); if (bar.hidden) return;   // ab 1.85.62: immer da (nicht hineingezoomt: Griff über die ganze Breite)
+  bar.classList.toggle('full', S.from == null);
   const th = $('ndthumb'), a = clamp((wf - b0) / (b1 - b0), 0, 1), w = clamp((wt - wf) / (b1 - b0), 0, 1);
   th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 2) + '%';
 }
@@ -6587,7 +6609,7 @@ function initDtBar(S) {
   // ab 1.85.61: Mausrad auf der Leiste = in der Zeit scrollen (nie zoomen, keine Strg-Taste nötig); ein Raster ≈ 15 % des Ausschnitts
   let wl = 0;
   bar.addEventListener('wheel', e => {
-    if (S.from == null) return; e.preventDefault();
+    e.preventDefault(); if (S.from == null) { dtZoom(S, 0.5, 0.5); return; }   // ganzer Zeitraum sichtbar: erst auf die Hälfte, dann scrollt das Rad
     const u = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, [wf, wt] = dtWin(S), sp = wt - wf;
     const sh = clamp(u * dz, -400, 400) / 100 * 0.15 * sp; dtSetWin(S, wf + sh, wt + sh);
     clearTimeout(wl); wl = setTimeout(() => dtLoad(S, true), 250);
@@ -6789,7 +6811,7 @@ function initDayTrack() {
   initPrint(); initPt();
   if (!$('ndcv')) return;
   bindDay(DT, () => { DT.from = DT.to = null; DT.yk = 1; dtLoad(DT, true); });
-  initDtBar(DT);
+  initDtBar(DT); initLiveBar();
   $('ndreset').onclick = () => { DT.from = DT.to = null; DT.yk = 1; dtLoad(DT, true); };
   bindLive();
   document.querySelectorAll('.mkbtn').forEach(b => b.onclick = () => mkSet(!MK.on));
@@ -6813,6 +6835,42 @@ function syncLongSpan() {
     LDT.timer = setInterval(() => { if (!document.hidden && !NV.open && !PV.open && !LDT.zoom && !LDT.drag) dtLoad(LDT, true); }, 10000);
   }
   markDirty();
+}
+/* ab 1.85.62: Bildlaufleiste im Live – zeigt den Ausschnitt in den letzten 24 Stunden; Ziehen, Klicken und Mausrad = in der Zeit scrollen.
+   Rechts angekommen = wieder live. */
+const LBAR = { span: 86400000 };
+function lbWin() { const now = nowServer(); if (histOn() && LDT.data && LDT.data.from) return [LDT.data.from, Math.min(LDT.data.to, now)]; return [now - view.span * 1000, now]; }
+function lbSet(f, t2) {
+  const now = nowServer(), sp = t2 - f, b0 = now - LBAR.span; if (f < b0) { f = b0; t2 = f + sp; }
+  if (t2 >= now - 2000) { if (histOn() && LDT.hist) { histExit(); goLive(); } return lbDraw(); }
+  histEnter(f, t2); dtLoad(LDT, true); lbDraw();
+}
+function lbDraw() {
+  const bar = $('lbar'); if (!bar) return;
+  const now = nowServer(), b0 = now - LBAR.span, [wf, wt] = lbWin(), a = clamp((wf - b0) / LBAR.span, 0, 1), w = clamp((wt - wf) / LBAR.span, 0, 1);
+  const th = $('lthumb'); th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 1.2) + '%';
+  bar.classList.toggle('atlive', wt >= now - 3000);
+}
+function initLiveBar() {
+  const bar = $('lbar'), tr = $('ltrack'), th = $('lthumb'); if (!bar) return;
+  let dg = null, wl = 0;
+  const pos = e => { const r = tr.getBoundingClientRect(); return (e.clientX - r.left) / Math.max(1, r.width); };
+  tr.addEventListener('pointerdown', e => {
+    const now = nowServer(), b0 = now - LBAR.span, [wf, wt] = lbWin(), sp = wt - wf;
+    if (e.target !== th) { const c = b0 + pos(e) * LBAR.span; lbSet(c - sp / 2, c + sp / 2); }
+    const [f2] = lbWin(); dg = { x: pos(e), f: f2, sp }; tr.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  tr.addEventListener('pointermove', e => { if (!dg) return; const f = dg.f + (pos(e) - dg.x) * LBAR.span; const th2 = $('lthumb'), now = nowServer(), b0 = now - LBAR.span;
+    th2.style.left = (clamp((f - b0) / LBAR.span, 0, 1) * 100) + '%'; dg.cur = f; });   // beim Ziehen nur den Griff bewegen, geladen wird beim Loslassen
+  const up = () => { if (dg) { const d0 = dg; dg = null; if (d0.cur != null) lbSet(d0.cur, d0.cur + d0.sp); } };
+  tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up);
+  bar.addEventListener('wheel', e => {
+    e.preventDefault(); const u = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, [wf, wt] = lbWin(), sp = wt - wf;
+    const sh = clamp(u * dz, -400, 400) / 100 * Math.max(0.25 * sp, LBAR.span / 96); const f = Math.min(wf + sh, nowServer() - sp);   // ein Raster: ¼ Ausschnitt, mindestens 15 min
+    const th2 = $('lthumb'), now = nowServer(), b0 = now - LBAR.span; th2.style.left = (clamp((f - b0) / LBAR.span, 0, 1) * 100) + '%';
+    clearTimeout(wl); LBAR.pend = f; wl = setTimeout(() => lbSet(LBAR.pend, LBAR.pend + sp), 220);
+  }, { passive: false });
+  setInterval(lbDraw, 2000);
 }
 function histEnter(from, to) {                      // aus dem Live-Bild weiter zurückgespult als der Arbeitsspeicher reicht
   LDT.hist = true; LDT.zoom = true; LDT.from = from; LDT.to = to;
