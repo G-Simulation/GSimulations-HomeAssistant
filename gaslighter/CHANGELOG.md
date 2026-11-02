@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.71
+
+- **Live-Bild:** Die Kurve endet 18 Pixel vor dem rechten Rand, damit der Live-Punkt samt pulsierendem Ring ganz zu sehen ist. Spektrogramm, Sensor-Spuren und Zeitachse rücken genauso mit.
+
 ## 1.85.70
 
 - **Graph springt nicht mehr, wenn Symbole kommen:** Sobald das erste KI-Symbol oder Sensor-Fähnchen in den Ausschnitt kam, machte der Graph oben Platz – er rutschte nach unten, der Live-Punkt sprang mit. Jetzt ist der Platz immer reserviert (Live-Bild und Verlauf).

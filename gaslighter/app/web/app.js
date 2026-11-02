@@ -5275,7 +5275,8 @@ function frame(now) {
     try {
       playAdapt(frameDt);
       let [t0, t1] = viewRange();
-      if (view.live) { const pxm = (t1 - t0) / Math.max(100, ($('main').clientWidth - AXL() - 14) * DPR()); t1 = Math.floor(t1 / pxm) * pxm; t0 = t1 - view.span * 1000; }   // in ganzen Pixeln weiter
+      if (view.live) { const pxm = (t1 - t0) / Math.max(100, ($('main').clientWidth - AXL() - 14) * DPR()); t1 = Math.floor(t1 / pxm) * pxm; t0 = t1 - view.span * 1000;   // in ganzen Pixeln weiter
+        const pad = pxm * 18 * DPR(); t0 += pad; t1 += pad; }   // ab 1.85.71: Kurve endet 18 px vor dem rechten Rand – der Live-Punkt mit Ring ist ganz zu sehen
       const hist = histOn();                         // zurückgespult: Tagesverlauf statt Live-Grafik
       if (!hist && recs.length && t0 < recs[0].ts) { if (recs[0].s <= firstAvail) dayFill(t0); else loadOlder(); }   // ab 1.85.64: vor dem Arbeitsspeicher aus der Tagesaufzeichnung
       const pxMs = view.span * 1000 / Math.max(100, $('main').clientWidth - AXL() - 14);
