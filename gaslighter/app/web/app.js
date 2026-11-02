@@ -1715,7 +1715,7 @@ function clockHTML(ck) {
 /* ---------- Sensor-Spuren (ab 1.83): je Sensor eine dünne Spur unter dem Pegelverlauf, live und im Verlauf gleich gezeichnet ----------
    Auslösungen (steigende Flanken) als Marken, Zeit „an“ als schmaler Balken, „nicht erreichbar“ schraffiert, Suchfenster der gewählten
    Störung als weiches Band. Gemeinsame Zeitachse: gleiche Ränder (L, R) wie der Graph darüber. Text dazu als aria-label, die Tabelle bleibt die Textfassung. */
-const SL = { sel: null, c: {} }, SL_H = 10, SL_GAP = 4, SL_LH = 14;   // je Spur: Name darüber (SL_LH), Balken (SL_H)
+const SL = { sel: null, c: {} }, SL_H = 20, SL_GAP = 6, SL_LH = 17;   // je Spur: Name darüber (SL_LH), Balken (SL_H) – ab 1.85.59 doppelt so hoch, besser lesbar
 function slSel(k, start) { const t0 = new Date(start).getTime(); SL.sel = k && isFinite(t0) ? { k, t0 } : null; slRedraw(); }
 function slRedraw() { for (const id of ['scmain', 'scld', 'scnd']) { const c = SL.c[id]; if (c && c.last) slPaint(id, ...c.last); } }
 function slGet(id, from, to, maxAge) {             // Daten der Spuren (zwischengespeichert, mit Rand zum Schieben)
@@ -1734,6 +1734,26 @@ function slDraw(id, from, to, L, R, maxAge, ax) {    // von den Graphen aufgeruf
   const c = SL.c[id] || (SL.c[id] = { a: 0, b: 0, at: 0, data: null, busy: false, last: null });
   c.last = [from, to, L, R, !!ax]; slGet(id, from, to, maxAge || 15000); slPaint(id, from, to, L, R, !!ax);
 }
+/* ab 1.85.59: Auf den Spuren zoomen (Mausrad, wie im Graphen) und verschieben (Ziehen) – gleiche Zeitachse wie der Verlauf darüber */
+const SL_DT = { scnd: () => DT, scld: () => LDT };
+function slBind(id, cv) {
+  if (cv._slb) return; cv._slb = true;
+  const S = SL_DT[id]; if (!S) return;                 // live (kurz): nur Anzeige
+  cv.style.touchAction = 'pan-y'; cv.style.cursor = 'grab';
+  const fx = e => { const r = cv.getBoundingClientRect(), c = SL.c[id], L = c && c.last ? c.last[2] : 44, R = c && c.last ? c.last[3] : 10; return clamp((e.clientX - r.left - L) / Math.max(20, r.width - L - R), 0, 1); };
+  cv.addEventListener('wheel', e => {
+    if (!wheelGate(e, cv)) return; e.preventDefault();
+    const tg = S(), u = wheelPx(e), dx = u * e.deltaX, dy = u * e.deltaY, side = Math.abs(dx) > Math.abs(dy) ? dx : 0;
+    if (side && tg.from != null) { const [wf, wt] = dtWin(tg), r = cv.getBoundingClientRect(), sh = side / Math.max(50, r.width - 54) * (wt - wf); dtSetWin(tg, wf + sh, wt + sh); return; }
+    const z = side || dy; if (z) dtZoom(tg, wheelK(z, isPinch(e)), fx(e));
+  }, { passive: false });
+  let pan = null;
+  cv.addEventListener('pointerdown', e => { if (e.button) return; const tg = S(); if (tg.from == null) return; const [wf, wt] = dtWin(tg); pan = { x: e.clientX, wf, wt, w: cv.getBoundingClientRect().width - 54, moved: false }; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+  cv.addEventListener('pointermove', e => { if (!pan) return; const dx = e.clientX - pan.x; if (Math.abs(dx) < 3 && !pan.moved) return; pan.moved = true; const sh = -dx / Math.max(50, pan.w) * (pan.wt - pan.wf); dtSetWin(S(), pan.wf + sh, pan.wt + sh); });
+  const up = () => { if (pan) { const m = pan.moved; pan = null; cv.style.cursor = 'grab'; if (m) dtLoad(S(), true); } };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+}
+function slShown(S) { const id = S === LDT ? 'scld' : S && (S === DT || S.parent === DT) ? 'scnd' : null; const h = id && $(id); return !!(h && !h.hidden && SL.c[id] && SL.c[id].data && (SL.c[id].data.lanes || []).length); }
 function slHide(id) { const h = $(id); if (h) h.hidden = true; const c = SL.c[id]; if (c) c.last = null; }
 function slPaint(id, from, to, L, R, ax) {
   const host = $(id), c0 = SL.c[id], j = c0 && c0.data; if (!host) return;
@@ -1742,6 +1762,7 @@ function slPaint(id, from, to, L, R, ax) {
   host.hidden = false;
   let cv = host.querySelector('canvas'), lg = host.querySelector('.sclg');
   if (!cv) { cv = el('canvas'); cv.setAttribute('aria-hidden', 'true'); lg = el('div', { className: 'sclg' }); lg.setAttribute('aria-hidden', 'true'); host.append(cv, lg); }
+  slBind(id, cv);
   const own = lanes.some(x => x.role === 'own'), hasOff = lanes.some(x => (x.off || []).some(([a, b]) => b > from && a < to)), hasDown = (j.down || []).some(([a, b]) => b > from && a < to),
     hasSel = !!(SL.sel && SL.sel.t0 >= from && SL.sel.t0 <= to), lk = [lang, own, hasOff, hasDown, hasSel].join();   // Legende: nur, was zu sehen ist (gleich live und im Verlauf)
   if (lg.dataset.k !== lk) { lg.dataset.k = lk; lg.innerHTML = `<span><i class="sclk ed"></i>${esc(t('sl_edge'))}</span>${own ? `<span><i class="sclk ed own"></i>${esc(t('sl_edge_own'))}</span>` : ''}<span><i class="sclk on"></i>${esc(t('sl_on'))}</span>${hasOff ? `<span><i class="sclk off"></i>${esc(t('sl_off'))}</span>` : ''}${hasDown ? `<span><i class="sclk down"></i>${esc(t('sl_down'))}</span>` : ''}${hasSel ? `<span><i class="sclk win"></i>${esc(t('sl_win'))}</span>` : ''}`; }
@@ -1755,19 +1776,21 @@ function slPaint(id, from, to, L, R, ax) {
   lanes.forEach((ln, i) => {
     const yl = (SL_GAP + i * LANE) * d, y = yl + SL_LH * d, hh = SL_H * d, col = ln.role === 'own' ? C.thr : ln.role === 'ctx' ? C.mut : C.acc;
     g.save(); g.beginPath(); g.rect(L * d, y, pw, hh); g.clip();
-    g.fillStyle = ca(C.mut, 0.22); g.fillRect(L * d, y + hh / 2 - 0.5 * d, pw, 1 * d);               // Spur: dünne Grundlinie statt grauem Kasten
+    g.fillStyle = ca(C.mut, i % 2 ? 0.05 : 0.09); g.fillRect(L * d, y, pw, hh);                         // Spur: leichtes Band (abwechselnd), damit man die Zeile mit dem Auge hält
+    g.fillStyle = ca(C.mut, 0.25); g.fillRect(L * d, y + hh / 2 - 0.5 * d, pw, 1 * d);
     for (const [a, b] of ln.off || []) {                                                         // nicht erreichbar: schraffiert
       const x0 = X(Math.max(a, from)), x1 = X(Math.min(b, to)); if (x1 - x0 < 0.5) continue;
       g.save(); g.beginPath(); g.rect(x0, y, x1 - x0, hh); g.clip(); g.fillStyle = ca(C.mut, 0.12); g.fillRect(x0, y, x1 - x0, hh);
       g.strokeStyle = ca(C.mut, 0.55); g.lineWidth = d; g.beginPath(); for (let x = x0 - hh; x < x1; x += 5 * d) { g.moveTo(x, y + hh); g.lineTo(x + hh, y); } g.stroke(); g.restore(); }
     if (sel) { const a = sel.t0 - (ln.pre || 0) * 1000, b = sel.t0 + (ln.post || 0) * 1000, x0 = X(a), x1 = Math.max(x0 + 2 * d, X(b));   // Suchfenster der gewählten Störung
       g.fillStyle = ca(C.tx, 0.13); g.fillRect(x0, y, x1 - x0, hh); g.fillStyle = ca(C.tx, 0.6); g.fillRect(X(sel.t0) - 0.5 * d, y, 1 * d, hh); }
-    for (const [a, b] of ln.on || []) { const x0 = X(a), x1 = Math.max(x0 + 1, X(b)); g.fillStyle = ca(col, 0.35); g.fillRect(x0, y + hh * 0.35, x1 - x0, hh * 0.3); }   // Zeit „an“
+    for (const [a, b] of ln.on || []) { const x0 = X(a), x1 = Math.max(x0 + 1, X(b)); g.fillStyle = ca(col, 0.38); g.fillRect(x0, y + hh * 0.25, x1 - x0, hh * 0.5); }   // Zeit „an“
     g.fillStyle = col; let lx = -1e9;
-    for (const e of ln.edges || []) { const x = X(e); if (x < L * d - 2 || x > L * d + pw + 2) continue; if (x - lx < 1) continue; g.fillRect(x - 1 * d, y + 1 * d, 2 * d, hh - 2 * d); lx = x; }   // Auslösung
+    for (const e of ln.edges || []) { const x = X(e); if (x < L * d - 2 || x > L * d + pw + 2) continue; if (x - lx < 1) continue; g.fillRect(x - 1.5 * d, y + 2 * d, 3 * d, hh - 4 * d); lx = x; }   // Auslösung
     g.restore();
     const nm = ln.name;                                                                           // Name über der Spur – verdeckt keine Marken
-    g.font = '600 ' + (11 * d) + 'px system-ui'; g.fillStyle = C.tx; g.textAlign = 'left'; g.fillText(nm, L * d, yl + SL_LH * d / 2);
+    g.font = '600 ' + (12 * d) + 'px system-ui'; g.fillStyle = C.tx; g.textAlign = 'left'; g.fillText(nm, L * d, yl + SL_LH * d / 2);
+    { const nE = (ln.edges || []).filter(e => e >= from && e <= to).length; if (nE) { const tw = g.measureText(nm).width; g.font = (11 * d) + 'px system-ui'; g.fillStyle = C.mut; g.fillText(nE + (ln.cut ? '+' : '') + '×', L * d + tw + 8 * d, yl + SL_LH * d / 2); } }   // wie oft im Ausschnitt
     if (ln.nodata) { const tw = g.measureText(nm).width; g.font = (10.5 * d) + 'px system-ui'; g.fillStyle = C.mut; g.fillText('· ' + t('sl_nodata'), L * d + tw + 6 * d, yl + SL_LH * d / 2); }
     const ne = (ln.edges || []).filter(e => e >= from && e <= to), no = (ln.off || []).filter(([a, b]) => b > from && a < to);
     say.push(t('sl_a_lane', { s: nm, n: ne.length + (ln.cut ? '+' : '') }) + (no.length ? ', ' + t('sl_a_off', { r: no.slice(0, 3).map(([a, b]) => hms(Math.max(a, from)).slice(0, 5) + '–' + hms(Math.min(b, to)).slice(0, 5)).join(', ') + (no.length > 3 ? ' …' : '') }) : '')
@@ -2492,7 +2515,7 @@ function dashDefs() {
       { id: 'day', t: 'dt_title', nodes: [$('ndaybox')], w: 12 },
       { id: 'ev', t: 'list', nodes: [nv.querySelector('.pevcard')], w: 12, vis: true },
       { id: 'notes', t: 'pn_notes', nodes: [$('nnotes')], w: 12, auto: true },
-      { id: 'dlanes', t: 'pn_lanes', nodes: [$('scnd')], w: 12, auto: true, emp: () => $('scnd').hidden },
+      { id: 'dlanes', t: 'pn_lanes', nodes: [], w: 12, auto: true, emp: () => true },   // ab 1.85.59: Sensor-Spuren stehen im Verlauf direkt unter den Zeilen (gleiche Zeitachse, zoomen/scrollen mit) – dieser Bereich bleibt leer
       { id: 'ha', t: 'pn_ha', nodes: [ha], w: 12, off: true, vis: true, auto: true },
       { id: 'hours', t: 'hours', nodes: [pg && pg.children[0]], w: 6 },
       { id: 'days', t: 'days', nodes: [pg && pg.children[1]], w: 6 }],
@@ -2709,7 +2732,7 @@ function dashInit() {
       st.lay = dashFlow(ord, ws); st._mig = true;
     }
     {                                                  // ab 1.84.0: Teile von „Live“ bzw. „Verlauf“ als eigene Bereiche – ältere Anordnung sieht gleich aus (direkt um den Graph, gleiche Breite, ausgeblendet/eingeklappt wie er)
-      const base = v === 'live' ? 'graph' : 'day', pre = v === 'live' ? ['video'] : [], post = v === 'live' ? ['lanes', 'spec'] : ['dlanes'], nw = pre.concat(post);
+      const base = v === 'live' ? 'graph' : 'day', pre = v === 'live' ? ['video'] : [], post = v === 'live' ? ['spec', 'lanes'] : ['dlanes'], nw = pre.concat(post);
       const known = id => (st.lay || []).some(x => x.id === id) || st.off.includes(id) || !!st.col[id];
       if (st.lay && st.lay.length && !nw.some(known) && (st.lay.some(x => x.id === base) || st.off.includes(base))) {
         const ord = [...st.lay].sort((a, b) => a.y - b.y || a.x - b.x).map(x => x.id), ws = {}; for (const x of st.lay) ws[x.id] = x.w;
@@ -6107,10 +6130,11 @@ function dtDraw(S, hoverX) {
   const haV = (r.ha || []).filter(a => haOk(S, a)), haLane = haLanes(haV);
   {                                                  // Sensor-Ereignisse (Regel „als Ereignis“): dünne rote Linie über die ganze Höhe – ganz unten, Fähnchen, Punkte und Pegelkurve liegen darüber
     c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph); c.clip();
+    const lanesBelow = slShown(S);                   // ab 1.85.59: Sensor-Spuren stehen direkt darunter – Graph bleibt ruhig: nur ein feiner Strich, keine Fläche
     for (const a of (r.ha || []).filter(a => a[5] === 'event' && haOk(S, a))) {
       const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(x0 + 2 * d, X(Math.min(a[1], r.to))); if (x1 < L || x0 > L + pw) continue;
-      c.fillStyle = ca(sensCol(a), 0.10); c.fillRect(x0, T, x1 - x0, ph);
-      c.strokeStyle = ca(sensCol(a), 0.8); c.lineWidth = (a[7] ? 2 : 1) * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); const fy = T + (haLane.get(a[2]) || 0) * HA_LS * d; c.moveTo(x0 + 0.5 * d, fy); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]);   // erst ab Oberkante des Fähnchens
+      if (!lanesBelow) { c.fillStyle = ca(sensCol(a), 0.10); c.fillRect(x0, T, x1 - x0, ph); }
+      c.strokeStyle = ca(sensCol(a), lanesBelow ? 0.28 : 0.8); c.lineWidth = (a[7] ? 2 : 1) * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); const fy = T + (haLane.get(a[2]) || 0) * HA_LS * d; c.moveTo(x0 + 0.5 * d, fy); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]);   // erst ab Oberkante des Fähnchens
     }
     c.restore();
   }

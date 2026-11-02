@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.59
+
+- **Sensor-Spuren im Verlauf** (Protokolle): stehen jetzt direkt unter Pegelspur und Spektrogramm im selben Bereich, mit derselben Zeitachse. Mausrad zoomt, Ziehen verschiebt – auch auf den Spuren selbst, alles bewegt sich zusammen. Der eigene Bereich „Sensor-Spuren“ darunter entfällt.
+- **Übersichtlicher:** Spuren doppelt so hoch, leicht abwechselnd hinterlegt, Auslösungen breiter, „an“-Zeiten deutlicher; neben dem Namen steht, wie oft der Sensor im Ausschnitt ausgelöst hat. Im Graphen darüber werden Sensor-Ereignisse nur noch als feiner Strich mit Fähnchen gezeigt, ohne Fläche über die ganze Höhe – die Einzelheiten stehen in den Spuren.
+- **Live:** Neu angelegte Ansichten zeigen das Spektrogramm vor den Sensor-Spuren (vorhandene Anordnung bleibt, umstellbar unter „Layout anpassen“).
+
 ## 1.85.58
 
 - **Live-Tabelle:** Bei „Letzte 30 Tage“ (oder einem anderen Zeitraum) stand in einer leeren Tabelle noch „Im sichtbaren Bereich keine Ereignisse“. Der Hinweis passt jetzt zum gewählten Bereich.

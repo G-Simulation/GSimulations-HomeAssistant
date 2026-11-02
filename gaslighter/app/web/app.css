@@ -1349,6 +1349,7 @@ body.qthover .qtip.u .qtb::before{top:auto;bottom:-8px}
 /* Sensor-Spuren unter dem Pegelverlauf (1.83): live und im Verlauf gleich */
 .sclanes{margin-top:4px;min-width:0}.sclanes[hidden]{display:none}
 .sclanes canvas{width:100%;display:block}
+.sclanes.inday{margin-top:6px;padding-top:6px;border-top:1px solid var(--bd)}
 .sclg{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px;font-size:11.5px;color:var(--mut);padding-top:2px}
 .sclk{display:inline-block;width:12px;height:10px;margin-right:4px;vertical-align:-1px}
 .sclk.ed{width:3px;background:var(--acc)}.sclk.ed.own{background:var(--thr)}
