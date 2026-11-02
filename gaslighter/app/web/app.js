@@ -154,7 +154,7 @@ async function poll() {
         const ls = recs[recs.length - 1].s; while (nr.length && nr[0].s <= ls) nr.shift();
       }
       for (const r of nr) { recs.push(r); specWrite(r); }
-      if (recs.length > MAXR) recs.splice(0, recs.length - MAXR);
+      { const nd = recs.findIndex(r => !r.day), keep = MAXR + Math.max(0, nd); if (recs.length > keep) recs.splice(0, recs.length - keep); }   // Daten aus der Tagesaufzeichnung vorne bleiben
       if (nr.length) lastSeq = nr[nr.length - 1].s;
       again = j.r.length >= 1200 && j.last > lastSeq;
     } else if (lastSeq < 0 && j.last > 0) {
@@ -184,6 +184,26 @@ document.addEventListener('visibilitychange', () => {    // Rechner/Tab wieder w
   if (!document.hidden && lastOk && Date.now() - lastOk > 30000) { resetData(); }
 });
 let loadingOld = false, lastOld = 0;
+/* ab 1.85.64: Live-Bild und gespeicherte Daten sind eine Kurve. Was nicht mehr (oder nach einem Neustart noch nicht) im Arbeitsspeicher liegt,
+   kommt aus der Tagesaufzeichnung (Pegel je 125 ms: Spitze, Hintergrund, Schwelle) und wird vorne angefügt. Nur Anzeige. */
+const DFILL = { busy: false, at: 0, src: '' };
+async function dayFill(t0) {
+  if (DFILL.busy || !recs.length || Date.now() - DFILL.at < 4000 && DFILL.src === selSrc) return;
+  const want = selSrc, to = recs[0].ts, from = Math.max(t0 - 5000, to - 3 * 3600000); if (to - from < 1500) return;
+  DFILL.busy = true; DFILL.at = Date.now(); DFILL.src = want;
+  try {
+    const n = Math.max(50, Math.min(16000, Math.ceil((to - from) / 125)));
+    const j = await (await fetch('daytrack?src=' + encodeURIComponent(want) + '&date=' + isoDay(new Date(to)) + '&free=1&nospec=1&n=' + n + '&from=' + Math.floor(from) + '&to=' + Math.floor(to), { cache: 'no-store' })).json();
+    if (want !== selSrc || !recs.length) return;
+    const ev = (j.ev || []).map(e => [e[0], e[0] + (e[1] || 0)]), first = recs[0];
+    const pts = (j.pts || []).filter(p => p[0] < first.ts - 60 && p[1] != null);
+    if (!pts.length) return;
+    let s0 = first.s - pts.length; const w = new Int16Array(30), sp = new Uint8Array(NB);
+    const add = pts.map(p => ({ s: s0++, ts: p[0], l: p[1], b: p[3], t: p[4], a: ev.some(([a, b]) => p[0] >= a && p[0] <= b) ? 1 : 0, w, sp, day: true }));
+    recs = add.concat(recs); if (recs.length > MAXR + 16000) recs.splice(0, recs.length - MAXR - 16000);
+    firstAvail = Math.min(firstAvail, recs[0].s); markDirty();
+  } catch (e) { } finally { DFILL.busy = false; }
+}
 async function loadOlder() {
   if (loadingOld || !recs.length || recs[0].s <= firstAvail || recs.length >= MAXR || Date.now() - lastOld < 300) return;
   lastOld = Date.now();
@@ -5252,7 +5272,7 @@ function frame(now) {
       let [t0, t1] = viewRange();
       if (view.live) { const pxm = (t1 - t0) / Math.max(100, ($('main').clientWidth - AXL() - 14) * DPR()); t1 = Math.floor(t1 / pxm) * pxm; t0 = t1 - view.span * 1000; }   // in ganzen Pixeln weiter
       const hist = histOn();                         // zurückgespult: Tagesverlauf statt Live-Grafik
-      if (!hist && recs.length && t0 < recs[0].ts) loadOlder();
+      if (!hist && recs.length && t0 < recs[0].ts) { if (recs[0].s <= firstAvail) dayFill(t0); else loadOlder(); }   // ab 1.85.64: vor dem Arbeitsspeicher aus der Tagesaufzeichnung
       const pxMs = view.span * 1000 / Math.max(100, $('main').clientWidth - AXL() - 14);
       const seq = recs.length ? recs[recs.length - 1].s : -1;
       if (Math.abs(t1 - lastT1) >= pxMs * 0.5 || seq !== lastSeqDrawn || animating || hoverX != null) dirty = true;
@@ -5302,6 +5322,7 @@ function readNC() {
 }
 function locale() { return lang === 'en' ? 'en-GB' : 'de-DE'; }
 function showTab(mode) {
+  if (KEEPH && KEEPH.reset) KEEPH.reset();
   if (mode === true || mode === 'night') mode = 'prot'; else if (mode === false || !mode) mode = 'live';   // Nachtbericht ist jetzt Teil von Protokolle
   const prot = mode === 'prot', live = !prot;
   NV.open = prot; PV.open = prot;
@@ -6593,6 +6614,20 @@ function dtBar(S) {
   bar.classList.toggle('full', S.from == null);
   const th = $('ndthumb'), a = clamp((wf - b0) / (b1 - b0), 0, 1), w = clamp((wt - wf) / (b1 - b0), 0, 1);
   th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 2) + '%';
+  barTicks(bar, b0, b1, wf, wt);
+}
+/* ab 1.85.64: Uhrzeit-Marken an der Bildlaufleiste – Abstand passend zum ganzen Zeitraum der Leiste, am Griff Anfang und Ende des Ausschnitts */
+function barTicks(bar, b0, b1, wf, wt) {
+  const tr = bar.querySelector('.ndtrack'); let tk = bar.querySelector('.bticks'); if (!tk) { tk = el('div', { className: 'bticks' }); tk.setAttribute('aria-hidden', 'true'); (tr || bar).appendChild(tk); }
+  const W = tr ? tr.getBoundingClientRect().width : 600, sp = b1 - b0;
+  const st = [6e4, 3e5, 6e5, 9e5, 18e5, 36e5, 72e5, 108e5, 216e5, 432e5, 864e5, 1728e5, 6048e5].find(q => sp / q <= Math.max(2, Math.floor(W / 70))) || 6048e5;
+  const tz = new Date(b0).getTimezoneOffset() * 60000, lab = t2 => { const d = new Date(t2); return st >= 864e5 ? pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' : pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const key = [b0, b1, st, Math.round(W)].join(); let h = '';
+  if (tk.dataset.k !== key) { for (let t2 = Math.ceil((b0 - tz) / st) * st + tz; t2 <= b1; t2 += st) h += `<span style="left:${((t2 - b0) / sp * 100).toFixed(2)}%">${lab(t2)}</span>`; tk.innerHTML = h + '<b class="bwa"></b><b class="bwb"></b>'; tk.dataset.k = key; }
+  const ft = t2 => { const d = new Date(t2); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + (wt - wf < 600000 ? ':' + pad(d.getSeconds()) : ''); };
+  const a = tk.querySelector('.bwa'), b = tk.querySelector('.bwb'), full = wf <= b0 + 1000 && wt >= b1 - 1000;
+  a.hidden = b.hidden = full; if (full) return;
+  a.textContent = ft(wf); a.style.left = (clamp((wf - b0) / sp, 0, 1) * 100) + '%'; b.textContent = ft(wt); b.style.left = (clamp((wt - b0) / sp, 0, 1) * 100) + '%';
 }
 function initDtBar(S) {
   const bar = $('ndbar'), tr = $('ndtrack'), th = $('ndthumb'); if (!bar) return;
@@ -6824,6 +6859,19 @@ function initDayTrack() {
    den Tagesverlauf; das Spektrogramm darunter gibt es nur bei Störungen (aus deren Lärmspuren). Ziehen = spulen, Mausrad = Zeitraum, Doppelklick = Live. */
 const SPC = {};                                     // Lärmspur-Cache für das Spektrogramm: Datei -> Promise(R)
 function histOn() { return LONG_SPAN(view.span) || LDT.hist; }
+/* ab 1.85.64: Seitenhöhe festhalten – wird beim Nachladen kurz ein Bereich leer (Tabelle, Zeilen, Spuren), wird die Seite kurz kürzer und der
+   Browser schiebt die Ansicht nach oben. Die Seite behält deshalb einige Sekunden ihre größte Höhe und schrumpft erst danach. */
+var KEEPH = { max: 0, tm: 0 };   // var: showTab kann vor dieser Zeile laufen
+(() => {
+  const wrap = document.querySelector('.wrap'), ct = $('content'); if (!wrap || !ct || typeof ResizeObserver === 'undefined') return;
+  const apply = h => { const top = ct.getBoundingClientRect().top - wrap.getBoundingClientRect().top; wrap.style.minHeight = Math.ceil(top + h) + 'px'; };
+  new ResizeObserver(() => {
+    const h = ct.offsetHeight;
+    if (h >= KEEPH.max) { KEEPH.max = h; apply(h); clearTimeout(KEEPH.tm); return; }
+    clearTimeout(KEEPH.tm); KEEPH.tm = setTimeout(() => { KEEPH.max = ct.offsetHeight; apply(KEEPH.max); }, 3000);   // dauerhaft kleiner: nach 3 s nachgeben
+  }).observe(ct);
+  KEEPH.reset = () => { KEEPH.max = 0; clearTimeout(KEEPH.tm); wrap.style.minHeight = ''; };   // Reiter gewechselt: andere Seite, nicht festhalten
+})();
 const WHEEL_HOLD = { until: 0 };                     // ab 1.85.63: kurz nach dem Wechsel Live ⇄ Verlauf scrollt das Mausrad nicht die Seite weg
 document.addEventListener('wheel', e => { if (Date.now() < WHEEL_HOLD.until && e.target && e.target.closest && e.target.closest('#liveview')) e.preventDefault(); }, { passive: false, capture: true });
 function syncLongSpan() {
@@ -6853,6 +6901,7 @@ function lbDraw() {
   const now = nowServer(), b0 = now - LBAR.span, [wf, wt] = lbWin(), a = clamp((wf - b0) / LBAR.span, 0, 1), w = clamp((wt - wf) / LBAR.span, 0, 1);
   const th = $('lthumb'); th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 1.2) + '%';
   bar.classList.toggle('atlive', wt >= now - 3000);
+  barTicks(bar, Math.floor(b0 / 60000) * 60000, now, wf, wt);
 }
 function initLiveBar() {
   const bar = $('lbar'), tr = $('ltrack'), th = $('lthumb'); if (!bar) return;

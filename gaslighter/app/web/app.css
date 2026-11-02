@@ -616,7 +616,8 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 .ndtrack{position:relative;height:18px;border-radius:9px;background:var(--bd);cursor:pointer;touch-action:none}
 .ndthumb{position:absolute;top:2px;bottom:2px;border-radius:7px;background:var(--acc);opacity:.75;cursor:grab;min-width:14px;background-image:repeating-linear-gradient(90deg,transparent 0 3px,rgba(255,255,255,.45) 3px 4px);background-size:16px 8px;background-position:center;background-repeat:no-repeat}.ndthumb:hover{opacity:.9}
 .ndthumb:active{cursor:grabbing;opacity:1}
-.ndbar.full .ndthumb{opacity:.35}.lbar{display:flex;align-items:center;gap:8px;margin-left:44px}.lbar .ndtrack{flex:1}.lbarl{color:var(--mut);font-size:11px;white-space:nowrap}.lbar.atlive .ndthumb{background-color:var(--red,#e03131)}
+.ndbar.full .ndthumb{opacity:.35}
+.ndbar{position:relative;padding-bottom:18px}.lbar{flex-wrap:wrap}.bticks{position:absolute;left:0;right:0;top:100%;margin-top:3px;height:16px;pointer-events:none;font-size:10.5px;color:var(--mut)}.bticks span{position:absolute;top:2px;transform:translateX(-50%);white-space:nowrap}.bticks span::before{content:'';position:absolute;left:50%;top:-4px;width:1px;height:3px;background:var(--mut)}.bticks b{position:absolute;top:1px;transform:translateX(-50%);font-weight:600;color:var(--acc);background:var(--card);padding:0 3px;border-radius:3px;white-space:nowrap;z-index:1}.bticks b.bwb{transform:translateX(-50%)}.lbar{display:flex;align-items:center;gap:8px;margin-left:44px}.lbar .ndtrack{flex:1}.lbarl{color:var(--mut);font-size:11px;white-space:nowrap}.lbar.atlive .ndthumb{background-color:var(--red,#e03131)}
 /* Dashboard: Ereignisse heute */
 .ldevcard .row{flex-wrap:wrap}.ldevn{color:var(--mut)}.ldevsrc{margin-left:auto}
 .ldevcols{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.ldevcols[hidden]{display:none}.ldevcols .chip{cursor:pointer;gap:4px}
@@ -1540,3 +1541,5 @@ sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
 .fbkeds{margin-top:14px}
 .fbkchip[aria-pressed="true"]{color:var(--fg)!important}
 .tag.fbkind{min-height:34px;font-weight:600}.tag.fbkind.on{background:color-mix(in srgb,var(--kc) 28%,transparent)}
+/* ab 1.85.64: kleine Legende der Kurven (Verlauf) */
+.cleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:var(--mut);margin:6px 0 2px 44px}.cleg>span{display:inline-flex;align-items:center;gap:5px}.cl{display:inline-block;width:16px;height:0;border-top:2px solid}.cl.lv{border-color:var(--nacc)}.cl.ac{border-color:var(--red)}.cl.bg{border-color:var(--bgl)}.cl.th{border-top:2px dashed var(--thr)}.cl.ev{width:0;height:11px;border-top:0;border-left:1px dashed var(--mut)}

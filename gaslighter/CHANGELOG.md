@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.85.64
+
+- **Live-Bild und gespeicherte Daten sind eine Kurve:** Was nicht (mehr) im Arbeitsspeicher liegt – nach einem Neustart oder Update nur die letzten Minuten –, holt das Live-Bild aus der Tagesaufzeichnung und setzt es nahtlos davor. Vorher blieb links alles leer. (Das Spektrogramm füllt sich dort noch nicht, nur der Pegel.)
+- **Seite springt beim Nachladen nicht mehr nach oben:** Wird beim Nachladen kurz ein Bereich leer, behält die Seite einige Sekunden ihre Höhe.
+- **Uhrzeiten an den Scrollleisten:** Striche mit Uhrzeit, passend gestuft, dazu am Griff Anfang und Ende des gezeigten Ausschnitts (Verlauf und Live).
+- **Kleine Legende** über Live-Bild und Verlauf: Pegel, Störung, Hintergrund, Schwelle, Sensor-Ereignis.
+
 ## 1.85.63
 
 - **Live: Herauszoomen scrollte die Seite weg.** Beim Wechsel vom Live-Bild in den langen Verlauf wurde der Graph niedriger, die Maus stand plötzlich nicht mehr darüber, und das Mausrad scrollte die Seite. Jetzt sind beide gleich hoch, und kurz nach dem Wechsel bleibt das Mausrad beim Graphen.
