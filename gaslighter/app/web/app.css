@@ -571,13 +571,13 @@ header .seg{height:36px}header .seg button{height:34px;min-height:34px}
 #calbox [hidden]{display:none!important}
 .longhide{display:none!important}
 .ldaybox{margin-top:4px}.ldhd{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:4px}.ldrange{font-size:13px}
-#ldcv{width:100%;height:280px;display:block;touch-action:pan-y;cursor:grab}#ldsp{width:100%;height:70px;display:block;margin-top:2px}
+#ldcv{width:100%;height:clamp(300px,46vh,520px);display:block;touch-action:pan-y;cursor:grab}   /* ab 1.85.63: so hoch wie das Live-Bild – beim Wechsel springt nichts */#ldsp{width:100%;height:70px;display:block;margin-top:2px}
 #ldsp[hidden],#spec[hidden]{display:none}
 /* ab 1.84.0: Spektrogramm, Sensor-Spuren und Live-Video als eigene Bereiche; leere Bereiche (keine Sensoren, kein Video) außerhalb von „Layout anpassen“ ganz weg */
 .pnl[data-p=spec] #spec{margin-top:0}.pnl[data-p=spec] #ldsp{height:110px;margin-top:0}.pnl[data-p=lanes] .sclanes,.pnl[data-p=dlanes] .sclanes{margin-top:0}.pnl[data-p=video] .vidlive{margin:0}
 .grid-stack:not(.dashedit) .pnl.pempty.phe{display:none}
 .pnlbd .slideinner>.card{border:0;box-shadow:none;margin:0;padding:0;border-radius:0}
-@media(max-width:600px){#ldcv{height:220px}}
+@media(max-width:600px){#ldcv{height:clamp(220px,34vh,360px)}}
 .ndmulti{display:grid;gap:2px}.ndlab{font-size:12px;font-weight:600;color:var(--mut);margin-top:6px}.ndlab[hidden],.ndcvm[hidden],#ndcv[hidden]{display:none}
 .ndcvm{width:100%;height:280px;display:block;touch-action:pan-y;cursor:crosshair}
 @media(max-width:600px){.ndcvm{height:220px}}

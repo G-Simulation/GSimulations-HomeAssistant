@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.85.63
+
+- **Live: Herauszoomen scrollte die Seite weg.** Beim Wechsel vom Live-Bild in den langen Verlauf wurde der Graph niedriger, die Maus stand plötzlich nicht mehr darüber, und das Mausrad scrollte die Seite. Jetzt sind beide gleich hoch, und kurz nach dem Wechsel bleibt das Mausrad beim Graphen.
+- **Ruhigerer Graph überall** (Live-Bild, langer Live-Verlauf, Protokolle): Sensor-Ereignisse nur noch als feiner Strich mit Fähnchen, keine Fläche über die ganze Höhe – auch wenn keine Sensor-Spuren darunter stehen.
+
 ## 1.85.62
 
 - **Regeln „nur ohne“ / „nur zusammen mit“** (Einstellungen → Regeln, bei „als Ereignis“ und „nur festhalten“): „Melden: nur ohne Radar Flur“ zeigt z. B. Erschütterungen an der Haustür nur, wenn du nicht selbst im Flur warst; „nur zusammen mit“ z. B. den PIR nur, wenn auch der Radar anschlug (gegen Fehlauslöser). Toleranz in Sekunden (Standard 30). Für „einer ohne den anderen“ bei beiden Regeln „nur ohne“. Gilt für Graph, Tabelle und Protokoll; nur Anzeige – alles Gemeldete bleibt gespeichert. An der Regel steht, wie viele Meldungen der letzten 24 h ausgeblendet sind. Mit Tests.

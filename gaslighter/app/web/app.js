@@ -679,8 +679,8 @@ function lovDraw(c, X, L, T, pw, ph, d, t0, t1) {
   for (const a of haV) {                               // Fähnchen oben im Bild, gestrichelte Linie ab Oberkante des Fähnchens, rote Marke unter dem Bild
     const x0 = X(Math.max(a[0], t0)), x1 = Math.max(X(Math.min(a[1], t1)), x0 + 3 * d), hb = a[7] ? 2 : 1, ly = T + (haLane.get(a[2]) || 0) * HA_LS * d;
     const ev = a[5] === 'event', col = ev ? sensCol(a) : '#1c7ed6';
-    if (ev) { c.fillStyle = ca(col, 0.10); c.fillRect(x0, T, x1 - x0, ph);
-      c.strokeStyle = ca(col, 0.8); c.lineWidth = hb * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); c.moveTo(x0 + 0.5 * d, ly); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]); }
+    if (ev) {                                          // ab 1.85.63: ruhig wie im Verlauf – keine Fläche, feiner Strich
+      c.strokeStyle = ca(col, 0.28); c.lineWidth = hb * d; c.setLineDash([3 * d, 3 * d]); c.beginPath(); c.moveTo(x0 + 0.5 * d, ly); c.lineTo(x0 + 0.5 * d, T + ph); c.stroke(); c.setLineDash([]); }
     c.fillStyle = col; c.fillRect(x0, ly, x1 - x0, (a[4] ? 5 : 4) * d * hb);
     if (ev) { haFlag(c, x0, ly, d, hb, col); c.fillStyle = col; c.fillRect(x0 - 1 * d * hb, T + ph + 1 * d, Math.max(3 * d, x1 - x0), (a[7] ? 8 : 4) * d); }
   }
@@ -6151,7 +6151,7 @@ function dtDraw(S, hoverX) {
   const haV = (r.ha || []).filter(a => haOk(S, a)), haLane = haLanes(haV);
   {                                                  // Sensor-Ereignisse (Regel „als Ereignis“): dünne rote Linie über die ganze Höhe – ganz unten, Fähnchen, Punkte und Pegelkurve liegen darüber
     c.save(); c.beginPath(); c.rect(L, 0, pw, T + ph); c.clip();
-    const lanesBelow = slShown(S);                   // ab 1.85.59: Sensor-Spuren stehen direkt darunter – Graph bleibt ruhig: nur ein feiner Strich, keine Fläche
+    const lanesBelow = true;                         // ab 1.85.63: immer ruhig – nur ein feiner Strich mit Fähnchen, keine Fläche über die ganze Höhe (Einzelheiten in den Sensor-Spuren)
     for (const a of (r.ha || []).filter(a => a[5] === 'event' && haOk(S, a))) {
       const x0 = X(Math.max(a[0], r.from)), x1 = Math.max(x0 + 2 * d, X(Math.min(a[1], r.to))); if (x1 < L || x0 > L + pw) continue;
       if (!lanesBelow) { c.fillStyle = ca(sensCol(a), 0.10); c.fillRect(x0, T, x1 - x0, ph); }
@@ -6824,8 +6824,11 @@ function initDayTrack() {
    den Tagesverlauf; das Spektrogramm darunter gibt es nur bei Störungen (aus deren Lärmspuren). Ziehen = spulen, Mausrad = Zeitraum, Doppelklick = Live. */
 const SPC = {};                                     // Lärmspur-Cache für das Spektrogramm: Datei -> Promise(R)
 function histOn() { return LONG_SPAN(view.span) || LDT.hist; }
+const WHEEL_HOLD = { until: 0 };                     // ab 1.85.63: kurz nach dem Wechsel Live ⇄ Verlauf scrollt das Mausrad nicht die Seite weg
+document.addEventListener('wheel', e => { if (Date.now() < WHEEL_HOLD.until && e.target && e.target.closest && e.target.closest('#liveview')) e.preventDefault(); }, { passive: false, capture: true });
 function syncLongSpan() {
   const on = histOn();
+  if ($('ldaybox').hidden === on) WHEEL_HOLD.until = Date.now() + 900;
   $('ldaybox').hidden = !on;
   document.querySelectorAll('.cvwrap').forEach(e => e.classList.toggle('longhide', on));
   $('spec').hidden = on; $('ldsp').hidden = !on; if (!on) slHide('scld');   // Spektrogramm und Spuren stehen in eigenen Bereichen: kurz oder lang
