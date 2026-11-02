@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.72
+- Live: Der Fokusrahmen um „Zeitfenster“ und die anderen Schalter oben im Graph-Bereich wird nicht mehr abgeschnitten (der Schiebe-Rahmen für den Geräte-Rundlauf beschneidet nur noch seitlich, mit 4 px Luft).
+- Umschalter (z. B. Pegel/Welle): Fokusrahmen liegt innen, damit er an den runden Ecken nicht abgeschnitten wird.
+
 ## 1.85.71
 
 - **Live-Bild:** Die Kurve endet 18 Pixel vor dem rechten Rand, damit der Live-Punkt samt pulsierendem Ring ganz zu sehen ist. Spektrogramm, Sensor-Spuren und Zeitachse rücken genauso mit.

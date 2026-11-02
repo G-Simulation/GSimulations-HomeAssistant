@@ -422,9 +422,11 @@ a.chip.pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);text
 .tilewarn{display:flex;gap:6px;flex-wrap:wrap;min-width:0}.twarn{font-size:12px;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--thr) 14%,transparent);color:var(--thr);white-space:nowrap;cursor:help}.twarn.ha{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc)}
 
 /* Slider */
-.slidevp{position:relative;overflow:hidden}
+/* 4 px Rand links/rechts, damit der Fokusrahmen (2 px + 2 px Abstand) nicht abgeschnitten wird; oben/unten wird gar nicht beschnitten */
+.slidevp{position:relative;overflow:hidden;padding:0 4px;margin:0 -4px}
+@supports (overflow:clip){.slidevp{overflow:visible;overflow-x:clip}}
 .slidevp>.slideinner{will-change:transform}
-.slidevp>.slidecopy{position:absolute;left:0;top:0;width:100%;pointer-events:none;will-change:transform}
+.slidevp>.slidecopy{position:absolute;left:4px;top:0;width:calc(100% - 8px);pointer-events:none;will-change:transform}
 .tilebar.stopped .tdot.cur::after{background-image:linear-gradient(var(--acc),var(--acc))}
 .tilepop{min-width:260px;display:grid;gap:10px}.tilepop label{display:grid;gap:4px;font-size:13px}.tilepop label span{display:flex;gap:8px;align-items:center}.tilepop input[type=range]{flex:1}.tilepop output{min-width:48px;text-align:right;font-variant-numeric:tabular-nums}.tilepop small{color:var(--mut);font-size:12px}
 /* Knoepfe in der Rundlauf-Leiste: runde Symboltasten */
@@ -437,6 +439,7 @@ a.chip.pri{background:var(--acc);color:var(--onacc);border-color:var(--acc);text
 
 /* Feinschliff: einheitliche Hoehen, Ausrichtung und Lesbarkeit */
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.seg>button:focus-visible{outline-offset:-4px}.seg>button.on:focus-visible{outline-color:var(--onacc)}   /* Umschalter schneidet ab (runde Ecken): Rahmen nach innen */
 label.chip,a.chip{border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}
 a.chip.pri{border-color:var(--acc)}
 /* Kopfzeile: alle Bedienelemente gleich hoch */

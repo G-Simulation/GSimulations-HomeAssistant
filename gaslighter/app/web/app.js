@@ -1404,7 +1404,7 @@ async function tileGo1(id, now) {
   if (selSrc !== from || (!now && !rotActive())) return;      // inzwischen von Hand gewaehlt
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const parts = reduce ? [] : [...document.querySelectorAll('#liveview .slidevp')].filter(v => v.offsetParent).map(slideCopy).filter(Boolean);   // alle geräteabhängigen Bereiche (Kennzahlen, Graph, Video, Spuren, Spektrogramm) gleiten zusammen
-  parts.forEach(p => { p.inner.style.transition = 'none'; p.inner.style.transform = 'translateX(100%)'; });
+  parts.forEach(p => { p.inner.style.transition = 'none'; p.inner.style.transform = 'translateX(calc(100% + 4px))'; });   // + 4 px Rand des Rahmens: ganz ausserhalb
   selectSource(id, true);
   markDirty(); updateStatus();
   await withTimeout(new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))), 1000);   // neues Geraet ist gezeichnet (noch rechts ausserhalb); im Hintergrund-Tab kommt kein Frame
@@ -1412,7 +1412,7 @@ async function tileGo1(id, now) {
   parts.forEach(p => {
     p.vp.style.height = Math.max(p.vp.offsetHeight, p.inner.offsetHeight) + 'px';
     p.cl.style.transition = p.inner.style.transition = `transform ${d}ms ${ease}`;
-    p.cl.style.transform = 'translateX(-100%)'; p.inner.style.transform = 'translateX(0)';
+    p.cl.style.transform = 'translateX(calc(-100% - 4px))'; p.inner.style.transform = 'translateX(0)';
   });
   if (parts.length) await new Promise(r => setTimeout(r, d + 30));
   parts.forEach(p => { p.cl.remove(); p.inner.style.transition = p.inner.style.transform = ''; p.vp.style.height = ''; });
