@@ -6112,7 +6112,8 @@ function dtDraw(S, hoverX) {
   S = S || DT; const r = S.data, cv = $(S.el.cv); if (!r || !cv || !cv.offsetParent) return;
   fit(cv); readNC();
   const art = (r.art || []).length || (r.subs || []).length || (r.pa || []).length;          // Zeile für die KI-Arten (Muster über den Tag)
-  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = (art ? 40 : 18) * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
+  const hasLeg = (r.ha || []).some(a => haOk(S, a));   // ab 1.85.66: Legende der Sensoren und Zeile der KI-Symbole nicht übereinander – eigene Zeile, etwas Luft
+  const d = DPR(), c = cv.getContext('2d'), w = cv.width, h = cv.height, L = 44 * d, Rr = 10 * d, T = ((art ? 40 : 18) + (hasLeg ? (art ? 16 : 8) : 0)) * d, B = 20 * d, pw = w - L - Rr, ph = h - T - B;
   const span = r.to - r.from, X = t2 => L + pw * (t2 - r.from) / span;
   let lo = 1e9, hi = -1e9; for (const p of r.pts) for (const v of [p[1], p[2], p[3]]) if (v != null && v > -125) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   if (lo > hi) { lo = -90; hi = -30; }               // unten bündig am tiefsten Wert (Schwelle zählt nicht), zu wenig Spanne nur nach oben ergänzen
@@ -6607,7 +6608,88 @@ function dtZoom(S, k, fx) {                          // k < 1 hinein, > 1 heraus
   dtSetWin(S, c0 - fx * ns, c0 - fx * ns + ns);
 }
 /* Bildlaufleiste unter den Zeilen: zeigt den Ausschnitt im ganzen Zeitraum, ziehen = scrollen, Klick = dorthin */
+/* ab 1.85.66: Zeitleiste (Ranger, mit uPlot wie die Graphen): Mini-Ansicht des ganzen Zeitraums – Pegel, Störungen rot, Uhrzeit-Raster –
+   mit Fenster für den gezeigten Ausschnitt. Fenster ziehen = scrollen, Rand ziehen = zoomen, Bereich aufziehen = dorthin zoomen,
+   Mausrad = scrollen, Strg + Mausrad = zoomen, Doppelklick = ganzer Zeitraum bzw. live. Fest gekoppelt mit dem Zoom des Graphen.
+   cfg: { box(), base() → [von, bis], win() → [von, bis], src(), move(f, t) beim Ziehen, done(f, t) beim Loslassen (null = nur laden), zoom(k, fx), all(), preview } */
+function mkRanger(cfg) {
+  const R = { u: null, host: null, w: 0, key: '', src: '', data: null, busy: false, at: 0, pend: null };
+  R.load = () => {
+    const [b0, b1] = cfg.base(), src = cfg.src(), live = b1 >= nowServer() - 60000, key = src + '|' + Math.floor(b0 / 60000) + '|' + Math.floor(b1 / 60000);
+    if (R.busy || key === R.key || (live && src === R.src && Date.now() - R.at < 60000)) return;
+    R.busy = true; R.at = Date.now();
+    fetch('daytrack?src=' + encodeURIComponent(src) + '&date=' + isoDay(new Date(b0 + 3600000)) + '&free=1&nospec=1&n=800&from=' + Math.floor(b0) + '&to=' + Math.floor(b1), { cache: 'no-store' })
+      .then(r => r.json()).then(j => { R.key = key; R.src = src; R.data = j; R.draw(); }).catch(() => { }).finally(() => { R.busy = false; });
+  };
+  R.draw = () => {
+    const box = cfg.box(); if (!box || box.hidden || !box.offsetParent) return;
+    const [b0, b1] = cfg.base(), [wf, wt] = R.pend || cfg.win(), j = R.data, xs = [], pk = [], bg = [], ac = [];
+    if (j && j.pts) { const ev = (j.ev || []).map(e => [e[0], e[0] + (e[1] || 0)]);
+      for (const p of j.pts) { xs.push(p[0]); pk.push(p[1]); bg.push(p[3]); ac.push(p[1] != null && ev.some(([a, b]) => p[0] >= a - 30000 && p[0] <= b + 30000) ? p[1] : null); } }
+    const W = Math.max(100, box.clientWidth);
+    if (!R.u || R.host !== box || Math.abs(R.w - W) > 2) {
+      if (R.u) R.u.destroy(); box.querySelectorAll('.uplot').forEach(x => x.remove());
+      const P = livePal, font = '10.5px system-ui';
+      const opts = { width: W, height: 64, pxAlign: 1, legend: { show: false }, padding: [4, 10, 0, 44],
+        cursor: { show: true, x: false, y: false, points: { show: false }, drag: { x: false, y: false } }, select: { show: true },
+        scales: { x: { time: false, auto: false }, y: { auto: false, range: () => [-90, 0] } },
+        axes: [{ scale: 'x', size: 18, stroke: () => P().mut, font, gap: 2, grid: { stroke: () => P().grid, width: 1 }, ticks: { stroke: () => P().grid, width: 1, size: 3 },
+                 splits: (u, ai, a, b) => dayTicks(a, b, Math.max(3, Math.min(16, Math.floor(u.bbox.width / DPR() / 64)))).ticks,
+                 values: (u, sp) => { const st = sp.length > 1 ? sp[1] - sp[0] : 36e5; return sp.map(v => upLabel(v, st)); } },
+               { show: false, scale: 'y' }],
+        series: [{}, { scale: 'y', stroke: () => P().acc, width: 1, fill: () => ca(P().acc, 0.25), fillTo: () => -90, points: { show: false } },
+                 { scale: 'y', stroke: () => P().bgl, width: 1, points: { show: false } },
+                 { scale: 'y', stroke: () => P().red, width: 1.4, points: { show: false } }] };
+      R.u = new uPlot(opts, [[], [], [], []], box); R.host = box; R.w = W; box.prepend(R.u.root); R.bind();
+    }
+    const u = R.u; u.setData([xs, pk, bg, ac], false); u.setScale('x', { min: b0, max: b1 });
+    const l = u.valToPos(clamp(wf, b0, b1), 'x'), r = u.valToPos(clamp(wt, b0, b1), 'x');
+    u.setSelect({ left: l, width: Math.max(4, r - l), top: 0, height: u.over.clientHeight }, false);
+    box.classList.toggle('full', wf <= b0 + 1000 && wt >= b1 - 1000);
+  };
+  R.bind = () => {
+    const u = R.u, ov = u.over; ov.style.cursor = 'grab'; ov.style.touchAction = 'pan-y';
+    const tAt = x => u.posToVal(clamp(x, 0, ov.clientWidth), 'x');
+    let dg = null, wl = 0;
+    const put = (f, t2) => { if (cfg.preview) { R.pend = [f, t2]; R.draw(); } else cfg.move(f, t2); };
+    ov.addEventListener('pointerdown', e => {
+      const x = e.clientX - ov.getBoundingClientRect().left, sl = u.select.left, sr = sl + u.select.width, [wf, wt] = cfg.win();
+      const edge = Math.abs(x - sl) < 7 ? 'l' : Math.abs(x - sr) < 7 ? 'r' : x > sl && x < sr ? 'm' : 'n';
+      dg = { edge, wf, wt, t: tAt(x), f: wf, to: wt }; ov.setPointerCapture(e.pointerId); e.preventDefault();
+    });
+    ov.addEventListener('pointermove', e => {
+      const x = e.clientX - ov.getBoundingClientRect().left;
+      if (!dg) { const sl = u.select.left, sr = sl + u.select.width; ov.style.cursor = Math.abs(x - sl) < 7 || Math.abs(x - sr) < 7 ? 'ew-resize' : x > sl && x < sr ? 'grab' : 'crosshair'; return; }
+      const t2 = tAt(x);
+      if (dg.edge === 'm') { const sh = t2 - dg.t; dg.f = dg.wf + sh; dg.to = dg.wt + sh; put(dg.f, dg.to); }
+      else if (dg.edge === 'l') { dg.f = Math.min(t2, dg.wt - 30000); dg.to = dg.wt; put(dg.f, dg.to); }
+      else if (dg.edge === 'r') { dg.f = dg.wf; dg.to = Math.max(t2, dg.wf + 30000); put(dg.f, dg.to); }
+      else { const a = Math.min(dg.t, t2), b = Math.max(dg.t, t2); dg.sel = [a, b]; const la = u.valToPos(a, 'x'), lb = u.valToPos(b, 'x'); u.setSelect({ left: la, width: Math.max(2, lb - la), top: 0, height: ov.clientHeight }, false); }
+    });
+    const up = () => { if (!dg) return; const d0 = dg; dg = null; R.pend = null;
+      if (d0.edge === 'n') { if (d0.sel && d0.sel[1] - d0.sel[0] > 30000) cfg.done(d0.sel[0], d0.sel[1]); else { const sp = d0.wt - d0.wf; cfg.done(d0.t - sp / 2, d0.t + sp / 2); } }
+      else cfg.done(d0.f, d0.to); };
+    ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', up);
+    ov.addEventListener('wheel', e => {
+      e.preventDefault(); const uu = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!dz) return;
+      if (e.ctrlKey) { cfg.zoom(wheelK(dz, isPinch(e)), clamp((e.clientX - ov.getBoundingClientRect().left) / ov.clientWidth, 0, 1)); return; }   // Strg + Rad: zoomen
+      const [wf, wt] = R.pend || cfg.win(), sp = wt - wf, [b0, b1] = cfg.base();
+      if (wf <= b0 + 1000 && wt >= b1 - 1000) { cfg.zoom(0.5, 0.5); return; }   // ganzer Zeitraum: erst auf die Hälfte, dann scrollt das Rad
+      const sh = clamp(uu * dz, -400, 400) / 100 * Math.max(0.15 * sp, cfg.minStep || 0), f = clamp(wf + sh, b0, b1 - sp);
+      put(f, f + sp); clearTimeout(wl); wl = setTimeout(() => { const p = R.pend || cfg.win(); R.pend = null; cfg.done(p[0], p[1]); }, 250);
+    }, { passive: false });
+    ov.addEventListener('dblclick', () => cfg.all());
+  };
+  return R;
+}
+const TLD = mkRanger({                                  // Protokolle → Verlauf
+  box: () => $('ndtl'), base: () => dtBase(DT), win: () => dtWin(DT), src: () => ((DT.subs || []).find(x => x.data) || {}).src || selSrc || 'main',
+  move: (f, t2) => dtSetWin(DT, f, t2), done: (f, t2) => { if (f != null) dtSetWin(DT, f, t2); dtLoad(DT, true); },
+  zoom: (k, fx) => dtZoom(DT, k, fx), all: () => { DT.from = DT.to = null; DT.zoom = false; dtLoad(DT, true); } });
 function dtBar(S) {
+  { const box = $('ndtl'), on = (S.subs || []).some(x => x.data) || slShown(S);   // Zeitleiste statt einfacher Leiste
+    if (box) { box.hidden = !on; if (on) { TLD.load(); TLD.draw(); } }
+    const ob = $('ndbar'); if (ob && box) { ob.hidden = true; return; } }
   const bar = $('ndbar'); if (!bar) return;
   const [b0, b1] = dtBase(S), [wf, wt] = dtWin(S);
   bar.hidden = !((S.subs || []).some(x => x.data) || slShown(S)); if (bar.hidden) return;   // ab 1.85.62: immer da (nicht hineingezoomt: Griff über die ganze Breite)
@@ -6896,34 +6978,14 @@ function lbSet(f, t2) {
   if (t2 >= now - 2000) { if (histOn() && LDT.hist) { histExit(); goLive(); } return lbDraw(); }
   histEnter(f, t2); dtLoad(LDT, true); lbDraw();
 }
-function lbDraw() {
-  const bar = $('lbar'); if (!bar) return;
-  const now = nowServer(), b0 = now - LBAR.span, [wf, wt] = lbWin(), a = clamp((wf - b0) / LBAR.span, 0, 1), w = clamp((wt - wf) / LBAR.span, 0, 1);
-  const th = $('lthumb'); th.style.left = (a * 100) + '%'; th.style.width = Math.max(w * 100, 1.2) + '%';
-  bar.classList.toggle('atlive', wt >= now - 3000);
-  barTicks(bar, Math.floor(b0 / 60000) * 60000, now, wf, wt);
-}
-function initLiveBar() {
-  const bar = $('lbar'), tr = $('ltrack'), th = $('lthumb'); if (!bar) return;
-  let dg = null, wl = 0;
-  const pos = e => { const r = tr.getBoundingClientRect(); return (e.clientX - r.left) / Math.max(1, r.width); };
-  tr.addEventListener('pointerdown', e => {
-    const now = nowServer(), b0 = now - LBAR.span, [wf, wt] = lbWin(), sp = wt - wf;
-    if (e.target !== th) { const c = b0 + pos(e) * LBAR.span; lbSet(c - sp / 2, c + sp / 2); }
-    const [f2] = lbWin(); dg = { x: pos(e), f: f2, sp }; tr.setPointerCapture(e.pointerId); e.preventDefault();
-  });
-  tr.addEventListener('pointermove', e => { if (!dg) return; const f = dg.f + (pos(e) - dg.x) * LBAR.span; const th2 = $('lthumb'), now = nowServer(), b0 = now - LBAR.span;
-    th2.style.left = (clamp((f - b0) / LBAR.span, 0, 1) * 100) + '%'; dg.cur = f; });   // beim Ziehen nur den Griff bewegen, geladen wird beim Loslassen
-  const up = () => { if (dg) { const d0 = dg; dg = null; if (d0.cur != null) lbSet(d0.cur, d0.cur + d0.sp); } };
-  tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up);
-  bar.addEventListener('wheel', e => {
-    e.preventDefault(); const u = wheelPx(e), dz = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, [wf, wt] = lbWin(), sp = wt - wf;
-    const sh = clamp(u * dz, -400, 400) / 100 * Math.max(0.25 * sp, LBAR.span / 96); const f = Math.min(wf + sh, nowServer() - sp);   // ein Raster: ¼ Ausschnitt, mindestens 15 min
-    const th2 = $('lthumb'), now = nowServer(), b0 = now - LBAR.span; th2.style.left = (clamp((f - b0) / LBAR.span, 0, 1) * 100) + '%';
-    clearTimeout(wl); LBAR.pend = f; wl = setTimeout(() => lbSet(LBAR.pend, LBAR.pend + sp), 220);
-  }, { passive: false });
-  setInterval(lbDraw, 2000);
-}
+const TLL = mkRanger({                                  // Live: letzte 24 h; beim Ziehen nur das Fenster bewegen, geladen wird beim Loslassen
+  box: () => $('ltl'), base: () => { const now = nowServer(); return [Math.floor((now - LBAR.span) / 60000) * 60000, now]; }, win: () => lbWin(), src: () => selSrc || 'main',
+  preview: true, minStep: LBAR.span / 96, move: () => { }, done: (f, t2) => lbSet(f, t2),
+  zoom: (k) => { const [wf, wt] = lbWin(), now = nowServer(), sp = clamp((wt - wf) * k, 5000, LBAR.span);
+    if (wt >= now - 3000 && !LDT.hist) setSpan(clamp(Math.round(sp / 1000), 5, LBAR.span / 1000)); else { const c = (wf + wt) / 2; lbSet(c - sp / 2, c + sp / 2); } },
+  all: () => { histExit(); goLive(); } });
+function lbDraw() { const h = $('ldhint'); if (h) h.hidden = !histOn(); TLL.load(); TLL.draw(); }
+function initLiveBar() { setInterval(lbDraw, 2000); setTimeout(lbDraw, 800); }
 function histEnter(from, to) {                      // aus dem Live-Bild weiter zurückgespult als der Arbeitsspeicher reicht
   LDT.hist = true; LDT.zoom = true; LDT.from = from; LDT.to = to;
   TILE.manual = true; TILE.at = Date.now();          // Rundlauf steht, solange zurückgespult ist

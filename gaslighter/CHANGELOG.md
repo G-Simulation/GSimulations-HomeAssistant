@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.66
+
+- **Zeitleiste** (wie in einem Schnittprogramm, mit uPlot wie die Graphen) unter dem Verlauf in Protokolle und unter dem Live-Bild – ersetzt die einfache Scrollleiste: Mini-Ansicht des ganzen Zeitraums (Pegel, Hintergrund, Störungen rot, Uhrzeit-Raster) mit Fenster für den gezeigten Ausschnitt. Fenster ziehen = scrollen, Rand ziehen = zoomen, Bereich aufziehen = genau dorthin, Mausrad = scrollen, Strg + Mausrad = zoomen, Doppelklick = ganzer Zeitraum (Live: zurück zu live). Fest gekoppelt mit dem Zoom des Graphen. Live: die letzten 24 Stunden.
+- Live: Hover-Zeile und Bedienungstext stehen unter der Zeitleiste statt zwischen Graph und Leiste.
+- Verlauf: Legende der Sensoren und Zeile der KI-Symbole überlappen nicht mehr.
+
 ## 1.85.65
 
 - **Laden hing oft:** Die Live-Tabelle auf „Letzte 30 Tage“ ließ die Ereignisliste alle 30–45 s neu berechnen (auf einem kleinen Server 11–42 s je Berechnung); in der Zeit warteten Graphen und alles andere. Jetzt: lange Zeiträume (7/30 Tage, eigener Zeitraum) lädt die Tabelle höchstens alle 3 Minuten, und der Server rechnet sie bei neuen Störungen höchstens alle 90 s neu. Änderungen über die Oberfläche (Einordnung, Notizen) gelten weiter sofort.
