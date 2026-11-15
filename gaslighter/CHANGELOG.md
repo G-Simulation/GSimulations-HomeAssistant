@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.85.80
+- Erfassung: GLighter benutzt jetzt genau die Erfassung von GReport (gemeinsame Dateien erfassung.js/erfassung.css, Zeichen für Zeichen gleich in beiden Apps) statt eines eigenen Nachbaus. Änderungen werden nur noch in GReport gemacht und gelten automatisch hier mit; ein Test schlägt fehl, sobald die beiden Kopien voneinander abweichen.
+- Was nur GLighter hat, bleibt: Notiz der nächsten Störung zuordnen, Gerät wählen, „ohne Zeitpunkt“, eigener Layout-Speicher, lärmspezifische Voreinstellung.
+- Neu dadurch: Layout-Editor mit Reitern (Uhrgröße und Tastenstil als Umschalter), Zeitpunkt-Tasten wie in GReport (Warnung, bevor eine von Hand gesetzte Zeit überschrieben wird, „≈“ für ungefähre Zeiten), Hilfetext und Pflicht-Markierung bei Zeitpunkt, Schnell-Schalter ● / ○ je Ansicht auf dem Server gespeichert.
+- Anders als bisher: Rechtsklick bzw. langes Drücken auf eine Pille öffnet den Layout-Editor an dieser Stelle; die Schnellwahl-Verwaltung öffnet Rechtsklick auf die leere „+“-Pille. Mit ● / ○ ausgeschaltete Abschnitte gelten als im Layout ausgeblendet (wieder einblenden über ▦). Die Startzeit der Erfassung läuft nicht mehr mit der Uhr mit. Meldungen wie in GReport („Gespeichert um …“), der Hinweis zur Zuordnung zur Störung bleibt.
+
 ## 1.85.79
 - Protokolle → Verlauf: lädt nicht mehr bei jedem Verschieben alles neu. Daten kommen in Kacheln je Zoomstufe (Auflösung in Zweierpotenzen, Kachel = 2 Bildbreiten, halb versetzt) und bleiben im Speicher – Zurückscrollen zu schon Gesehenem und Hin- und Herzoomen laden nichts nach. Nachbarkacheln und die nächstgröbere Stufe kommen vorab im Hintergrund; „Lädt …“ erscheint nur noch, wenn wirklich etwas fehlt. Geladen werden nur die Geräte, die eine Zeile zeigt.
 - Server: fertige, vergangene Ausschnitte des Verlaufs werden bis 10 min aufgehoben; neue Störung, KI-Einordnung oder Änderung über die Oberfläche rechnen sofort neu, Laufendes bis „jetzt“ nie.

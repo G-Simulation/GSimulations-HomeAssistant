@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.16
+- Erfassung als gemeinsamer Baustein (erfassung.js/erfassung.css), den GLighter jetzt unverändert mitbenutzt – Aussehen und Bedienung in GReport bleiben gleich.
+- Behoben: Eine Pflicht-Rubrik „Zeitpunkt“ ließ sich nie erfüllen; eine von Hand gesetzte Zeit blieb nach dem Zurücksetzen hängen (Art „ohne Zeitpunkt“ wirkte dann nicht mehr); das automatische Speichern konnte eine gerade bearbeitete Notiz speichern; Pillen einer gelöschten Rubrik verschwanden (jetzt unter „Eigene“).
+
 ## 1.12.15
 - Schnellwahl: die Pille mit „+“ ist so groß wie die anderen Pillen (Höhe, Breite, Schrift), nur mit gestricheltem Rahmen – vorher ein kleiner Kreis.
 
