@@ -1012,7 +1012,7 @@ window.Erfassung = (() => {
     const u = H.ui;
     return `<div class="caphead">
       <div class="clock"><time id="capclock" class="clocknum">--:--:--</time><span id="capdate" class="clockdate"></span></div>
-      <div class="capinfo"><b id="capttl" data-i="fn_btn"></b><small id="fnpfrom"></small></div>
+      <div class="capinfo"><b id="capttl"></b><small id="fnpfrom"></small></div>
       <button type="button" id="laybtn" class="icon" data-ia="gr_lay" aria-pressed="false">▦</button>${u.head || ''}
       <button type="button" id="fnppop" class="icon" data-ia="pop_tip">⧉</button>${u.fold ? '<button type="button" id="fnptog" class="icon" data-ia="fc_fold" aria-expanded="true" aria-controls="fnpbody">▾</button>' : ''}
     </div>${u.tplFirst ? '<div id="tplfirst" class="fbtplbox first" role="region" data-ia="fb_tpl_title" hidden></div>' : ''}
@@ -1054,7 +1054,7 @@ window.Erfassung = (() => {
     SEC_EL = {}; for (const k of H.secs) if (SEC_ALL[k]) SEC_EL[k] = SEC_ALL[k];
     if (H.ui.more == null) delete SEC_EL.more;
     panel.classList.add('capture'); panel.innerHTML = markup(); trIn(panel);
-    initFnp(); initLay();
+    initFnp(); initLay(); fnpShow();
   }
   function initFnp() {
     let open = true;

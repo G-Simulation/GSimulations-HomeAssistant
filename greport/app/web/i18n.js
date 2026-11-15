@@ -770,7 +770,17 @@ window.I18N = {
   "gr_h_scan": "Notizen aus Dokumenten",
   "gr_h_scan_t": "Bei einer Anlage tippst du „Notizen vorschlagen“. GReport liest den Text offline (PDF, Word, Text-Dokument, E-Mail; Fotos und Scans mit Texterkennung), sucht Datums- und Zeitangaben und schlägt je Fundstelle eine Notiz vor – mit Satz, Seite und Zeile und der Einstufung genau, ungefähr oder unklar. Du prüfst, änderst und wählst; angelegt wird erst mit „Übernehmen“ (Pro). Doppelte sind markiert. Der erkannte Text liegt als eigene Datei daneben, das Original bleibt unverändert.",
   "gr_ver_files": "Anlagen",
-  "gr_ver_files_n": "{n} geprüft (davon {a} aktiv)"
+  "gr_ver_files_n": "{n} geprüft (davon {a} aktiv)",
+  "fc_fold": "Notiz ein- oder ausklappen",
+  "fc_o_clock": "Uhr",
+  "fc_o_clock_big": "groß",
+  "fc_o_clock_off": "aus",
+  "fc_o_clock_small": "klein",
+  "fc_o_style": "Tasten",
+  "fc_o_style_filled": "gefüllt",
+  "fc_o_style_outline": "umrandet",
+  "fk_hold": "Lange drücken oder Rechtsklick: umbenennen, Farbe, Symbol",
+  "src_col": "Quelle / Gerät"
  },
  "en": {
   "fb_range": "allowed {a} to {b}",
@@ -1542,6 +1552,16 @@ window.I18N = {
   "gr_h_scan": "Notes from documents",
   "gr_h_scan_t": "On an attachment, tap “Suggest notes”. GReport reads the text offline (PDF, Word, text document, e-mail; photos and scans with text recognition), finds dates and times and suggests one note per match – with sentence, page and line and the rating exact, approximate or unclear. You check, edit and select; nothing is created before “Apply” (Pro). Duplicates are marked. The recognised text is stored as a separate file, the original stays unchanged.",
   "gr_ver_files": "Attachments",
-  "gr_ver_files_n": "{n} checked ({a} active)"
+  "gr_ver_files_n": "{n} checked ({a} active)",
+  "fc_fold": "Expand or collapse note",
+  "fc_o_clock": "Clock",
+  "fc_o_clock_big": "large",
+  "fc_o_clock_off": "off",
+  "fc_o_clock_small": "small",
+  "fc_o_style": "Buttons",
+  "fc_o_style_filled": "filled",
+  "fc_o_style_outline": "outlined",
+  "fk_hold": "Long press or right-click: rename, colour, icon",
+  "src_col": "Source / device"
  }
 };

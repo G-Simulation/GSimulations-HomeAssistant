@@ -6,6 +6,7 @@
 <title>GReport</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="stylesheet" href="greport.css?v={{VERSION}}">
+<link rel="stylesheet" href="erfassung.css?v={{VERSION}}">
 <link rel="stylesheet" href="shoelace-ui.css?v={{VERSION}}">
 </head>
 <body>
@@ -22,61 +23,8 @@
   </header>
 
   <main id="content">
-  <section id="fnpanel" class="capture" aria-labelledby="capttl">
-    <div class="caphead">
-      <div class="clock"><time id="capclock" class="clocknum">--:--:--</time><span id="capdate" class="clockdate"></span></div>
-      <div class="capinfo"><b id="capttl" data-i="fn_btn"></b><small id="fnpfrom"></small></div>
-      <button type="button" id="laybtn" class="icon" data-ia="gr_lay" aria-pressed="false">▦</button>
-      <button type="button" id="fnppop" class="icon" data-ia="pop_tip">⧉</button>
-    </div>
-    <div id="tplfirst" class="fbtplbox first" role="region" data-ia="fb_tpl_title" hidden></div>
-    <div id="laybar" class="laybar" role="region" data-ia="gr_lay" hidden></div>
-    <div id="fnpbody" class="capbody">
-      <div id="secbar" class="secbar" role="group" data-ia="gr_sec_tip"></div>
-      <div id="fnpkinds" class="fbkinds" hidden></div>
-      <textarea id="fnptext" rows="2" maxlength="500" data-iph="fn_ph" data-ia="gr_a_text"></textarea>
-      <div id="fnptags" class="groups"></div>
-      <div class="witrow" id="secwit"><span class="witicon" aria-hidden="true">👤</span><input type="text" id="fnpwit" maxlength="200" data-iph="fn_wit" data-ia="gr_a_wit"><div id="fnpwitl" class="witlist"></div>
-        <div id="fnpwitx" class="witx" hidden><select id="fnpwrole" data-ia="gr_w_role"></select><input type="text" id="fnpwcon" maxlength="120" data-iph="gr_w_con_ph" data-ia="gr_w_con"></div>
-        <small id="sechwit" class="fbhelp" hidden></small>
-        <div class="tipslot" data-tips="4"></div></div>
-      <details class="more" id="secmore"><summary data-i="gr_more_s"></summary>
-        <small id="sechmore" class="fbhelp" hidden></small>
-        <div id="fbmore" class="fbmore"></div>
-        <div id="moreold">
-        <div class="moregrid">
-          <label class="field"><span data-i="gr_x_freq"></span><input type="text" id="xfreq" maxlength="80" data-iph="gr_x_freq_ph"></label>
-          <div class="field"><label class="check"><input type="checkbox" id="xpol"> <span data-i="gr_x_pol"></span></label><input type="text" id="xpolnr" maxlength="40" data-iph="gr_x_polnr" data-ia="gr_x_polnr"></div>
-          <div class="field"><span id="xrepl" data-i="gr_x_rep"></span><div class="row wrap"><select id="xrepto" aria-labelledby="xrepl"></select><input type="date" id="xrepdate" data-ia="gr_x_repdate"></div></div>
-          <label class="field"><span data-i="gr_x_health"></span><textarea id="xhealth" rows="2" maxlength="300" data-iph="gr_x_health_ph"></textarea></label>
-          <label class="field"><span data-i="gr_x_attest"></span><input type="text" id="xattest" maxlength="200" data-iph="gr_x_attest_ph"></label>
-          <label class="check"><input type="checkbox" id="xthreat"> <span data-i="gr_x_threat"></span></label>
-        </div>
-        </div>
-        <p class="hint" data-i="gr_x_lvl_h"></p>
-        <div class="tipslot" data-tips="5,6"></div>
-      </details>
-      <div class="timerow" id="sectime">
-        <button type="button" id="fnptimebtn" class="linkbtn" aria-expanded="false"><span aria-hidden="true">🕒</span> <span id="fnptimetxt"></span></button>
-        <small id="sechtime" class="fbhelp" hidden></small>
-        <div id="fnpext" class="timeedit" hidden>
-          <label><span data-i="per_from"></span><input type="datetime-local" id="fnpfromi" step="1"><button type="button" id="fnpfnow" class="chip" data-i="fn_now"></button></label>
-          <label><span data-i="per_to"></span><input type="datetime-local" id="fnptoi" step="1"><button type="button" id="fnptnow" class="chip" data-i="fn_now"></button><button type="button" id="fnptclr" class="chip" data-ia="time_clear">✕</button></label>
-          <label class="check"><input type="checkbox" id="fnprun"> <span data-i="fnp_run"></span></label>
-          <label class="check"><input type="checkbox" id="fnpnotime"> <span data-i="gr_notime"></span></label>
-        </div>
-      </div>
-    </div>
-    <div class="tipslot captip" data-tips="cap"></div>
-    <div id="fnpatts" class="attpend" hidden></div>
-    <div class="savebar">
-      <button type="button" id="fnpatt" class="icon" data-ia="gr_att_add">📎</button>
-      <button type="button" id="fnpcam" class="icon" data-ia="gr_att_cam" hidden>📷</button>
-      <small id="fnpmsg" class="msg" role="status" aria-live="polite"></small>
-      <button type="button" id="fnpcancel" class="btn" data-i="cancel" hidden></button>
-      <button type="button" id="fnpsave" class="btn primary" data-i="save"></button>
-    </div>
-  </section>
+  <!-- „Notiz jetzt“: Aufbau kommt aus erfassung.js (gemeinsam mit GLighter) -->
+  <section id="fnpanel" class="capture" aria-labelledby="capttl"></section>
 
   <section class="log" id="logsec" aria-labelledby="logttl">
     <div class="loghead"><h2 id="logttl" data-i="gr_list"></h2><span class="grow"></span>
@@ -244,6 +192,7 @@
 <script src="ag-grid-community.min.js?v={{VERSION}}"></script>
 <script src="shoelace-ui.js?v={{VERSION}}"></script>
 <script src="felder.js?v={{VERSION}}"></script>
+<script src="erfassung.js?v={{VERSION}}"></script>
 <script src="app.js?v={{VERSION}}"></script>
 </body>
 </html>

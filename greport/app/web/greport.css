@@ -41,75 +41,31 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* Notiz jetzt */
 .capture{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);border:1px solid var(--line);margin-bottom:18px;overflow:clip}
-.capture.editing{border-color:var(--warn)}
-.caphead{display:flex;align-items:center;gap:14px;padding:16px 18px 6px}
-.clock{display:grid;line-height:1.05}
-.clocknum{font-size:40px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.clockdate{font-size:13px;color:var(--mut)}
-.capinfo{display:grid;flex:1;min-width:0;padding-left:14px;border-left:1px solid var(--line)}
-.capinfo b{font-size:15px}.capinfo small{color:var(--mut);font-size:12.5px}
-.capture.editing .capinfo b{color:var(--warn)}
-.capbody{padding:6px 18px 12px;display:grid;gap:12px;align-content:start}
-#fnptext{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line);background:var(--soft);border-radius:var(--r2);padding:11px 13px;font-size:16px;line-height:1.45}
-#fnptext:focus{background:var(--card);border-color:var(--acc);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
 
-/* Abschnitte ein-/ausblenden */
-.secbar{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 0}
-.secb{border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;line-height:20px;min-height:32px}
-.secb::before{content:"○ ";opacity:.8}.secb.on{color:var(--ink);border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}.secb.on::before{content:"● ";color:var(--acc)}
-.secb:hover{border-color:var(--mut)}
 
-/* Schnellwahl nach Gruppen */
-.groups{display:grid;gap:7px}
-.grp{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start}
-.grp>span{font-size:12.5px;color:var(--mut);padding-top:5px;white-space:nowrap}
-.grp>div{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
 .tag{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--gc,var(--g-misc)) 45%,var(--line));background:transparent;cursor:pointer;font-size:13.5px;white-space:nowrap;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .tag:hover{border-color:color-mix(in srgb,var(--gc) 80%,var(--line))}
 .tag.on{background:color-mix(in srgb,var(--gc) 14%,var(--card));border-color:var(--gc);box-shadow:inset 0 0 0 1px var(--gc);font-weight:600}
 .tag.add,.tag.more{border-style:dashed;color:var(--mut);border-color:var(--line)}
 .tag.add.sm{padding:0 9px;font-weight:700}.tag.tagnew{display:inline-flex;align-items:center;gap:4px;padding:0 4px 0 8px;border-style:dashed}.tag.tagnew input{border:0;background:transparent;color:inherit;font:inherit;width:9em;min-width:5em;outline:none}.tag.tagnew button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0 5px;min-height:26px}.tag.tagnew .tnok{color:var(--ok,#2f9e44);font-weight:700}
-/* ab 1.85.76 / 1.12.14: leere Pille mit „+“ zum direkten Hineinschreiben */
-.tag.tagin{padding:0 12px;gap:4px;cursor:text;font-weight:400}.tag.tagin input{border:0;background:transparent;color:var(--ink,var(--tx));font:inherit;font-weight:400;outline:none;padding:0;min-width:5em;max-width:14em;field-sizing:content}.tag.tagin input:placeholder-shown{text-align:center}.tag.tagin input::placeholder{color:var(--mut);opacity:1}.tag.tagin:focus-within{border-style:solid;border-color:var(--acc)}.tag.tagin:focus-within input{min-width:7em;text-align:left}.tag.tagin .tnok{display:none;border:0;background:transparent;color:var(--ok,#2f9e44);font:inherit;font-weight:700;cursor:pointer;padding:0 0 0 2px;min-height:24px}.tag.tagin.has .tnok{display:inline-flex;align-items:center}
-@supports not (field-sizing:content){.tag.tagin input{width:5em}.tag.tagin:focus-within input,.tag.tagin.has input{width:9em}}
 .qtlim{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--mut);margin:6px 0}.qtlim input{width:70px;border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:4px 8px}
 /* Gruppenfarben: eigene Farbe (--u-…, dunkel aufgehellt --ud-…) oder Standard */
 .g-src{--gc:var(--u-src,var(--g-src))}.g-kind{--gc:var(--u-kind,var(--g-kind))}.g-lvl{--gc:var(--u-lvl,var(--g-lvl))}.g-eff{--gc:var(--u-eff,var(--g-eff))}.g-act{--gc:var(--u-act,var(--g-act))}.g-misc{--gc:var(--u-misc,var(--g-misc))}.g-own{--gc:var(--u-own,var(--g-own))}.g-when{--gc:var(--u-when,var(--g-when))}.g-cu{--gc:var(--uc)}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .g-src{--gc:var(--ud-src,var(--g-src))} :root:not([data-theme="light"]) .g-kind{--gc:var(--ud-kind,var(--g-kind))} :root:not([data-theme="light"]) .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))} :root:not([data-theme="light"]) .g-eff{--gc:var(--ud-eff,var(--g-eff))} :root:not([data-theme="light"]) .g-act{--gc:var(--ud-act,var(--g-act))} :root:not([data-theme="light"]) .g-misc{--gc:var(--ud-misc,var(--g-misc))} :root:not([data-theme="light"]) .g-own{--gc:var(--ud-own,var(--g-own))} :root:not([data-theme="light"]) .g-when{--gc:var(--ud-when,var(--g-when))} :root:not([data-theme="light"]) .g-cu{--gc:var(--udc,var(--uc))}}
 :root[data-theme="dark"] .g-src{--gc:var(--ud-src,var(--g-src))} :root[data-theme="dark"] .g-kind{--gc:var(--ud-kind,var(--g-kind))} :root[data-theme="dark"] .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))} :root[data-theme="dark"] .g-eff{--gc:var(--ud-eff,var(--g-eff))} :root[data-theme="dark"] .g-act{--gc:var(--ud-act,var(--g-act))} :root[data-theme="dark"] .g-misc{--gc:var(--ud-misc,var(--g-misc))} :root[data-theme="dark"] .g-own{--gc:var(--ud-own,var(--g-own))} :root[data-theme="dark"] .g-when{--gc:var(--ud-when,var(--g-when))} :root[data-theme="dark"] .g-cu{--gc:var(--udc,var(--uc))}
-.sugline{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.sugline button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:2px 10px;cursor:pointer;font-size:12.5px}
 
-/* Pflicht-Gruppen: Sternchen; sind alle gewählt, pulsieren die gewählten Tasten und „Speichern“ */
-.reqm{font-style:normal;color:var(--warn);font-weight:700}
-.grp.req.done .reqm{color:var(--ok)}
-@keyframes grpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gc) 35%,transparent),0 0 14px 2px color-mix(in srgb,var(--gc) 45%,transparent)}}
-@keyframes grpulse2{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 30%,transparent),0 0 16px 3px color-mix(in srgb,var(--acc) 45%,transparent)}}
-.capture.alldone .grp.req .tag.on{animation:grpulse 1.6s ease-in-out infinite}
-.capture.alldone #fnpsave{animation:grpulse2 1.6s ease-in-out infinite}
 .qtg h4 .reqc{display:inline-flex;align-items:center;gap:4px;font-weight:400;font-size:12px;color:var(--mut);margin-left:4px;cursor:pointer}.qtg h4 .reqc input{accent-color:var(--acc)}
-@media(prefers-reduced-motion:reduce){.capture.alldone .grp.req .tag.on,.capture.alldone #fnpsave{animation:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--gc,var(--acc)) 40%,transparent)}}
 
 /* Zeuge, Zeit */
-.witrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.witicon{width:22px;text-align:center}
-#fnpwit{flex:1;min-width:180px;border:0;border-bottom:1px solid var(--line);background:transparent;padding:7px 2px;border-radius:0}
-#fnpwit:focus{outline:none;border-bottom-color:var(--acc)}
 .witlist{display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-left:30px}.witlist:empty{display:none}
 .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 11px;font-size:13px;cursor:pointer}
 .chip:hover{border-color:var(--mut)}
-.timerow{display:grid;gap:8px}
 .linkbtn{justify-self:start;border:0;background:transparent;padding:4px 2px;color:var(--mut);cursor:pointer;font-size:13.5px}
 .linkbtn:hover{color:var(--ink)}.linkbtn[aria-expanded="true"]{color:var(--ink)}
-.timeedit{display:grid;gap:8px;padding:10px 12px;background:var(--soft);border-radius:var(--r2)}
-.timeedit label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
-.timeedit label:not(.check)>span{width:36px;color:var(--mut)}
-.timeedit input[type=datetime-local]{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 8px;min-width:0;max-width:100%}
 .check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
 .check input{width:17px;height:17px;accent-color:var(--acc)}
 
 /* Speichern */
-.savebar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--soft) 60%,var(--card))}
 .msg{flex:1;color:var(--ok);font-size:13px}.msg.err{color:var(--bad)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:pointer;text-decoration:none;font-size:14px}
 .btn:hover{border-color:var(--mut)}
@@ -230,44 +186,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .verlist{margin:4px 0 10px;padding-left:20px;font-size:13.5px}
 .verdl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:8px 0}.verdl dt{color:var(--mut)}.verdl dd{margin:0;overflow-wrap:anywhere}
 .verdl code{font-size:12px}
-/* Layout anpassen */
-.capture.lay{border-color:var(--acc);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 30%,transparent),var(--sh)}
-#laybtn[aria-pressed="true"]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
-.laybar{padding:10px 18px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--acc) 6%,var(--card));display:grid;gap:8px}
-.layhint{margin:0;font-size:13px;color:var(--mut)}
-.laysecs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.laysl{font-size:13px;color:var(--mut)}
-.laysbox{display:flex;gap:6px;flex-wrap:wrap}
-.laysec{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px;min-height:34px;cursor:grab;font-size:13px;touch-action:none}
-.laybtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.capture.lay #capttl,.capture.lay #fnpfrom{outline:1px dashed var(--acc);outline-offset:2px;border-radius:4px;cursor:text;min-width:4ch}
-.capture.lay #capttl:focus,.capture.lay #fnpfrom:focus{outline:2px solid var(--acc)}
-.capture.lay #secbar{display:none}
-.laygs{display:grid;gap:10px}
-.layg{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--line));border-radius:10px;padding:8px 10px;background:var(--card)}
-.layg.off{opacity:.6;border-style:dashed}
-.laygh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
-.laygh .hd{border:1px solid var(--line);background:var(--soft);border-radius:8px;width:34px;height:34px;cursor:grab;touch-action:none;color:var(--mut)}
-.laygh .lgn{flex:1;min-width:120px;border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:5px 8px;font-weight:600}
-.laygh .lgc{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:transparent;cursor:pointer}
-.laygh .lgd{border:0;background:transparent;width:34px;height:32px;border-radius:8px;cursor:pointer}.laygh .lgd:hover{background:var(--soft)}
-.laykeys{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
-.layk{padding:0 0 0 4px;gap:0;cursor:default}
-.layk .lkn{border:0;background:transparent;padding:0 8px;height:100%;cursor:grab;touch-action:none;font:inherit;color:inherit}
-.layk .lkx{border:0;border-left:1px solid color-mix(in srgb,var(--gc) 35%,var(--line));background:transparent;width:30px;height:100%;cursor:pointer;color:var(--mut);font-size:12px}
-.layk.off .lkn{text-decoration:line-through;color:var(--mut)}
-.layk.dragging,.layg.dragging,.laysec.dragging{opacity:.55;outline:2px dashed var(--acc)}
-.lkform{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
-.lkin{border:1px solid var(--acc);background:var(--card);border-radius:999px;padding:4px 10px;height:30px;min-width:0;width:12em;max-width:100%}
-.lkin.lkt{width:7em}
-.lga{justify-self:start}
-@media(max-width:600px){.laybar{padding:10px 14px}.layk{height:36px}}
 
 /* Zeuge: Rolle und Erreichbarkeit; Mehr; Tipps */
 .witx{display:flex;gap:8px;flex-wrap:wrap;width:100%;padding-left:30px}
 .witx select,.witx input{border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:5px 8px;min-height:34px;min-width:0}
 .witx input{flex:1;min-width:160px}
-.more{border:1px solid var(--line);border-radius:var(--r2);padding:2px 12px}
-.more summary{cursor:pointer;padding:8px 0;font-size:13.5px;color:var(--mut)}.more[open] summary{color:var(--ink)}
 .moregrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:4px 16px}
 .moregrid .field{margin:6px 0}.moregrid input[type=text],.moregrid textarea,.moregrid select,.moregrid input[type=date]{border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:6px 9px;min-width:0;width:100%}
 .moregrid .row select{flex:1;width:auto}.moregrid .row input[type=date]{width:auto}
@@ -287,11 +210,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .help p{margin:4px 0 8px;color:var(--ink);font-size:14px;line-height:1.55;max-width:68ch}
 #helpbtn{font-weight:700}
 
-/* abgedockt */
-body.pop{background:var(--bg);margin:0}
-body.pop .capture{margin:0;border-radius:0;border:0;min-height:100vh;display:flex;flex-direction:column}
-body.pop .capbody{flex:1}
-.popph{padding:12px 16px;margin-bottom:18px;background:var(--card);border:1px dashed var(--line);border-radius:var(--r);display:flex;gap:10px;align-items:center}
 
 /* Textdatei & Import/Export */
 .blk{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
@@ -309,12 +227,7 @@ body.pop .capbody{flex:1}
   .page{padding:10px 12px 0}
   .brand small{display:none}
   .status span{width:28px;height:28px}
-  .caphead{padding:14px 14px 4px;gap:12px}
-  .clocknum{font-size:32px}
-  .capbody{padding:6px 14px 12px}
-  .grp{grid-template-columns:1fr;gap:4px}.grp>span{padding:0}
   .tag{height:34px;font-size:14px}
-  .savebar{position:sticky;bottom:0;z-index:5;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
   .btn.primary{flex:0 0 auto;min-width:130px;height:44px}
   .log{padding:12px 14px 6px}
   #grq{width:100%;order:5}
@@ -326,19 +239,8 @@ body.pop .capbody{flex:1}
   .qtr{grid-template-columns:22px 1fr auto;grid-template-areas:"h i b" "h g g"}
   .qtr .hd{grid-area:h}.qtr input[type=text]{grid-area:i}.qtr select{grid-area:g}.qtr .b{grid-area:b}
 }
-/* nur echte Handys (Touch): je Gruppe eine Zeile zum Wischen, rechts ein Verlauf + Pfeil, solange es weitergeht.
-   Am PC und im abgedockten Fenster brechen die Tasten um. */
-@media(max-width:600px) and (pointer:coarse){
-  .grp>div{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px 2px;scroll-padding:14px}
-  .grp>div::-webkit-scrollbar{display:none}
-  .grp{position:relative}
-  .grp.ovf::after{content:"›";position:absolute;right:-14px;bottom:2px;height:34px;width:44px;display:grid;place-items:center end;padding-right:6px;font-size:22px;color:var(--mut);
-    background:linear-gradient(to right,transparent,var(--card) 65%);pointer-events:none}
-}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
-/* sehr schmale Handys: Uhr oben, Hinweis darunter (statt Wort-für-Wort-Spalte) */
-@media(max-width:380px){.caphead{flex-wrap:wrap}.capinfo{flex-basis:100%;order:3;padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:6px}.clocknum{font-size:30px}}
 /* Anlagen und Vorschläge aus Dokumenten */
 .attpend{display:grid;gap:6px;padding:8px 18px 0}
 .attp{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13.5px;border:1px dashed var(--line);border-radius:10px;padding:6px 10px}
@@ -376,7 +278,6 @@ body.pop .capbody{flex:1}
 /* Ganze Breite (Einstellung „Breite“): Erfassung und Liste so breit wie die Tabelle */
 body.grwide .page{max-width:min(1600px,100%)}
 body.grwide .log.tbl{width:auto;margin-left:0}
-.laywid{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}.laywid .seg button{min-height:32px}
 .tip .tipi{border:0;background:transparent;padding:0;font-size:14px;line-height:20px;cursor:pointer;min-width:24px;min-height:24px;border-radius:6px}
 .tip .tipb{display:contents}
 /* Tipps „beim Zeigen“: nur ein kleines 💡. Zeigt die Maus auf den Bereich, wird 💡 deutlich; der Text erscheint als schwebende Blase
@@ -406,9 +307,6 @@ body.tipshover .tip.u .tipb::before{top:auto;bottom:-8px}
 body.tipshover #fnpbody.tipanchor{padding-right:18px}
 body.tipshover #fnpbody.tipanchor > .tipdock{right:24px}
 @media(max-width:600px){body.tipshover #fnpbody.tipanchor{padding-right:14px}body.tipshover #fnpbody.tipanchor > .tipdock{right:20px}}
-@keyframes laypick{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 55%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 0%,transparent)}}
-.layk.picked{animation:laypick .8s ease-out 3;outline:2px solid var(--acc);outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.layk.picked{animation:none}}
 /* Erfassen-Bereich: kein Extra-Rand, 💡 bündig mit den 💡 der Zeilen darin */
 body.tipshover #fnpbody.tipanchor{padding-right:18px}
 body.tipshover #fnpbody.tipanchor > .tipdock{right:24px}
@@ -458,9 +356,6 @@ body.tipshover #fnpbody.tipanchor > .tipdock{right:24px}
 .fbck{min-height:34px}
 .fbadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fbadd select{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;min-height:38px;max-width:100%}
-.laysec.off{text-decoration:line-through;border-style:dashed}
-.laygx{margin:-2px 0 6px}.laygx input{width:100%;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
-.ghelp{display:block;white-space:normal;font-size:11.5px;color:var(--mut);line-height:1.3;margin-top:2px}
 /* Vorlagen */
 .fbtplbox{display:grid;gap:8px}
 .fbtplbox.first{margin:4px 18px 8px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--acc) 45%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--acc) 6%,var(--card))}
@@ -472,19 +367,6 @@ body.tipshover #fnpbody.tipanchor > .tipdock{right:24px}
 @media(max-width:600px){.fbtplbox.first{margin:4px 14px 8px}.fbplus{min-width:100px}}
 .note .fx{display:inline-block;font-size:13px;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:0 7px;margin:2px 6px 2px 0}
 /* Zwei Ansichten (angedockt / abgedockt) in „Layout anpassen“ und Dichte „kompakt“ */
-.layprof{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--acc) 22%,var(--line))}
-.layprof .seg button{min-height:34px;font-weight:600}
-.layps{color:var(--mut);font-size:12.5px;flex:1 1 180px;min-width:0}
-.laywid{gap:8px 14px}
-.layopt{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-.layopt .seg button{min-height:32px;padding:6px 10px}
-.capture.dn-compact .caphead{padding:10px 14px 4px;gap:10px}.capture.dn-compact .clocknum{font-size:30px}
-.capture.dn-compact .capbody{padding:4px 14px 8px;gap:8px}.capture.dn-compact .groups{gap:5px}
-@media(min-width:601px){.capture.dn-compact .grp{grid-template-columns:84px 1fr;gap:8px}}
-.capture.dn-compact .tag{height:26px;padding:0 10px;font-size:13px}.capture.dn-compact #fnptext{min-height:46px;padding:8px 11px;font-size:15px}
-.capture.dn-compact .savebar{padding:8px 14px}.capture.dn-compact .secb{min-height:28px;padding:3px 10px}
-body.pop .laybar{padding:10px 12px}
-body.pop .layps{flex-basis:100%}
 /* schmal (Handy) und abgedockt: 💡 in einer eigenen Spalte rechts – keine Taste liegt darunter; die 💡 der Zeilen stehen in derselben Spalte */
 @media(max-width:600px){body.tipshover #fnpbody.tipanchor{padding-right:40px}body.tipshover #fnpbody.tipanchor > .tipdock{right:8px}
   body.tipshover #secwit.tipanchor,body.tipshover #fnptags > .tipanchor{padding-right:0}body.tipshover #secwit.tipanchor > .tipdock,body.tipshover #fnptags > .tipanchor > .tipdock{right:-32px}}
@@ -508,15 +390,7 @@ body.pop.tipshover #secwit.tipanchor,body.pop.tipshover #fnptags > .tipanchor{pa
 .colmenu .colmv{min-width:32px;min-height:32px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);cursor:pointer;font:inherit}
 .colmenu .colmv:hover{background:var(--soft)}
 .colmenu .colrst{margin-top:6px}
-.fbmore{display:grid;gap:12px;margin:6px 0 4px}.fbmore:empty{display:none}#moreold[hidden]{display:none}
 .caphead .tipslot.tiphead{position:relative;display:flex;align-items:center;margin-left:auto}.caphead .tipslot.tiphead+#laybtn{margin-left:6px}
-/* ab 1.12: Layout-Editor in Reitern */
-.laytabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:6px 0 10px;overflow-x:auto}
-.laytab{border:0;background:transparent;color:var(--mut);padding:8px 12px;min-height:40px;font:inherit;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
-.laytab.on{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
-.laytab:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
-.laypane[hidden]{display:none}
-.laytplrow{display:flex;margin-bottom:6px}
 .fesure{display:block;flex-basis:100%;font-size:12px;color:var(--mut);margin-top:4px}
 /* Felder in „Layout anpassen“: dieselbe Bearbeitungsleiste wie die Rubriken, direkt am Feld */
 .fbblk.fbil{--gc:#5f6b78;border:1px solid color-mix(in srgb,var(--gc) 40%,var(--line));border-radius:10px;padding:8px 10px;background:var(--card)}   /* exakt wie eine Rubrik (.layg) */
@@ -537,10 +411,5 @@ button.sure{background:var(--bad,var(--red,#c92a2a))!important;border-color:var(
 .fbaddm > button{display:block;width:100%;text-align:left;justify-content:flex-start;border:0;background:transparent;border-radius:6px;padding:8px 10px;min-height:36px;font-size:14px;color:inherit}
 .fbaddm > button:hover,.fbaddm > button:focus-visible{background:color-mix(in srgb,var(--acc) 12%,transparent);outline:none}
 
-/* „Layout anpassen“: kein Notiz-„Speichern“ (gespeichert wird das Layout mit „Fertig“) */
-.capture.lay .savebar{display:none!important}
 /* „＋ Rubrik“-Typauswahl im Shoelace-Menü */
 sl-dropdown.fbaddd .fbaddm{position:static!important;max-height:min(60vh,420px)}
-/* ab 1.12.10: Countdown „Von selbst speichern“ – Füllbalken von links nach rechts auf der Taste */
-#fnpsave.counting{position:relative;overflow:hidden;animation:none}
-#fnpsave.counting::before{content:"";position:absolute;inset:0;width:var(--p,0%);background:rgba(255,255,255,.28);transition:width .1s linear;pointer-events:none}
