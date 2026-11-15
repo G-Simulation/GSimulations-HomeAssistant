@@ -1054,7 +1054,7 @@ window.Erfassung = (() => {
     SEC_EL = {}; for (const k of H.secs) if (SEC_ALL[k]) SEC_EL[k] = SEC_ALL[k];
     if (H.ui.more == null) delete SEC_EL.more;
     panel.classList.add('capture'); panel.innerHTML = markup(); trIn(panel);
-    initFnp(); initLay(); fnpShow();
+    initFnp(); initLay(); viewLight(); fnpShow();
   }
   function initFnp() {
     let open = true;

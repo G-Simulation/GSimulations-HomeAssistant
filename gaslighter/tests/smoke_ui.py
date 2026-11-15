@@ -11,6 +11,60 @@ def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
 
 
+# Aufbau der Erfassung (ohne die App-eigenen Zusätze): Kennungen mit Tag und Klassen, Rubriken mit ihren Pillen, Layout-Editor
+SKELETON_JS = """() => {
+  const core = ['capclock','capdate','capttl','fnpfrom','laybtn','fnppop','laybar','fnpbody','secbar','fnpkinds','fnptext','fnptags','secwit','fnpwit','sectime',
+    'fnptimebtn','fnptimetxt','fnpext','fnpfromi','fnpfnow','fnptoi','fnptnow','fnptclr','fnprun','fnpnotime','fnpmsg','fnpcancel','fnpsave'];
+  const cls = x => x.tagName + '.' + [...x.classList].filter(c => c !== 'on' && c !== 'tipanchor').sort().join('.');   // Tipps (💡) gibt es nur in GReport
+  const kids = x => [...x.children].filter(y => !y.matches('.tipdock, .tipslot'));
+  const ids = core.map(id => { const e = document.getElementById(id); return id + ':' + (e ? cls(e) : '-'); });
+  const grp = [...document.querySelectorAll('#fnptags > .grp')].map(g => cls(g) + '[' + g.dataset.g + ']' + kids(g).map(cls).join('/') + ':' +
+    [...g.querySelectorAll(':scope > div > *')].filter(x => !/^c_/.test(x.dataset.t || '') && !x.matches('.tipdock, .tipslot')).map(x => cls(x) + (x.dataset.t ? '#' + x.dataset.t : x.dataset.w ? '@' + x.dataset.w : x.dataset.g ? '+' + x.dataset.g : '') + (x.querySelector('input') ? '(input)' : '')).join(','));
+  return { ids, grp };
+}"""
+EDITOR_JS = """() => [...document.querySelectorAll('#laybar .laytab')].map(b => b.id).concat([...document.querySelectorAll('#fnptags .layg')].map(g =>
+  g.dataset.g + ':' + ['.lgn', '.lgc', '.lgh', '.lgr', '.lgo', '.lgx', '.lka'].map(s => g.querySelector(s) ? s : '').join('') + ':' + g.querySelector('.laykeys').dataset.kind + ':' + [...g.querySelectorAll('.layk')].filter(k => !/^c_/.test(k.dataset.k)).length))"""
+
+
+def same_as_greport(b, pg, url_gl):
+    """GReport daneben starten und den Aufbau der Erfassung vergleichen; '' = gleich (oder GReport fehlt)."""
+    gr = os.path.join(HERE, "..", "..", "greport", "app", "greport.py")
+    if not os.path.exists(gr):
+        return ""
+    tmp = tempfile.mkdtemp(); port = free_port()
+    env = dict(os.environ, GR_DIR=os.path.join(tmp, "share"), GR_PRIVATE=os.path.join(tmp, "priv"), GR_OPTIONS=os.path.join(tmp, "none.json"),
+               GR_PORT=str(port), GR_ALLOW_ALL="1", GR_GLIGHTER_DIR=os.path.join(tmp, "nogl"))
+    srv = subprocess.Popen([sys.executable, gr], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(60):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=1); break
+            except Exception:
+                time.sleep(0.3)
+        gp = b.new_context(locale="de-DE", viewport={"width": 1300, "height": 900}).new_page()
+        gp.goto(f"http://127.0.0.1:{port}/"); gp.wait_for_selector("#fnptags .tag[data-t]"); gp.wait_for_timeout(600)
+        pg.goto(url_gl); pg.wait_for_selector("#fnptags .tag[data-t]", state="attached"); pg.wait_for_timeout(1200)
+        if pg.locator("#fnpbody").is_hidden():
+            pg.click("#fnptog"); pg.wait_for_timeout(300)
+        a, c = gp.evaluate(SKELETON_JS), pg.evaluate(SKELETON_JS)
+        diff = [f"{x} ≠ {y}" for x, y in zip(a["ids"], c["ids"]) if x != y] + [f"Rubrik {x} ≠ {y}" for x, y in zip(a["grp"], c["grp"]) if x != y]
+        if len(a["grp"]) != len(c["grp"]):
+            diff.append("Anzahl Rubriken %d ≠ %d" % (len(a["grp"]), len(c["grp"])))
+        gp.click("#laybtn"); pg.click("#laybtn"); gp.wait_for_timeout(600); pg.wait_for_timeout(600)
+        ea, ec = gp.evaluate(EDITOR_JS), pg.evaluate(EDITOR_JS)
+        if ea != ec:
+            diff.append("Layout-Editor: %s ≠ %s" % (ea, ec))
+        pg.click("#laycancel"); pg.wait_for_timeout(300); gp.context.close()
+        return "; ".join(diff[:6])
+    finally:
+        srv.terminate()
+        try:
+            srv.wait(5)
+        except Exception:
+            srv.kill()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     from playwright.sync_api import sync_playwright
     tmp = tempfile.mkdtemp(); port = free_port(); data = os.path.join(tmp, "data"); os.makedirs(data); os.makedirs(os.path.join(tmp, "out"))
@@ -153,14 +207,23 @@ def main():
                 fails.append("Pille mit + nicht so groß wie die anderen bzw. nicht gestrichelt: %s" % sz)
             if not pg.locator("#fnptags .grp[data-g='when'] .tag[data-w]").count():          # ab 1.85.76: Zeitpunkt wie jede Rubrik
                 fails.append("Rubrik Zeitpunkt fehlt in der Erfassung")
-            if pg.locator("#caplay").is_visible():
-                pg.click("#caplay"); pg.wait_for_timeout(700)
+            if not pg.locator("#laybtn").is_visible():                                       # ab 1.85.80: Erfassung aus GReport (erfassung.js), ▦ = #laybtn
+                fails.append("Knopf „Layout anpassen“ (▦) fehlt in der Erfassung")
+            else:
+                pg.click("#laybtn"); pg.wait_for_timeout(700)
                 wg = pg.locator("#fnptags .layg[data-g='when']")
                 if not wg.count() or wg.locator(".layk").count() < 5:
                     fails.append("Zeitpunkt fehlt im Layout-Editor oder ohne Tasten")
                 elif wg.locator(".lgo").count() or not wg.locator(".lgn").count():
                     fails.append("Zeitpunkt im Layout-Editor nicht wie die anderen Rubriken (Name) bzw. mit „nur eine Auswahl“")
-                pg.click("#caplay"); pg.wait_for_timeout(500)
+                if pg.locator("#laybar .laytab").count() != 3:
+                    fails.append("Layout-Editor ohne die Reiter von GReport (Anordnung, Felder, Notiz-Arten)")
+                pg.click("#laybtn"); pg.wait_for_timeout(500)
+            if pg.locator("#caplay, #caplaybar").count():
+                fails.append("alte eigene Erfassung (#caplay) ist noch da")
+            same = same_as_greport(b, pg, url)                                                # gleicher Aufbau wie in GReport (Rubriken, Pillen, „+“, Zeitpunkt, Editor)
+            if same:
+                fails.append("Erfassung anders aufgebaut als in GReport: " + same)
             mp = b.new_context(locale="de-DE", viewport={"width": 375, "height": 760}, is_mobile=True, has_touch=True).new_page()   # Handy: nichts breiter als der Bildschirm
             mp.on("pageerror", lambda e: errors.append("pageerror (Handy): " + str(e)))
             mp.goto(url); mp.wait_for_selector("#tab_prot"); mp.wait_for_timeout(1200)
