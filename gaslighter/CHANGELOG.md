@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.85.78
+- Protokolle: Der Verlauf ist durchgehend scrollbar – ziehen, Mausrad oder Zeitleiste gleiten über Mitternacht in den Vortag bzw. zurück bis jetzt. Liegt die Mitte des Ausschnitts im anderen Tag, wechselt der Tag darunter (Bericht, Liste) mit, der Ausschnitt bleibt stehen. Gilt für „Heute“, „Gestern“ und die Erfassungszeit (Nacht); nie über „jetzt“ hinaus.
+
 ## 1.85.77
 - Schnellwahl: die Pille mit „+“ ist so groß wie die anderen Pillen (Höhe, Breite, Schrift), nur mit gestricheltem Rahmen – vorher ein kleiner Kreis.
 

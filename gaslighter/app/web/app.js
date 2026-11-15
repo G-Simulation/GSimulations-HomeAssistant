@@ -5471,7 +5471,8 @@ async function loadNight() {
       NV.per === 'win' ? fetch('nights?date=' + weekEnd(ds) + '&src=' + encodeURIComponent(src), { cache: 'no-store' }).then(r => r.json()) : Promise.resolve({ nights: [] })]);
     if (key !== JSON.stringify([NV.date, NV.src, perRange(), NV.per, PV.cur, NV.art])) return;
     const rk = n.start + '|' + n.end + '|' + src;      // anderer Zeitraum: Verlauf wieder ganz zeigen
-    if (DT.rk !== rk) { DT.rk = rk; DT.from = DT.to = null; DT.mark = null; }
+    if (DT.rk !== rk) { DT.rk = rk; DT.mark = null; if (DT.keepWin && DT.keepWin[0] != null) { DT.from = DT.keepWin[0]; DT.to = DT.keepWin[1]; DT.zoom = true; } else { DT.from = DT.to = null; } }
+    DT.keepWin = null;                                 // ab 1.85.78: beim Weiterscrollen in den nächsten Tag bleibt der Ausschnitt
     DT.src = src;
     NV.data = n; NV.dkey = key; NV.week = w.nights; renderNight(); dtLoad(DT, true); EVSIG = ''; loadEvents(); loadRun();
   } catch (e) { }
@@ -6652,10 +6653,25 @@ function dtFocus(a, b) {
   const e = Math.max(b, a + 1000), pad = Math.max(15000, (e - a) * 0.5);
   DT.mark = [a, e]; DT.from = a - pad; DT.to = e + pad; dtLoad(DT, true); $('ndaybox').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+/* ab 1.85.78: Protokolle durchgehend scrollbar – der Ausschnitt gleitet über Mitternacht in den Vortag/Folgetag;
+   liegt seine Mitte im anderen Tag, wechselt der Tag darunter (Bericht, Liste) und der Ausschnitt bleibt stehen */
+function dtCont(S) { if (S !== DT || !['win', 'today', 'yest'].includes(NV.per)) return false; const [b0, b1] = dtBase(S); return b1 - b0 <= 26 * 3600000; }
+function dtDayShift(dir) {
+  if (DT.shift) return true;                          // Wechsel läuft schon: nicht doppelt
+  const d = parseDay(NV.date); d.setDate(d.getDate() + dir); const nd = isoDay(d);
+  if (nd > (NV.per === 'win' ? nightDefault() : isoDay(new Date()))) return false;   // nicht in die Zukunft
+  DT.shift = nd; DT.keepWin = [DT.from, DT.to]; NV.date = nd; DT.date = nd;
+  loadNight().finally(() => { DT.shift = null; });
+  return true;
+}
 function dtSetWin(S, f, t2, load) {
-  const [b0, b1] = dtBase(S), sp = Math.min(t2 - f, b1 - b0), now = nowServer(), bl = b1 > now && now > b0 ? now : b1;   // nicht über „jetzt“ hinaus schieben
-  if (sp >= b1 - b0 - 1000) { S.from = S.to = null; S.zoom = false; }
-  else { f = clamp(f, b0, Math.max(b0, bl - sp)); S.from = f; S.to = f + sp; S.zoom = true; }
+  const [b0, b1] = dtBase(S), now = nowServer(), cont = dtCont(S);
+  const lo = cont ? b0 - 86400000 : b0, hi0 = cont ? b1 + 86400000 : b1, hi = hi0 > now && now > lo ? Math.min(hi0, now) : hi0;   // nicht über „jetzt“ hinaus schieben
+  const sp = Math.min(t2 - f, b1 - b0);
+  f = clamp(f, lo, Math.max(lo, hi - sp));
+  if (sp >= b1 - b0 - 1000 && Math.abs(f - b0) < 1000) { S.from = S.to = null; S.zoom = false; }
+  else { S.from = f; S.to = f + sp; S.zoom = true; }
+  if (cont && S.from != null && !S.shift) { const c = (S.from + S.to) / 2; if (c < b0 || c >= b1) dtDayShift(c < b0 ? -1 : 1); }
   const [wf, wt] = dtWin(S);
   for (const sub of S.subs || []) if (sub.data) { sub.data = Object.assign({}, sub.data, { from: wf, to: wt }); dtDraw(sub); }
   if (S === DT) slDraw('scnd', wf, wt, 44, 10, 60000, !(S.subs || []).some(x => x.data));
