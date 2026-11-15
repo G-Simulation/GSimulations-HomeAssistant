@@ -35,7 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(HERE, "web")
 OPTIONS_FILE = os.environ.get("LAERM_OPTIONS", "/data/options.json")
 SETTINGS_FILE = os.environ.get("LAERM_SETTINGS", "/data/settings.json")
-VERSION = "1.85.78"
+VERSION = "1.85.79"
 
 # =====================================================================
 # Einstellungen
@@ -11418,6 +11418,33 @@ def fp_status():
     return {"ki": bool(art_enabled()), "why": ki_why(), "on": FP_STATE["on"], "n": FP_STATE["n"], "skip": FP_STATE["skip"], "ms": FP_STATE["ms"], "devs": devs}
 
 
+DT_RC = {}
+DT_RC_LOCK = threading.Lock()
+
+
+def day_track_cached(sid, day, t_from=None, t_to=None, n=1200, free=False, spec=True):
+    """ab 1.85.79: abgeschlossene Ausschnitte (Ende mehr als 2 min vorbei) bis 10 min aufheben – die Anzeige fragt
+    feste Kacheln je Zoomstufe ab, die sich wiederholen. Neue Störung (log.csv), KI-Einordnung oder Änderung über die
+    Oberfläche (VER) rechnen sofort neu; Laufendes bis „jetzt“ wird nie aufgehoben."""
+    if not free or t_from is None or t_to is None or t_to > time.time() * 1000 - 120000:
+        return day_track(sid, day, t_from, t_to, n, free, spec=spec)
+    try:
+        st_ = os.stat(paths()[2]); lk_ = (st_.st_mtime_ns, st_.st_size)
+    except OSError:
+        lk_ = None
+    key = (sid, day, t_from, t_to, n, free, spec, VER["art"], VER["data"], VER["row"], lk_)
+    with DT_RC_LOCK:
+        e = DT_RC.get(key)
+        if e and time.time() - e[0] < 600:
+            return e[1]
+    r = day_track(sid, day, t_from, t_to, n, free, spec=spec)
+    with DT_RC_LOCK:
+        DT_RC[key] = (time.time(), r)
+        while len(DT_RC) > 150:
+            DT_RC.pop(next(iter(DT_RC)))
+    return r
+
+
 def day_track(sid, day, t_from=None, t_to=None, n=1200, free=False, spec=True):
     """Ausschnitt eines Tages fuer die Anzeige: n Abschnitte mit hoechster Spitze, Mittelwert, Hintergrund, Schwelle, Stoerung.
     free: Zeitraum von–bis auch ueber Mitternacht (Live-Ansicht „letzte 6 h“), sonst auf den Tag begrenzt."""
@@ -15060,7 +15087,7 @@ class Handler(BaseHandler):
                 sid = re.sub(r"[^a-z0-9_]", "", (q.get("src") or ["main"])[0])[:16] or "main"
                 ds = (q.get("date") or [dt.date.today().isoformat()])[0]
                 gi = lambda k: int(q[k][0]) if q.get(k) and q[k][0].lstrip("-").isdigit() else None
-                return self.js(day_track(sid, dt.date.fromisoformat(ds).isoformat(), gi("from"), gi("to"), gi("n") or 1200, (q.get("free") or ["0"])[0] == "1",
+                return self.js(day_track_cached(sid, dt.date.fromisoformat(ds).isoformat(), gi("from"), gi("to"), gi("n") or 1200, (q.get("free") or ["0"])[0] == "1",
                                          spec=(q.get("nospec") or ["0"])[0] != "1"))
             if name == "spur":                         # Laermspur als JSON (Spektrogramm im zurueckgespulten Live-Bild)
                 f_ = (q.get("f") or [""])[0]

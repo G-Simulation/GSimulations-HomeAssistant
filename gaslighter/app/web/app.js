@@ -6435,7 +6435,8 @@ function dtBusy(S, on) {
 /* Nur eine Abfrage gleichzeitig: Antworten werden immer gezeigt (auch während weiter gezoomt wird), danach sofort der neueste Ausschnitt */
 async function dtLoadAll(S) {
   if (S.busy) { S.pend = true; return; }
-  S.busy = true; S.pend = false; dtBusy(S, true);
+  const quick = dtBufHit(S);                          // ab 1.85.79: im Puffer – kein „Lädt …“
+  S.busy = true; S.pend = false; if (!quick) dtBusy(S, true);
   try { await dtLoadAll1(S); } finally { S.busy = false; if (S.pend) { S.pend = false; dtLoadAll(S); } if (!S.busy) dtBusy(S, false); }
 }
 /* ================= Prüf-Schwelle (Protokolle → Verlauf): frei wählbarer Wert; zeigt, welche Spitzen darüber liegen.
@@ -6527,24 +6528,61 @@ function initPt() {
   if (PT.v != null) { $('ndptbar').hidden = false; $('ndpt').classList.add('on'); $('ndptv').value = PT.v; $('ndptl').textContent = t('pt_list'); }
 }
 function nvReady() { return NV.dkey === JSON.stringify([NV.date, NV.src, perRange(), NV.per, PV.cur, NV.art]); }
+/* ab 1.85.79: Puffer – geladen wird der Ausschnitt plus je eine Breite davor und danach (zusammen höchstens 2 Tage, gleiche Auflösung).
+   Verschieben und leichtes Zoomen innerhalb des Puffers zeichnet sofort ohne Nachladen; nahe am Rand lädt der nächste Puffer still im Hintergrund.
+   Nur die Geräte, die eine Zeile zeigt (beim ersten Laden alle, um zu sehen, welche Daten haben). */
+function dtBufPlan(S) {
+  const box = $('ndmulti'), w = Math.max(300, Math.round(box.clientWidth || $('ndaybox').clientWidth || 800));
+  const [wf, wt] = dtWin(S), sp = Math.max(1000, wt - wf);
+  const spec = new Set((S.rows || dtRows([])).filter(r => r.mode === 'spec').map(r => r.src));      // Spektrum nur, wo eine Zeile es zeigt
+  const all = SOURCES.concat(FORMER.filter(f => (S.rows || dtRows([])).some(r => r.src === f.id)));   // ehemalige Geräte nur, wenn eine Zeile sie zeigt
+  const LS = S.rows && S.rows.length ? all.filter(x => S.rows.some(r => r.src === x.id)) : all;
+  return { w, wf, wt, sp, spec, LS, key: JSON.stringify([LS.map(x => x.id), [...spec].sort(), w]) };
+}
+function dtBufLim(S) {
+  const [b0, b1] = dtBase(S), cont = dtCont(S), now = nowServer();
+  const lo = cont ? b0 - 86400000 : b0, hi0 = cont ? b1 + 86400000 : b1;
+  return [lo, hi0 > now && now > lo ? Math.min(hi0, now) : hi0];
+}
+/* ab 1.85.79: Kacheln je Zoomstufe (wie bei Karten): Auflösung in Zweierpotenzen (ms je Bildpunkt), Kachel = 2 Bildbreiten,
+   alle halbe Kachel versetzt – jeder Ausschnitt passt ganz in eine Kachel, nichts muss zusammengesetzt werden.
+   Geladene Kacheln bleiben im Speicher (auch beim Hin- und Herzoomen); die Nachbarn kommen vorab. Kacheln, die bis „jetzt“ reichen, gelten 15 s. */
+const DTC = new Map();
+function dtChunk(S, P) {
+  const z = Math.max(7, Math.ceil(Math.log2(P.sp / P.w))), Sz = P.w * 2 ** z;
+  if (2 * Sz <= 47 * 3600000) { const k = Math.floor(P.wf / Sz); return { f: k * Sz, t: k * Sz + 2 * Sz, n: 2 * P.w, z, k, Sz }; }
+  const [lo, hi] = dtBufLim(S), ext = Math.max(0, Math.min(P.sp, (2 * 86400000 - 120000 - P.sp) / 2));   // sehr weit herausgezoomt: ein Stück um den Ausschnitt
+  const f = Math.round(Math.min(P.wf, Math.max(lo, P.wf - ext))), t2 = Math.round(Math.max(P.wt, Math.min(hi, P.wt + ext)));
+  return { f, t: t2, n: Math.min(16000, Math.max(P.w, Math.round(P.w * (t2 - f) / P.sp))), z: 'x', k: f + '_' + t2 };
+}
+function dtTileKey(sid, spec, c) { return [sid, spec ? 1 : 0, c.z, c.k, c.n].join('|'); }
+function dtTileOk(e) { return e && e.done && (!e.live || Date.now() - e.t < 15000); }
+function dtTileGet(sid, spec, c) {
+  const key = dtTileKey(sid, spec, c), e = DTC.get(key);
+  if (e && (!e.live || Date.now() - e.t < 15000)) { DTC.delete(key); DTC.set(key, e); return e.p; }   // zuletzt benutzt nach hinten
+  const q = 'daytrack?src=' + encodeURIComponent(sid) + '&date=' + isoDay(new Date(c.f)) + '&n=' + c.n + '&free=1&from=' + Math.round(c.f) + '&to=' + Math.round(c.t) + (spec ? '' : '&nospec=1');
+  const x = { t: Date.now(), live: c.t > nowServer() - 60000, done: false };
+  x.p = fetch(q, { cache: 'no-store' }).then(r => r.json()).catch(() => null).then(j => { x.done = !!j; if (!j) DTC.delete(key); return j; });
+  DTC.set(key, x); while (DTC.size > 400) DTC.delete(DTC.keys().next().value);
+  return x.p;
+}
+function dtBufHit(S, P) { P = P || dtBufPlan(S); const c = dtChunk(S, P); return P.LS.every(x => dtTileOk(DTC.get(dtTileKey(x.id, P.spec.has(x.id), c)))); }
 async function dtLoadAll1(S) {
   if (!nvReady()) return;
-  const box = $('ndmulti'), date = S.date, id = ++S.req, dkey = NV.dkey;
-  const w = Math.max(300, Math.round(box.clientWidth || $('ndaybox').clientWidth || 800));
-  const [wf, wt] = dtWin(S);
-  const spec = new Set((S.rows || dtRows([])).filter(r => r.mode === 'spec').map(r => r.src));      // Spektrum nur, wo eine Zeile es zeigt
-  const q = sid => 'daytrack?src=' + encodeURIComponent(sid) + '&date=' + date + '&n=' + w + '&free=1&from=' + wf + '&to=' + wt + (spec.has(sid) ? '' : '&nospec=1');
-  let res;
-  const LS = SOURCES.concat(FORMER.filter(f => (S.rows || dtRows([])).some(r => r.src === f.id)));   // ehemalige Geräte nur, wenn eine Zeile sie zeigt
-  try { res = await Promise.all(LS.map(s => fetch(q(s.id), { cache: 'no-store' }).then(x => x.json()).catch(() => null))); } catch (e) { return; }
-  if (id !== S.req || date !== S.date || dkey !== NV.dkey) return;   // inzwischen anderer Tag/Zeitraum: verwerfen (der neue lädt schon)
-  if (S.from != null) setTimeout(() => {               // ab 1.85.37: Ausschnitt davor/danach (◀ ▶, je 80 %) schon laden
-    const [b0, b1] = dtBase(S), sp = wt - wf, now = nowServer(), bl = b1 > now && now > b0 ? now : b1;
-    for (const k of [-1, 1]) { const fu = clamp(wf + k * sp * 0.8, b0, Math.max(b0, bl - sp)), f = Math.round(fu), t2 = Math.round(fu + sp); if (f === wf) continue;
-      for (const s of LS) pfGet(q(s.id).replace('&from=' + wf + '&to=' + wt, '&from=' + f + '&to=' + t2), 120000); }
-  }, 800);
-  const [cf, ct] = dtWin(S);
-  if (cf !== wf || ct !== wt) res.forEach(r => { if (r && r.has) { r.from = cf; r.to = ct; } });   // inzwischen weiter gezoomt: im aktuellen Ausschnitt zeigen, genauer kommt gleich
+  const P = dtBufPlan(S), c = dtChunk(S, P), id = ++S.req, date = S.date, dkey = NV.dkey;
+  const res = await Promise.all(P.LS.map(x => dtTileGet(x.id, P.spec.has(x.id), c)));
+  if (id !== S.req || date !== S.date || dkey !== NV.dkey) return;   // inzwischen anderer Ausschnitt/Tag: verwerfen (der neue lädt schon)
+  S.buf = { key: P.key, f: c.f, t: c.t, sp: P.sp, pairs: P.LS.map((x, i) => [x, res[i]]) };
+  dtApply(S, P);
+  if (c.Sz) setTimeout(() => {                        // Nachbarkacheln vorab (davor, danach) und eine Stufe gröber (Herauszoomen)
+    const nb = [-1, 1].map(d => ({ f: c.f + d * c.Sz, t: c.t + d * c.Sz, n: c.n, z: c.z, k: c.k + d, Sz: c.Sz }));
+    const z2 = c.z + 1, S2 = c.Sz * 2; if (2 * S2 <= 47 * 3600000) { const k2 = Math.floor(P.wf / S2); nb.push({ f: k2 * S2, t: k2 * S2 + 2 * S2, n: c.n, z: z2, k: k2, Sz: S2 }); }
+    for (const c2 of nb) if (c2.f < nowServer()) for (const x of P.LS) dtTileGet(x.id, P.spec.has(x.id), c2);
+  }, 250);
+}
+function dtApply(S, P) {                              // Puffer im aktuellen Ausschnitt zeigen
+  const box = $('ndmulti'), [cf, ct] = dtWin(S), pairs = S.buf ? S.buf.pairs : [];
+  const LS = pairs.map(x => x[0]), res = pairs.map(([x, r]) => r && r.has ? Object.assign({}, r, { from: cf, to: ct }) : r);
   const by = {}; LS.forEach((s, i) => { by[s.id] = res[i]; });
   const have = LS.map((s, i) => [s, res[i]]).filter(([s, r]) => r && r.has && !s.former);
   $('ndnone').hidden = have.length > 0; $('ndchips').innerHTML = '';

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.85.79
+- Protokolle → Verlauf: lädt nicht mehr bei jedem Verschieben alles neu. Daten kommen in Kacheln je Zoomstufe (Auflösung in Zweierpotenzen, Kachel = 2 Bildbreiten, halb versetzt) und bleiben im Speicher – Zurückscrollen zu schon Gesehenem und Hin- und Herzoomen laden nichts nach. Nachbarkacheln und die nächstgröbere Stufe kommen vorab im Hintergrund; „Lädt …“ erscheint nur noch, wenn wirklich etwas fehlt. Geladen werden nur die Geräte, die eine Zeile zeigt.
+- Server: fertige, vergangene Ausschnitte des Verlaufs werden bis 10 min aufgehoben; neue Störung, KI-Einordnung oder Änderung über die Oberfläche rechnen sofort neu, Laufendes bis „jetzt“ nie.
+
 ## 1.85.78
 - Protokolle: Der Verlauf ist durchgehend scrollbar – ziehen, Mausrad oder Zeitleiste gleiten über Mitternacht in den Vortag bzw. zurück bis jetzt. Liegt die Mitte des Ausschnitts im anderen Tag, wechselt der Tag darunter (Bericht, Liste) mit, der Ausschnitt bleibt stehen. Gilt für „Heute“, „Gestern“ und die Erfassungszeit (Nacht); nie über „jetzt“ hinaus.
 
