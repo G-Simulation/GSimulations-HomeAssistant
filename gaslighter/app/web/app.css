@@ -1,5 +1,5 @@
-:root{--bg:#f2f4f7;--g-src:#0c8a6a;--g-kind:#d6336c;--g-lvl:#e67700;--g-eff:#6741d9;--g-act:#1c6fd6;--g-misc:#5f6b78;--g-own:#a61e4d;--fcsoft:#f5f6f8;--fcwarn:#c2410c;--redtx:#c92a2a;--card:#fff;--tx:#1b1f24;--mut:#5f6672;--bd:#e3e6ea;--grid:#e9ecef;--acc:#1971c2;--onacc:#fff;--thr:#e8590c;--bgl:#868e96;--red:#c92a2a;--ok:#237032;--pv:#7048e8;--nacc:#0ca678;--nl1:#0000000d;--nl2:#0000001f;--nl3:#00000066;color-scheme:light}
-@media(prefers-color-scheme:dark){:root{--bg:#10141a;--g-src:#38d9a9;--g-kind:#f783ac;--g-lvl:#ffa94d;--g-eff:#b197fc;--g-act:#74c0fc;--g-misc:#adb5bd;--g-own:#f06595;--fcsoft:#22272d;--fcwarn:#ff922b;--redtx:#ff8787;--card:#1a2029;--tx:#e6e8eb;--mut:#98a2ad;--bd:#2a313b;--grid:#232a33;--acc:#4dabf7;--onacc:#0b1a2b;--thr:#ff922b;--bgl:#adb5bd;--pv:#b197fc;--nacc:#38d9c4;--nl1:#ffffff0d;--nl2:#ffffff1f;--nl3:#ffffff99;color-scheme:dark}}
+:root{--bg:#f2f4f7;--g-when:#0b7285;--g-src:#0c8a6a;--g-kind:#d6336c;--g-lvl:#e67700;--g-eff:#6741d9;--g-act:#1c6fd6;--g-misc:#5f6b78;--g-own:#a61e4d;--fcsoft:#f5f6f8;--fcwarn:#c2410c;--redtx:#c92a2a;--card:#fff;--tx:#1b1f24;--mut:#5f6672;--bd:#e3e6ea;--grid:#e9ecef;--acc:#1971c2;--onacc:#fff;--thr:#e8590c;--bgl:#868e96;--red:#c92a2a;--ok:#237032;--pv:#7048e8;--nacc:#0ca678;--nl1:#0000000d;--nl2:#0000001f;--nl3:#00000066;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#10141a;--g-when:#66d9e8;--g-src:#38d9a9;--g-kind:#f783ac;--g-lvl:#ffa94d;--g-eff:#b197fc;--g-act:#74c0fc;--g-misc:#adb5bd;--g-own:#f06595;--fcsoft:#22272d;--fcwarn:#ff922b;--redtx:#ff8787;--card:#1a2029;--tx:#e6e8eb;--mut:#98a2ad;--bd:#2a313b;--grid:#232a33;--acc:#4dabf7;--onacc:#0b1a2b;--thr:#ff922b;--bgl:#adb5bd;--pv:#b197fc;--nacc:#38d9c4;--nl1:#ffffff0d;--nl2:#ffffff1f;--nl3:#ffffff99;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:1400px;margin:0 auto;padding:20px 16px 40px}
@@ -266,8 +266,8 @@ input.wide{width:100%;max-width:340px}
 .srcvideo{flex-wrap:wrap}.srcvideo .srcurl{flex:1 1 220px;min-width:180px}
 
 /* Erzwungenes Design (Auto folgt Home Assistant bzw. dem Browser) */
-:root[data-theme="light"]{--bg:#f2f4f7;--g-src:#0c8a6a;--g-kind:#d6336c;--g-lvl:#e67700;--g-eff:#6741d9;--g-act:#1c6fd6;--g-misc:#5f6b78;--g-own:#a61e4d;--fcsoft:#f5f6f8;--fcwarn:#c2410c;--redtx:#c92a2a;--card:#fff;--tx:#1b1f24;--mut:#5f6672;--bd:#e3e6ea;--grid:#e9ecef;--acc:#1971c2;--onacc:#fff;--thr:#e8590c;--bgl:#868e96;--red:#c92a2a;--ok:#237032;--pv:#7048e8;--nacc:#0ca678;--nl1:#0000000d;--nl2:#0000001f;--nl3:#00000066;color-scheme:light}
-:root[data-theme="dark"]{--bg:#10141a;--g-src:#38d9a9;--g-kind:#f783ac;--g-lvl:#ffa94d;--g-eff:#b197fc;--g-act:#74c0fc;--g-misc:#adb5bd;--g-own:#f06595;--fcsoft:#22272d;--fcwarn:#ff922b;--redtx:#ff8787;--card:#1a2029;--tx:#e6e8eb;--mut:#98a2ad;--bd:#2a313b;--grid:#232a33;--acc:#4dabf7;--onacc:#0b1a2b;--thr:#ff922b;--bgl:#adb5bd;--pv:#b197fc;--nacc:#38d9c4;--nl1:#ffffff0d;--nl2:#ffffff1f;--nl3:#ffffff99;color-scheme:dark}
+:root[data-theme="light"]{--bg:#f2f4f7;--g-when:#0b7285;--g-src:#0c8a6a;--g-kind:#d6336c;--g-lvl:#e67700;--g-eff:#6741d9;--g-act:#1c6fd6;--g-misc:#5f6b78;--g-own:#a61e4d;--fcsoft:#f5f6f8;--fcwarn:#c2410c;--redtx:#c92a2a;--card:#fff;--tx:#1b1f24;--mut:#5f6672;--bd:#e3e6ea;--grid:#e9ecef;--acc:#1971c2;--onacc:#fff;--thr:#e8590c;--bgl:#868e96;--red:#c92a2a;--ok:#237032;--pv:#7048e8;--nacc:#0ca678;--nl1:#0000000d;--nl2:#0000001f;--nl3:#00000066;color-scheme:light}
+:root[data-theme="dark"]{--bg:#10141a;--g-when:#66d9e8;--g-src:#38d9a9;--g-kind:#f783ac;--g-lvl:#ffa94d;--g-eff:#b197fc;--g-act:#74c0fc;--g-misc:#adb5bd;--g-own:#f06595;--fcsoft:#22272d;--fcwarn:#ff922b;--redtx:#ff8787;--card:#1a2029;--tx:#e6e8eb;--mut:#98a2ad;--bd:#2a313b;--grid:#232a33;--acc:#4dabf7;--onacc:#0b1a2b;--thr:#ff922b;--bgl:#adb5bd;--pv:#b197fc;--nacc:#38d9c4;--nl1:#ffffff0d;--nl2:#ffffff1f;--nl3:#ffffff99;color-scheme:dark}
 .themebtn{cursor:pointer}
 /* Nachtbericht: Tabelle der Stoerungen */
 .night .nfilt{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:13px;color:var(--n-mut)}.night .nfilt select{background:var(--n-card);color:var(--n-tx);border:1px solid var(--bd);border-radius:10px;padding:5px 8px}
@@ -959,8 +959,7 @@ fieldset.prolocked .f>:not(small){opacity:.55}
 .hacolr{min-width:28px;padding:2px 6px;margin-left:4px}
 
 /* Notizbereich abgedockt (Pro) */
-.fnpph{padding:10px 14px;font-size:14px}
-.fnppop .protag{margin-left:4px}
+#fnppop .protag{margin-left:4px}
 
 .mirrorbox{display:grid;gap:6px;margin-top:8px;font-size:13px}.mirrorbox .bad{color:var(--red);font-weight:600}.mirrorbox small{color:var(--mut)}.mirrorbox button{justify-self:start}
 .secintro{margin:2px 0 10px;color:var(--mut);font-size:13px;line-height:1.45}fieldset.shut>.secintro{display:none}
@@ -1111,148 +1110,19 @@ button.art.artck:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 .bkmove{margin:8px 0;padding:8px 10px;border:1px solid var(--bd);border-radius:10px}.bkmove summary{cursor:pointer;font-weight:600}
 .bkmove .bkrow{flex-wrap:wrap;gap:6px}.bkmove input[type=password]{min-width:200px;max-width:100%}
 .bkpvmove{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.bkpvmove input{min-width:200px;max-width:100%}
-/* ===== Notiz jetzt: Erfassung im Aufbau wie GReport (Uhr, Rubriken, Abschnitte), eigene Einstellungen nur für GLighter ===== */
-.capture{--line:var(--bd);--ink:var(--tx);--soft:var(--fcsoft);--warn:var(--fcwarn);--r:14px;--r2:9px;padding:0;overflow:clip;border-radius:var(--r)}
-.capture.editing{border-color:var(--warn)}
-.capture .caphead{display:flex;align-items:center;gap:14px;padding:16px 18px 6px}
-.capture .clock{display:grid;line-height:1.05}
-.capture .clocknum{font-size:40px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.capture .clockdate{font-size:13px;color:var(--mut)}
-.capture .capinfo{display:grid;flex:1;min-width:0;padding-left:14px;border-left:1px solid var(--line)}
-.capture .capinfo b{font-size:15px}.capture .capinfo small{color:var(--mut);font-size:12.5px}
-.capture .icon{display:inline-grid;place-items:center;min-width:36px;height:36px;padding:0 8px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-size:16px;line-height:1}
-.capture .icon:hover{border-color:var(--mut)}
-.capture #fnptog{transition:transform .15s}.capture.shut #fnptog{transform:rotate(-90deg)}
-.capture.shut .capbody,.capture.shut .savebar,.capture.shut .laybar{display:none}
-.capture [hidden]{display:none!important}
-.capture .capbody{padding:6px 18px 12px;display:grid;gap:12px;align-content:start}
-.capture #fnptext{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line);background:var(--soft);border-radius:var(--r2);padding:11px 13px;font:inherit;font-size:16px;line-height:1.45;color:var(--ink)}
-.capture #fnptext:focus{background:var(--card);border-color:var(--acc);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
-/* Abschnitte ein-/ausblenden */
-.capture .secbar{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 0}
-.capture .secb{border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;line-height:20px;min-height:32px}
-.capture .secb::before{content:"○ ";opacity:.8}.capture .secb.on{background:transparent;color:var(--ink);border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}.capture .secb.on::before{content:"● ";color:var(--acc);opacity:1}
-.capture .secb:hover{border-color:var(--mut)}
-/* Schnellwahl nach Rubriken */
-.capture .groups{display:grid;gap:7px}
-.capture .grp{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start}
-.capture .grp>span{font-size:12.5px;color:var(--mut);padding-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.capture .grp>div{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
-.capture .tag{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--gc,var(--g-misc)) 45%,var(--line));background:transparent;color:var(--ink);cursor:pointer;font-size:13.5px;font-weight:400;line-height:1.2;white-space:nowrap;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-.capture .tag:hover{border-color:color-mix(in srgb,var(--gc) 80%,var(--line))}
-.capture .tag.on{background:color-mix(in srgb,var(--gc) 14%,var(--card));border-color:var(--gc);box-shadow:inset 0 0 0 1px var(--gc);color:var(--ink);font-weight:600}
-.capture .tag.add,.capture .tag.more{border-style:dashed;color:var(--mut);border-color:var(--line)}
-.capture .tag.add.sm{padding:0 9px;font-weight:700}.capture .tag.tagnew{display:inline-flex;align-items:center;gap:4px;padding:0 4px 0 8px;border-style:dashed}.capture .tag.tagnew input{border:0;background:transparent;color:inherit;font:inherit;width:9em;min-width:5em;outline:none}.capture .tag.tagnew button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0 5px;min-height:26px}.capture .tag.tagnew .tnok{color:var(--ok,#2f9e44);font-weight:700}
-/* ab 1.85.76 / 1.12.14: leere Pille mit „+“ zum direkten Hineinschreiben */
-.capture .tag.tagin{padding:0 12px;gap:4px;cursor:text;font-weight:400}.capture .tag.tagin input{border:0;background:transparent;color:var(--ink,var(--tx));font:inherit;font-weight:400;outline:none;padding:0;min-width:5em;max-width:14em;field-sizing:content}.capture .tag.tagin input:placeholder-shown{text-align:center}.capture .tag.tagin input::placeholder{color:var(--mut);opacity:1}.capture .tag.tagin:focus-within{border-style:solid;border-color:var(--acc)}.capture .tag.tagin:focus-within input{min-width:7em;text-align:left}.capture .tag.tagin .tnok{display:none;border:0;background:transparent;color:var(--ok,#2f9e44);font:inherit;font-weight:700;cursor:pointer;padding:0 0 0 2px;min-height:24px}.capture .tag.tagin.has .tnok{display:inline-flex;align-items:center}
-@supports not (field-sizing:content){.capture .tag.tagin input{width:5em}.capture .tag.tagin:focus-within input,.capture .tag.tagin.has input{width:9em}}
-.capture.ts-filled .tag:not(.add):not(.more){background:color-mix(in srgb,var(--gc) 10%,var(--card));border-color:transparent}
-.capture.ts-filled .tag.on{background:color-mix(in srgb,var(--gc) 30%,var(--card));border-color:var(--gc)}
-/* Rubrikfarben (GLighter-eigene Variablen): eigene Farbe (--u-…, dunkel aufgehellt --ud-…) oder Standard */
-.capture .g-src{--gc:var(--u-src,var(--g-src))}.capture .g-kind{--gc:var(--u-kind,var(--g-kind))}.capture .g-lvl{--gc:var(--u-lvl,var(--g-lvl))}.capture .g-eff{--gc:var(--u-eff,var(--g-eff))}.capture .g-act{--gc:var(--u-act,var(--g-act))}.capture .g-misc{--gc:var(--u-misc,var(--g-misc))}.capture .g-own{--gc:var(--u-own,var(--g-own))}.capture .g-when{--gc:var(--u-when,#0b7285)}.capture .g-cu{--gc:var(--uc)}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .capture .g-src{--gc:var(--ud-src,var(--g-src))}:root:not([data-theme="light"]) .capture .g-kind{--gc:var(--ud-kind,var(--g-kind))}:root:not([data-theme="light"]) .capture .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))}:root:not([data-theme="light"]) .capture .g-eff{--gc:var(--ud-eff,var(--g-eff))}:root:not([data-theme="light"]) .capture .g-act{--gc:var(--ud-act,var(--g-act))}:root:not([data-theme="light"]) .capture .g-misc{--gc:var(--ud-misc,var(--g-misc))}:root:not([data-theme="light"]) .capture .g-own{--gc:var(--ud-own,var(--g-own))}:root:not([data-theme="light"]) .capture .g-cu{--gc:var(--udc,var(--uc))}}
-:root[data-theme="dark"] .capture .g-src{--gc:var(--ud-src,var(--g-src))}:root[data-theme="dark"] .capture .g-kind{--gc:var(--ud-kind,var(--g-kind))}:root[data-theme="dark"] .capture .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))}:root[data-theme="dark"] .capture .g-eff{--gc:var(--ud-eff,var(--g-eff))}:root[data-theme="dark"] .capture .g-act{--gc:var(--ud-act,var(--g-act))}:root[data-theme="dark"] .capture .g-misc{--gc:var(--ud-misc,var(--g-misc))}:root[data-theme="dark"] .capture .g-own{--gc:var(--ud-own,var(--g-own))}:root[data-theme="dark"] .capture .g-cu{--gc:var(--udc,var(--uc))}
-.capture .sugline{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.capture .sugline button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:2px 10px;cursor:pointer;font-size:12.5px;min-height:24px}
-/* Pflicht-Rubriken: Sternchen; sind alle gewählt, pulsieren die gewählten Tasten und „Speichern“ */
-.capture .reqm{font-style:normal;color:var(--warn);font-weight:700}
-.capture .grp.req.done .reqm{color:var(--ok)}
-@keyframes fcpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gc) 35%,transparent),0 0 14px 2px color-mix(in srgb,var(--gc) 45%,transparent)}}
-@keyframes fcpulse2{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 30%,transparent),0 0 16px 3px color-mix(in srgb,var(--acc) 45%,transparent)}}
-.capture.alldone .grp.req .tag.on{animation:fcpulse 1.6s ease-in-out infinite}
-.capture.alldone #fnpsave{animation:fcpulse2 1.6s ease-in-out infinite}
-@media(prefers-reduced-motion:reduce){.capture.alldone .grp.req .tag.on,.capture.alldone #fnpsave{animation:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--gc,var(--acc)) 40%,transparent)}}
-/* Zeuge, Zeit */
-.capture .witrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.capture .witicon{width:22px;text-align:center}
-.capture #fnpwit{flex:1;min-width:180px;border:0;border-bottom:1px solid var(--line);background:transparent;padding:7px 2px;border-radius:0;font-size:15px}
-.capture #fnpwit:focus{outline:none;border-bottom-color:var(--acc)}
-.capture .timerow{display:grid;gap:8px}
-.capture .linkbtn{justify-self:start;border:0;background:transparent;padding:4px 2px;color:var(--mut);cursor:pointer;font-size:13.5px;min-height:28px}
-.capture .linkbtn:hover{color:var(--ink)}.capture .linkbtn[aria-expanded="true"]{color:var(--ink)}
-.capture .timeedit{display:grid;gap:8px;padding:10px 12px;background:var(--soft);border-radius:var(--r2)}
-.capture .timeedit label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
-.capture .timeedit label:not(.check):not(.tesrc)>span{width:36px;color:var(--mut)}.capture .timeedit .tesrc>span{color:var(--mut)}
-.capture .timeedit.notime label:not(.check){opacity:.45}
-.capture .timeedit input[type=datetime-local],.capture .timeedit select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 8px;min-width:0;max-width:100%}
-.capture .check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
-.capture .check input{width:17px;height:17px;accent-color:var(--acc)}
-/* Speichern */
-.capture .savebar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--soft) 60%,var(--card))}
-.capture .msg{flex:1;color:var(--ok);font-size:13px}.capture .msg.err{color:var(--redtx,var(--red))}.capture .msg.warn{color:var(--warn)}
-.capture .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-size:14px}
-.capture .btn:hover{border-color:var(--mut)}
-.capture .btn.primary{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:600;min-width:120px}
-.capture .btn.primary:hover{filter:brightness(1.07)}
-/* Uhr klein / aus, Dichte kompakt */
-.capture.ck-small .clocknum{font-size:26px}.capture.ck-small .clockdate{font-size:12px}
-.capture.ck-off .clock{display:none}.capture.ck-off .capinfo{padding-left:0;border-left:0}
-.capture.dn-compact .caphead{padding:10px 14px 4px;gap:10px}.capture.dn-compact .capbody{padding:4px 14px 8px;gap:8px}.capture.dn-compact .groups{gap:5px}
-.capture.dn-compact .tag{height:26px;padding:0 10px;font-size:13px}.capture.dn-compact #fnptext{min-height:48px;padding:8px 11px;font-size:15px}
-.capture.dn-compact .savebar{padding:8px 14px}.capture.dn-compact .btn{height:34px}.capture.dn-compact .clocknum{font-size:32px}.capture.dn-compact.ck-small .clocknum{font-size:22px}
-/* Layout anpassen */
-.capture.lay{outline:2px solid var(--acc);outline-offset:-2px}
-.capture #caplay[aria-pressed="true"]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
-.capture .laybar{padding:10px 18px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--acc) 6%,var(--card));display:grid;gap:8px}
-.capture .layhint{margin:0;font-size:13px;color:var(--mut)}
-.capture .laysecs,.capture .layopts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.capture .laysl{font-size:13px;color:var(--mut)}
-.capture .layopts label{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}.capture .layopts select{font-size:13px;padding:4px 8px}
-.capture .laysbox{display:flex;gap:6px;flex-wrap:wrap}
-.capture .laysec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;min-height:34px;cursor:grab;font-size:13px;touch-action:none}
-.capture .laysec.off{text-decoration:line-through;color:var(--mut)}
-.capture .laybtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.capture .laybtns .grow{flex:1}
-.capture.lay #capttl,.capture.lay #fnpfrom{outline:1px dashed var(--acc);outline-offset:2px;border-radius:4px;cursor:text;min-width:4ch}
-.capture.lay #capttl:focus,.capture.lay #fnpfrom:focus{outline:2px solid var(--acc)}
-.capture.lay #secbar{display:none}
-.capture .laygs{display:grid;gap:10px}
-.capture .layg{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--line));border-radius:10px;padding:8px 10px;background:var(--card)}
-.capture .layg.off{opacity:.6;border-style:dashed}
-.capture .laygh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
-.capture .laygh .hd{border:1px solid var(--line);background:var(--soft);border-radius:8px;width:34px;height:34px;padding:0;cursor:grab;touch-action:none;color:var(--mut)}
-.capture .laygh .lgn{flex:1;min-width:120px;border:1px solid var(--line);background:var(--soft);border-radius:8px;padding:5px 8px;font-weight:600}
-.capture .laygh .lgc{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:transparent;cursor:pointer}
-.capture .laygh .lgd{border:0;background:transparent;width:34px;height:32px;padding:0;border-radius:8px;cursor:pointer}.capture .laygh .lgd:hover{background:var(--soft)}
-.capture .laykeys{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
-.capture .layk{padding:0 0 0 4px;gap:0;cursor:default}
-.capture .layk .lkn{border:0;background:transparent;padding:0 8px;height:100%;min-height:0;border-radius:999px 0 0 999px;cursor:grab;touch-action:none;font:inherit;color:inherit}
-.capture .layk .lkx{border:0;border-left:1px solid color-mix(in srgb,var(--gc) 35%,var(--line));background:transparent;width:30px;height:100%;min-height:0;padding:0;border-radius:0 999px 999px 0;cursor:pointer;color:var(--mut);font-size:12px}
-.capture .layk.off .lkn{text-decoration:line-through;color:var(--mut)}
-.capture .layk.dragging,.capture .layg.dragging,.capture .laysec.dragging{opacity:.55;outline:2px dashed var(--acc)}
-.capture .lkform{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
-.capture .lkin{border:1px solid var(--acc);background:var(--card);border-radius:999px;padding:4px 10px;height:30px;min-width:0;width:12em;max-width:100%}
-.capture .lga{justify-self:start}
+/* ===== Notiz jetzt: die Erfassung kommt aus erfassung.css (gemeinsam mit GReport, Quelle GReport). Hier nur die Farben dafür
+   und was es nur in GLighter gibt (Dashboard-Bereich, 🧩, Einklappen, Pro-Schloss am ⧉, mehr Knöpfe in der Kopfzeile). ===== */
+.capture{--line:var(--bd);--ink:var(--tx);--soft:var(--fcsoft);--warn:var(--fcwarn);--bad:var(--redtx,var(--red));--r:14px;--r2:9px;border-radius:var(--r)}
 /* im Dashboard-Bereich: der Bereich ist schon die Karte */
 .pnlbd>.capture{border-radius:0!important;margin:0 -12px -8px!important}
 .pnl[data-p=fn] .capture .caphead{padding-top:6px}
-/* abgedockt */
-.fnpopbody{margin:0;padding:0;background:var(--bg);overflow-x:hidden}
-.capture.inpop{margin:0;border:0;border-radius:0;min-height:100vh;display:flex;flex-direction:column;max-width:100vw;box-shadow:none}
-.capture.inpop .capbody{flex:1}
-.capture.inpop #fnppop,.capture.inpop #pfopen,.capture.inpop #fnptog{display:none}   /* ▦ bleibt: Ansicht „abgedockt“ im Fenster anpassen */
-.capture.inpop .savebar{position:sticky;bottom:0;z-index:3}
-@media(max-width:600px){
-  .capture .caphead{padding:14px 14px 4px;gap:12px}
-  .capture .clocknum{font-size:32px}
-  .capture .capbody{padding:6px 14px 12px}
-  .capture .grp{grid-template-columns:1fr;gap:4px}.capture .grp>span{padding:0}
-  .capture .tag{height:34px;font-size:14px}
-  .capture .savebar{padding:10px 14px}
-  .capture .btn.primary{flex:0 0 auto;min-width:130px;height:44px}
-  .capture .laybar{padding:10px 14px}.capture .layk{height:36px}
-  .pnlbd>.capture{margin:0 -12px -8px!important}
-  .capture .caphead{flex-wrap:wrap}.capture .capinfo{flex-basis:100%;order:3;padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:6px}
-  .capture #caplay{margin-left:auto}.capture .caphead .icon{min-width:34px;height:34px;padding:0 6px}
-}
-@media(max-width:600px) and (pointer:coarse){
-  .capture .grp>div{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px 2px;scroll-padding:14px}
-  .capture .grp>div::-webkit-scrollbar{display:none}
-  .capture .grp{position:relative}
-  .capture .grp.ovf::after{content:"›";position:absolute;right:-14px;bottom:2px;height:34px;width:44px;display:grid;place-items:center end;padding-right:6px;font-size:22px;color:var(--mut);background:linear-gradient(to right,transparent,var(--card) 65%);pointer-events:none}
-}
-@media(max-width:380px){.capture .caphead{flex-wrap:wrap}.capture .capinfo{flex-basis:100%;order:3;padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:6px}.capture .clocknum{font-size:30px}.capture.ck-small .clocknum{font-size:24px}}
+.capture.inpop #pfopen,.capture.inpop #fnptog{display:none}   /* abgedockt: 🧩 und Einklappen gehören zur Seite */
 .capture .icon:has(.protag){display:inline-flex;border-radius:999px;gap:4px}
-.capture .check{min-height:28px}
-@media(max-width:420px){.capture .caphead{gap:6px}.capture .clocknum,.capture.dn-compact .clocknum{font-size:28px}.capture .caphead .icon{min-width:32px;height:32px}}
+@media(max-width:600px){                               /* mehr Knöpfe in der Kopfzeile als in GReport: Hinweis in eine eigene Zeile */
+  .capture.fnpanel .caphead{flex-wrap:wrap}.capture.fnpanel .capinfo{flex-basis:100%;order:3;padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:6px}
+  .capture.fnpanel #laybtn{margin-left:auto}.capture.fnpanel .caphead .icon{min-width:34px;height:34px;padding:0 6px}
+}
+@media(max-width:420px){.capture.fnpanel .caphead{gap:6px}.capture.fnpanel .clocknum,.capture.fnpanel.dn-compact .clocknum{font-size:28px}.capture.fnpanel .caphead .icon{min-width:32px;height:32px}}
 
 /* Quicktipps „nur beim Zeigen“ (⚙ → Allgemein → Tipps): nur ein kleines 💡; Text als schwebende Blase beim Zeigen auf 💡,
    mit der Tastatur oder nach Antippen – ohne Verschieben des Bereichs (kein Flackern) */
@@ -1278,9 +1148,6 @@ body.qthover .qtdock > .qtip{margin:0}
 body.qthover .qtip .qtb{left:auto;right:0}
 body.qthover .qtip.u .qtb{top:auto;bottom:calc(100% + 4px)}
 body.qthover .qtip.u .qtb::before{top:auto;bottom:-8px}
-@keyframes laypick{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 55%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 0%,transparent)}}
-.layk.picked{animation:laypick .8s ease-out 3;outline:2px solid var(--acc);outline-offset:2px}
-@media(prefers-reduced-motion:reduce){.layk.picked{animation:none}}
 .glg .ag-header,.glg .ag-floating-filter,.glg .ag-pinned-left-header,.glg .ag-pinned-right-header{background:var(--card)}
 
 /* ---------- Eigene Felder (Bausteine) – gleich in GReport und GLighter ---------- */
@@ -1327,9 +1194,6 @@ body.qthover .qtip.u .qtb::before{top:auto;bottom:-8px}
 .fbck{min-height:34px}
 .fbadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fbadd select{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 9px;font:inherit;font-size:14px;min-height:38px;max-width:100%}
-.laysec.off{text-decoration:line-through;border-style:dashed}
-.laygx{margin:-2px 0 6px}.laygx input{width:100%;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
-.ghelp{display:block;white-space:normal;font-size:11.5px;color:var(--mut);line-height:1.3;margin-top:2px}
 /* Vorlagen */
 .fbtplbox{display:grid;gap:8px}
 .fbtplbox.first{margin:4px 18px 8px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--acc) 45%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--acc) 6%,var(--card))}
@@ -1403,12 +1267,6 @@ body.qthover .qtip.u .qtb::before{top:auto;bottom:-8px}
 @media(max-width:600px){#fnadlg{width:100vw}.fnacur,.fnarow{grid-template-columns:auto minmax(0,1fr)}.fnad{grid-column:2}}
 
 /* Zwei Ansichten (angedockt / abgedockt) in „Layout anpassen“ */
-.layprof{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--acc) 22%,var(--line))}
-.layprof .seg button{min-height:34px;font-weight:600}
-.layps{color:var(--mut);font-size:12.5px;flex:1 1 180px;min-width:0}
-.capture.inpop .layps{flex-basis:100%}
-.layprof .seg button{background:transparent;padding:6px 12px;cursor:pointer;color:var(--tx)}
-.layprof .seg button.on{background:var(--acc);color:var(--onacc)}
 .fbedg [hidden]{display:none!important}
 .fbkind{display:inline-flex;align-items:center;gap:2px;padding:0 8px;border-radius:99px;border:1.5px solid var(--kc);background:color-mix(in srgb,var(--kc) 12%,transparent);font-weight:600;font-size:12px;white-space:nowrap;color:inherit;margin-right:4px}
 #scaldlg{width:min(560px,calc(100vw - 24px))}#scaldlg .dbody{padding:14px 20px 18px;display:grid;gap:8px}#scaldlg p{margin:0}
@@ -1501,7 +1359,6 @@ button.sure{background:var(--bad,var(--red,#c92a2a))!important;border-color:var(
 .fbaddm > button:hover,.fbaddm > button:focus-visible{background:color-mix(in srgb,var(--acc) 12%,transparent);outline:none}
 
 /* „Layout anpassen“: kein Notiz-„Speichern“ (gespeichert wird das Layout mit „Fertig“) */
-.capture.lay .savebar{display:none!important}
 /* Notiz im Bereich: Speichern-Leiste bis an den Rand, unten so rund wie der Bereich (keine eckige Kante über der runden) */
 .pnl[data-p=fn]{padding-bottom:0}
 .pnl[data-p=fn] .capture .savebar{border-radius:0 0 13px 13px}

@@ -1092,7 +1092,7 @@ window.Erfassung = (() => {
   return {
     setup, mount, tr: () => trIn($('fnpanel')),
     // Zustand und Daten (gemeinsam genutzt, z. B. von der Liste der App)
-    FNP, NTS, WHEN, G_DEF, GROUPS, noteTags: () => NOTE_TAGS, layOn: () => LAY.on,
+    FNP, NTS, WHEN, G_DEF, GROUPS, noteTags: () => NOTE_TAGS, setNoteTags: x => { if (x && typeof x === 'object') NOTE_TAGS = x; }, layOn: () => LAY.on,
     ntGroup, ntLabel, gInfo, gIds, wordGroups, gCustom, gLabel, gColor, gAttr, tagBtn, tagMk, ntAll, ntOrdered, ntVisible, whenOrdered, whenRange,
     ntsApply, ntsLoad, ntsPost, gcolApply, tagSentence, autoText,
     // Erfassung bedienen

@@ -13636,6 +13636,9 @@ def layout_cap_clean(c):
         out["tpl"] = c["tpl"]
     if isinstance(c.get("made"), dict):
         out["made"] = {k: v for k, v in c["made"].items() if isinstance(k, str) and isinstance(v, str)}
+    for k in ("sechide", "sechide_pop"):                # Schnell-Schalter ● / ○ der Abschnitte je Ansicht (gemeinsame Erfassung, wie GReport); fehlt = nie gesetzt
+        if isinstance(c.get(k), list):
+            out[k] = sec(c.get(k))[:80]
     if "kinds" in c:                                   # Notiz-Arten (ab 1.85.52, wie GReport 1.11): z. B. „Erinnerung“ ohne Zeitpunkt
         out["kinds"] = felder.clean_kinds(c.get("kinds"), [])
         out["kind_def"] = felder.kind_ok(out["kinds"], str(c.get("kind_def") or ""))
@@ -13732,7 +13735,7 @@ def layout_change(data):
         elif rs == "cols":
             d["cols"] = {}; d["tbl"] = {}
         elif rs == "cap":                                  # Standard – eigene Felder (Definitionen) und Vorlage bleiben
-            keep = {k_: v for k_, v in (d.get("cap") or {}).items() if k_ in ("blocks", "tpl", "made", "kinds", "kind_def", "kind_keep")}
+            keep = {k_: v for k_, v in (d.get("cap") or {}).items() if k_ in ("blocks", "tpl", "made", "kinds", "kind_def", "kind_keep", "sechide", "sechide_pop")}
             d.pop("cap", None); d.pop("cap_pop", None)          # abgedockt folgt danach wieder
             if keep:
                 d["cap"] = layout_cap_clean(keep)
@@ -14848,7 +14851,7 @@ class BaseHandler(BaseHTTPRequestHandler):
         self.do_GET()
 
 
-STATIC = {"app.js", "hadash-ui.js", "felder.js", "app.css", "i18n.js", "qrcode.js", "druck.js", "uplot.min.js", "uplot.min.css", "ag-grid-community.min.js", "gridstack-all.js", "gridstack.min.css", "shoelace-ui.js", "shoelace-ui.css", "handbuch.js", "hb_inhalt.js"}   # uPlot (MIT, github.com/leeoniya/uPlot): Kurven und Balken
+STATIC = {"app.js", "hadash-ui.js", "felder.js", "erfassung.js", "erfassung.css", "app.css", "i18n.js", "qrcode.js", "druck.js", "uplot.min.js", "uplot.min.css", "ag-grid-community.min.js", "gridstack-all.js", "gridstack.min.css", "shoelace-ui.js", "shoelace-ui.css", "handbuch.js", "hb_inhalt.js"}   # uPlot (MIT, github.com/leeoniya/uPlot): Kurven und Balken
 
 
 # =====================================================================

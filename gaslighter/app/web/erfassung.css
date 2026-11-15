@@ -1,0 +1,178 @@
+/* Erfassung („Notiz jetzt“) – gemeinsam in GReport und GLighter. Quelle: greport/app/web/erfassung.css, tools/sync_shared.py kopiert sie nach GLighter.
+   Alles steht unter .capture. Den Rahmen (Hintergrund, Rand, Schatten, Abstand) und die Farben setzt die App als Variablen:
+   --card --ink --mut --line --soft --acc --onacc --ok --warn --bad --r --r2 und die Rubrikfarben --g-src … --g-own, --g-when. */
+.capture{padding:0;overflow:clip}
+.capture [hidden]{display:none!important}
+.capture.editing{border-color:var(--warn)}
+.capture.editing .capinfo b{color:var(--warn)}
+.capture .grow{flex:1}
+.capture .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.capture .caphead{display:flex;align-items:center;gap:14px;padding:16px 18px 6px}
+.capture .clock{display:grid;line-height:1.05}
+.capture .clocknum{font-size:40px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.capture .clockdate{font-size:13px;color:var(--mut)}
+.capture .capinfo{display:grid;flex:1;min-width:0;padding-left:14px;border-left:1px solid var(--line)}
+.capture .capinfo b{font-size:15px}.capture .capinfo small{color:var(--mut);font-size:12.5px}
+.capture .icon{display:inline-grid;place-items:center;min-width:36px;height:36px;padding:0 8px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;font-size:16px;line-height:1}
+.capture .icon:hover{border-color:var(--mut)}
+.capture #laybtn[aria-pressed="true"]{background:var(--acc);color:var(--onacc);border-color:var(--acc)}
+.capture .capbody{padding:6px 18px 12px;display:grid;gap:12px;align-content:start}
+.capture #fnptext{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:var(--r2);padding:11px 13px;font:inherit;font-size:16px;line-height:1.45}
+.capture #fnptext:focus{background:var(--card);border-color:var(--acc);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
+.capture .chip{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:3px 11px;font-size:13px;line-height:1.4;cursor:pointer;min-height:0}
+.capture .chip:hover{border-color:var(--mut)}
+.capture .check{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer}
+.capture .check input{width:17px;height:17px;padding:0;accent-color:var(--acc)}
+.capture .hint{color:var(--mut);font-size:13px;margin:6px 0}
+/* Einklappen (Adapter: fold) */
+.capture #fnptog{transition:transform .15s}.capture.shut #fnptog{transform:rotate(-90deg)}
+.capture.shut .capbody,.capture.shut .savebar,.capture.shut .laybar{display:none}
+/* Abschnitte ein-/ausblenden */
+.capture .secbar{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 0}
+.capture .secb{border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:5px 12px;font-size:12.5px;cursor:pointer;line-height:20px;min-height:32px}
+.capture .secb::before{content:"○ ";opacity:.8}.capture .secb.on{background:transparent;color:var(--ink);border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}.capture .secb.on::before{content:"● ";color:var(--acc)}
+.capture .secb:hover{border-color:var(--mut)}
+/* Schnellwahl nach Rubriken */
+.capture .groups{display:grid;gap:7px}
+.capture .grp{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start}
+.capture .grp>span{font-size:12.5px;color:var(--mut);padding-top:5px;white-space:nowrap}
+.capture .grp>div{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.capture .ghelp{display:block;white-space:normal;font-size:11.5px;color:var(--mut);line-height:1.3;margin-top:2px}
+.capture .tag{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--gc,var(--g-misc)) 45%,var(--line));background:transparent;color:var(--ink);cursor:pointer;font-size:13.5px;font-weight:400;white-space:nowrap;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.capture .tag:hover{border-color:color-mix(in srgb,var(--gc) 80%,var(--line))}
+.capture .tag.on{background:color-mix(in srgb,var(--gc) 14%,var(--card));border-color:var(--gc);box-shadow:inset 0 0 0 1px var(--gc);color:var(--ink);font-weight:600}
+.capture .tag.add,.capture .tag.more{border-style:dashed;color:var(--mut);border-color:var(--line)}
+.capture .tag.add.sm{padding:0 9px;font-weight:700}
+/* leere Pille mit „+“ zum direkten Hineinschreiben */
+.capture .tag.tagin{padding:0 12px;gap:4px;cursor:text;font-weight:400}.capture .tag.tagin input{border:0;background:transparent;color:var(--ink);font:inherit;font-weight:400;outline:none;padding:0;min-width:5em;max-width:14em;field-sizing:content}.capture .tag.tagin input:placeholder-shown{text-align:center}.capture .tag.tagin input::placeholder{color:var(--mut);opacity:1}.capture .tag.tagin:focus-within{border-style:solid;border-color:var(--acc)}.capture .tag.tagin:focus-within input{min-width:7em;text-align:left}.capture .tag.tagin .tnok{display:none;border:0;background:transparent;color:var(--ok,#2f9e44);font:inherit;font-weight:700;cursor:pointer;padding:0 0 0 2px;min-height:24px}.capture .tag.tagin.has .tnok{display:inline-flex;align-items:center}
+@supports not (field-sizing:content){.capture .tag.tagin input{width:5em}.capture .tag.tagin:focus-within input,.capture .tag.tagin.has input{width:9em}}
+/* Tasten-Stil „gefüllt“ (Adapter: viewOpts style) */
+.capture.ts-filled .tag:not(.add):not(.more){background:color-mix(in srgb,var(--gc) 10%,var(--card));border-color:transparent}
+.capture.ts-filled .tag.on{background:color-mix(in srgb,var(--gc) 30%,var(--card));border-color:var(--gc)}
+/* Rubrikfarben: eigene Farbe (--u-…, dunkel aufgehellt --ud-…) oder Standard der App */
+.capture .g-src{--gc:var(--u-src,var(--g-src))}.capture .g-kind{--gc:var(--u-kind,var(--g-kind))}.capture .g-lvl{--gc:var(--u-lvl,var(--g-lvl))}.capture .g-eff{--gc:var(--u-eff,var(--g-eff))}.capture .g-act{--gc:var(--u-act,var(--g-act))}.capture .g-misc{--gc:var(--u-misc,var(--g-misc))}.capture .g-own{--gc:var(--u-own,var(--g-own))}.capture .g-when{--gc:var(--u-when,var(--g-when))}.capture .g-cu{--gc:var(--uc)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .capture .g-src{--gc:var(--ud-src,var(--g-src))}:root:not([data-theme="light"]) .capture .g-kind{--gc:var(--ud-kind,var(--g-kind))}:root:not([data-theme="light"]) .capture .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))}:root:not([data-theme="light"]) .capture .g-eff{--gc:var(--ud-eff,var(--g-eff))}:root:not([data-theme="light"]) .capture .g-act{--gc:var(--ud-act,var(--g-act))}:root:not([data-theme="light"]) .capture .g-misc{--gc:var(--ud-misc,var(--g-misc))}:root:not([data-theme="light"]) .capture .g-own{--gc:var(--ud-own,var(--g-own))}:root:not([data-theme="light"]) .capture .g-when{--gc:var(--ud-when,var(--g-when))}:root:not([data-theme="light"]) .capture .g-cu{--gc:var(--udc,var(--uc))}}
+:root[data-theme="dark"] .capture .g-src{--gc:var(--ud-src,var(--g-src))}:root[data-theme="dark"] .capture .g-kind{--gc:var(--ud-kind,var(--g-kind))}:root[data-theme="dark"] .capture .g-lvl{--gc:var(--ud-lvl,var(--g-lvl))}:root[data-theme="dark"] .capture .g-eff{--gc:var(--ud-eff,var(--g-eff))}:root[data-theme="dark"] .capture .g-act{--gc:var(--ud-act,var(--g-act))}:root[data-theme="dark"] .capture .g-misc{--gc:var(--ud-misc,var(--g-misc))}:root[data-theme="dark"] .capture .g-own{--gc:var(--ud-own,var(--g-own))}:root[data-theme="dark"] .capture .g-when{--gc:var(--ud-when,var(--g-when))}:root[data-theme="dark"] .capture .g-cu{--gc:var(--udc,var(--uc))}
+.capture .sugline{font-size:13px;color:var(--mut);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.capture .sugline button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer;font-size:12.5px;min-height:24px}
+/* Pflicht-Rubriken: Sternchen; sind alle gewählt, pulsieren die gewählten Tasten und „Speichern“ */
+.capture .reqm{font-style:normal;color:var(--warn);font-weight:700}
+.capture .grp.req.done .reqm{color:var(--ok)}
+@keyframes cappulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--gc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--gc) 35%,transparent),0 0 14px 2px color-mix(in srgb,var(--gc) 45%,transparent)}}
+@keyframes cappulse2{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 0%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 30%,transparent),0 0 16px 3px color-mix(in srgb,var(--acc) 45%,transparent)}}
+.capture.alldone .grp.req .tag.on{animation:cappulse 1.6s ease-in-out infinite}
+.capture.alldone #fnpsave{animation:cappulse2 1.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.capture.alldone .grp.req .tag.on,.capture.alldone #fnpsave{animation:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--gc,var(--acc)) 40%,transparent)}}
+/* Zeuge, Mehr, Zeit */
+.capture .witrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.capture .witicon{width:22px;text-align:center}
+.capture #fnpwit{flex:1;min-width:180px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 2px;border-radius:0;font:inherit}
+.capture #fnpwit:focus{outline:none;border-bottom-color:var(--acc)}
+.capture .more{border:1px solid var(--line);border-radius:var(--r2);padding:2px 12px}
+.capture .more summary{cursor:pointer;padding:8px 0;font-size:13.5px;color:var(--mut)}.capture .more[open] summary{color:var(--ink)}
+.capture .fbmore{display:grid;gap:12px;margin:6px 0 4px}.capture .fbmore:empty{display:none}
+.capture .timerow{display:grid;gap:8px}
+.capture .linkbtn{justify-self:start;border:0;background:transparent;padding:4px 2px;color:var(--mut);cursor:pointer;font-size:13.5px;min-height:28px;border-radius:0}
+.capture .linkbtn:hover{color:var(--ink)}.capture .linkbtn[aria-expanded="true"]{color:var(--ink)}
+.capture .timeedit{display:grid;gap:8px;padding:10px 12px;background:var(--soft);border-radius:var(--r2)}
+.capture .timeedit label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.capture .timeedit label:not(.check):not(.tesrc)>span{width:36px;color:var(--mut)}.capture .timeedit .tesrc>span{color:var(--mut)}
+.capture .timeedit input[type=datetime-local],.capture .timeedit select{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 8px;min-width:0;max-width:100%;font:inherit}
+/* Speichern */
+.capture .savebar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--soft) 60%,var(--card))}
+.capture .msg{flex:1;color:var(--ok);font-size:13px}.capture .msg.err{color:var(--bad)}.capture .msg.warn{color:var(--warn)}
+.capture .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:38px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;text-decoration:none;font-size:14px}
+.capture .btn:hover{border-color:var(--mut)}
+.capture .btn.primary{background:var(--acc);border-color:var(--acc);color:var(--onacc);font-weight:600;min-width:120px}
+.capture .btn.primary:hover{filter:brightness(1.07)}
+.capture .btn:disabled{opacity:.5;cursor:not-allowed}
+/* „Von selbst speichern“: Füllbalken von links nach rechts auf der Taste */
+.capture #fnpsave.counting{position:relative;overflow:hidden;animation:none}
+.capture #fnpsave.counting::before{content:"";position:absolute;inset:0;width:var(--p,0%);background:rgba(255,255,255,.28);transition:width .1s linear;pointer-events:none}
+/* Uhr klein / aus (Adapter: viewOpts clock), Dichte kompakt */
+.capture.ck-small .clocknum{font-size:26px}.capture.ck-small .clockdate{font-size:12px}
+.capture.ck-off .clock{display:none}.capture.ck-off .capinfo{padding-left:0;border-left:0}
+.capture.dn-compact .caphead{padding:10px 14px 4px;gap:10px}.capture.dn-compact .clocknum{font-size:30px}
+.capture.dn-compact .capbody{padding:4px 14px 8px;gap:8px}.capture.dn-compact .groups{gap:5px}
+@media(min-width:601px){.capture.dn-compact .grp{grid-template-columns:84px 1fr;gap:8px}}
+.capture.dn-compact .tag{height:26px;padding:0 10px;font-size:13px}.capture.dn-compact #fnptext{min-height:46px;padding:8px 11px;font-size:15px}
+.capture.dn-compact .savebar{padding:8px 14px}.capture.dn-compact .secb{min-height:28px;padding:3px 10px}.capture.dn-compact.ck-small .clocknum{font-size:22px}
+/* Layout anpassen */
+.capture.lay{border-color:var(--acc);box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 30%,transparent),var(--sh,0 0 #0000)}
+.capture.lay .savebar{display:none!important}
+.capture .laybar{padding:10px 18px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--acc) 6%,var(--card));display:grid;gap:8px}
+.capture .layhint{margin:0;font-size:13px;color:var(--mut)}
+.capture .laysecs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.capture .laysl{font-size:13px;color:var(--mut)}
+.capture .laysbox{display:flex;gap:6px;flex-wrap:wrap}
+.capture .laysec{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:5px 10px;min-height:34px;cursor:grab;font-size:13px;touch-action:none}
+.capture .laysec.off{text-decoration:line-through;border-style:dashed}
+.capture .laybtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.capture.lay #capttl,.capture.lay #fnpfrom{outline:1px dashed var(--acc);outline-offset:2px;border-radius:4px;cursor:text;min-width:4ch}
+.capture.lay #capttl:focus,.capture.lay #fnpfrom:focus{outline:2px solid var(--acc)}
+.capture.lay #secbar{display:none}
+.capture .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.capture .seg button{border:0;border-radius:0;background:transparent;color:var(--ink);padding:7px 12px;cursor:pointer;font-size:13.5px;min-height:0}
+.capture .seg button.on,.capture .seg button[aria-pressed="true"]{background:var(--acc);color:var(--onacc)}
+.capture .layprof{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--acc) 22%,var(--line))}
+.capture .layprof .seg button{min-height:34px;font-weight:600}
+.capture .layps{color:var(--mut);font-size:12.5px;flex:1 1 180px;min-width:0}
+.capture .laywid{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;margin:8px 0}
+.capture .layopt{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.capture .layopt .seg button{min-height:32px;padding:6px 10px}
+.capture .laytabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:6px 0 10px;overflow-x:auto}
+.capture .laytab{border:0;border-radius:0;background:transparent;color:var(--mut);padding:8px 12px;min-height:40px;font:inherit;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.capture .laytab.on{background:transparent;color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.capture .laytab:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+.capture .laytplrow{display:flex;margin-bottom:6px}
+/* Kopf einer Rubrik (auch Kopf eines Feldes in felder.js): schwach gewichtet, die Feld-Eingaben (.fbblk input) gehen vor */
+.capture .laygs{display:grid;gap:10px}
+.capture .layg{border:1px solid color-mix(in srgb,var(--gc) 40%,var(--line));border-radius:10px;padding:8px 10px;background:var(--card)}
+.capture .layg.off{opacity:.6;border-style:dashed}
+:where(.capture) .laygh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+:where(.capture) .laygh .hd{border:1px solid var(--line);background:var(--soft);color:var(--mut);border-radius:8px;width:34px;height:34px;padding:0;cursor:grab;touch-action:none}
+:where(.capture) .laygh .lgn{flex:1;min-width:120px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit;font-weight:600}
+:where(.capture) .laygh .lgc{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:transparent;cursor:pointer}
+:where(.capture) .laygh .lgd{border:0;background:transparent;width:34px;height:32px;padding:0;border-radius:8px;cursor:pointer}:where(.capture) .laygh .lgd:hover{background:var(--soft)}
+:where(.capture) .laygx{margin:-2px 0 6px}:where(.capture) .laygx input{width:100%;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
+.capture .laykeys{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
+.capture .layk{padding:0 0 0 4px;gap:0;cursor:default}
+.capture .layk .lkn{border:0;background:transparent;padding:0 8px;height:100%;min-height:0;border-radius:999px 0 0 999px;cursor:grab;touch-action:none;font:inherit;color:inherit}
+.capture .layk .lkx{border:0;border-left:1px solid color-mix(in srgb,var(--gc) 35%,var(--line));background:transparent;width:30px;height:100%;min-height:0;padding:0;border-radius:0 999px 999px 0;cursor:pointer;color:var(--mut);font-size:12px}
+.capture .layk.off .lkn{text-decoration:line-through;color:var(--mut)}
+.capture .layk.dragging,.capture .layg.dragging,.capture .laysec.dragging{opacity:.55;outline:2px dashed var(--acc)}
+@keyframes laypick{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--acc) 55%,transparent)}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--acc) 0%,transparent)}}
+.capture .layk.picked{animation:laypick .8s ease-out 3;outline:2px solid var(--acc);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.capture .layk.picked{animation:none}}
+.capture .lkform{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
+.capture .lkin{border:1px solid var(--acc);background:var(--card);color:var(--ink);border-radius:999px;padding:4px 10px;height:30px;min-width:0;width:12em;max-width:100%;font:inherit}
+.capture .lkin.lkt{width:7em}
+.capture .lga{justify-self:start}
+/* abgedockt (eigenes Fenster) */
+body.pop{background:var(--bg);margin:0;padding:0;overflow-x:hidden}
+body.pop .capture{margin:0;border-radius:0;border:0;min-height:100vh;display:flex;flex-direction:column;max-width:100vw;box-shadow:none}
+body.pop .capture .capbody{flex:1}
+body.pop .capture .laybar{padding:10px 12px}
+body.pop .capture .layps{flex-basis:100%}
+.popph{padding:12px 16px;margin-bottom:18px;background:var(--card);border:1px dashed var(--line,var(--bd));border-radius:var(--r,14px);display:flex;gap:10px;align-items:center;color:var(--ink,var(--tx))}
+.popph .grow{flex:1}
+/* Handy */
+@media(max-width:600px){
+  .capture .caphead{padding:14px 14px 4px;gap:12px}
+  .capture .clocknum{font-size:32px}
+  .capture .capbody{padding:6px 14px 12px}
+  .capture .grp{grid-template-columns:1fr;gap:4px}.capture .grp>span{padding:0}
+  .capture .tag{height:34px;font-size:14px}
+  .capture .savebar{position:sticky;bottom:0;z-index:5;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+  .capture .btn.primary{flex:0 0 auto;min-width:130px;height:44px}
+  .capture .laybar{padding:10px 14px}
+}
+/* nur echte Handys (Touch): je Rubrik eine Zeile zum Wischen, rechts ein Verlauf + Pfeil, solange es weitergeht.
+   Am PC und im abgedockten Fenster brechen die Tasten um. */
+@media(max-width:600px) and (pointer:coarse){
+  .capture .grp>div{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px 2px;scroll-padding:14px}
+  .capture .grp>div::-webkit-scrollbar{display:none}
+  .capture .grp{position:relative}
+  .capture .grp.ovf::after{content:"›";position:absolute;right:-14px;bottom:2px;height:34px;width:44px;display:grid;place-items:center end;padding-right:6px;font-size:22px;color:var(--mut);background:linear-gradient(to right,transparent,var(--card) 65%);pointer-events:none}
+}
+/* sehr schmale Handys: Uhr oben, Hinweis darunter */
+@media(max-width:380px){.capture .caphead{flex-wrap:wrap}.capture .capinfo{flex-basis:100%;order:3;padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:6px}.capture .clocknum{font-size:30px}.capture.ck-small .clocknum{font-size:24px}}

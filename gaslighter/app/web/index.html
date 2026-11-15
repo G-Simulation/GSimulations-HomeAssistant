@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="uplot.min.css?v={{VERSION}}">
 <link rel="stylesheet" href="gridstack.min.css?v={{VERSION}}">
 <link rel="stylesheet" href="app.css?v={{VERSION}}">
+<link rel="stylesheet" href="erfassung.css?v={{VERSION}}">
 <link rel="stylesheet" href="shoelace-ui.css?v={{VERSION}}">
 </head>
 <body>
@@ -37,39 +38,8 @@
   <div id="b_low" class="banner inf binfo"></div>
   <div id="b_pro" class="banner inf binfo"></div>
 
-  <section id="fnpanel" class="card fnpanel capture" aria-labelledby="capttl">
-    <div class="caphead">
-      <div class="clock"><time id="capclock" class="clocknum">--:--:--</time><span id="capdate" class="clockdate"></span></div>
-      <div class="capinfo"><b id="capttl" data-i="fn_btn"></b><small id="fnpfrom" class="fnpfrom"></small></div>
-      <button type="button" id="caplay" class="icon" data-ia="fc_lay" aria-pressed="false">▦</button>
-      <button type="button" id="pfopen" class="icon pfopen" data-ia="pf_teach_btn">🧩</button>
-      <button type="button" id="fnppop" class="icon fnppop" data-ia="pop_tip">⧉</button>
-      <button type="button" id="fnptog" class="icon fnptog" data-ia="fc_fold" aria-expanded="true">▾</button>
-    </div>
-    <div id="caplaybar" class="laybar" role="region" data-ia="fc_lay" hidden></div>
-    <div id="fnpbody" class="capbody">
-      <div id="secbar" class="secbar" role="group" data-ia="fc_sec_tip"></div>
-      <div id="fnpkinds" class="fbkinds" hidden></div>
-      <textarea id="fnptext" rows="2" maxlength="500" data-iph="fn_ph" data-ia="fc_a_text"></textarea>
-      <div id="fnptags" class="groups"></div>
-      <div class="witrow" id="secwit"><span class="witicon" aria-hidden="true">👤</span><input type="text" id="fnpwit" maxlength="80" data-iph="fn_wit" data-ia="fc_a_wit"><small id="sechwit" class="fbhelp" hidden></small></div>
-      <div class="timerow" id="sectime">
-        <button type="button" id="fnptimebtn" class="linkbtn" aria-expanded="false" aria-controls="fnpext"><span aria-hidden="true">🕒</span> <span id="fnptimetxt"></span></button>
-        <small id="sechtime" class="fbhelp" hidden></small>
-        <div id="fnpext" class="timeedit" hidden>
-          <label><span data-i="per_from"></span><input type="datetime-local" id="fnpfromi" step="1"><button type="button" id="fnpfnow" class="chip" data-i="fn_now"></button></label>
-          <label><span data-i="per_to"></span><input type="datetime-local" id="fnptoi" step="1"><button type="button" id="fnptnow" class="chip" data-i="fn_now"></button><button type="button" id="fnptclr" class="chip" data-ia="time_clear">✕</button></label>
-          <label class="tesrc"><span data-i="src_col"></span><select id="fnpsrc"></select></label>
-          <label class="check"><input type="checkbox" id="fnprun"> <span data-i="fnp_run"></span></label>
-          <label class="check"><input type="checkbox" id="fnpnotime"> <span data-i="fk_notime_l"></span></label>
-        </div>
-      </div>
-    </div>
-    <div class="savebar">
-      <small id="fnpmsg" class="msg fnpmsg" role="status" aria-live="polite"></small>
-      <button type="button" id="fnpsave" class="btn primary" data-i="save"></button>
-    </div>
-  </section>
+  <!-- „Notiz jetzt“: dieselbe Erfassung wie GReport (erfassung.js, Quelle GReport) -->
+  <section id="fnpanel" class="card fnpanel capture" aria-labelledby="capttl"></section>
   <div class="srcbar"><div id="srcbar" class="chips"></div><button id="srcadd" class="chip add">📱 <span data-i="add_phone_short"></span></button></div>
   <div class="tilebar" id="tilebar" hidden><b id="tilename"></b><span id="tilewarn" class="tilewarn"></span><span id="tiledots" class="tiledots"></span><button type="button" id="tileplay" class="chip tileplay">⏸</button><button type="button" id="tileset" class="chip tileplay" data-ia="tile_set">⚙</button></div>
   <div class="slidevp" id="vp0"><div class="slideinner">
@@ -87,7 +57,7 @@
     <div class="row">
       <h2 data-i="livetitle"></h2>
       <span class="seg"><button id="m_level" class="on" data-i="v_level"></button><button id="m_wave" data-i="v_wave"></button></span>
-      <button id="laybtn" class="chip laybtn" type="button" title="">🗂 <span data-i="lay_btn"></span></button>
+      <button id="crvbtn" class="chip laybtn" type="button" title="">🗂 <span data-i="lay_btn"></span></button>
       <label class="winl"><span data-i="window"></span>
         <select id="span" data-ia="window">
           <option value="10">10 s</option><option value="30">30 s</option><option value="60" selected>1 min</option>
@@ -400,6 +370,7 @@
 <script src="hadash-ui.js?v={{VERSION}}"></script>
 <script src="shoelace-ui.js?v={{VERSION}}"></script>
 <script src="felder.js?v={{VERSION}}"></script>
+<script src="erfassung.js?v={{VERSION}}"></script>
 <script src="app.js?v={{VERSION}}"></script>
 </body>
 </html>
