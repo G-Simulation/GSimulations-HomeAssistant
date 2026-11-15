@@ -11,13 +11,15 @@ window.Erfassung = (() => {
      now()       Uhrzeit in ms (GLighter: Uhr des Servers); fTime(ms) / fDate(ms) Uhr und Datum in der Kopfzeile
      secs        eingebaute Bereiche (z. B. ['txt','tags','wit','more','time'])
      viewOpts    Ansichts-Einstellungen im Editor, z. B. ['width','dens','tipmode'] oder ['clock','dens','style']
-     ui          Zusätze im Bildschirm: { more: HTML der Klappe „Mehr“, witExtra: HTML am Zeugen, witMax, att, tips, tplFirst, src, fold: {key}, head: HTML-Knöpfe }
+     ui          Zusätze im Bildschirm: { more: HTML der Klappe „Mehr“, witExtra: HTML am Zeugen, witMax, att (📎/📷), tips (💡-Plätze), tplFirst (Vorlage beim
+                 ersten Start), src (Auswahl Gerät), fold: {key, open()} (Einklappen ▾), head: HTML weiterer Knöpfe in der Kopfzeile }
      layout      { get() → {title, sub, order, width, dens, tipmode, clock, style, pop, sechide, sechide_pop, hideSec?},
                    saveFb(fb), save(pf), saveQuick(key, list), reset() }   – wo „Layout anpassen“ und die Schnell-Schalter gespeichert werden
      saveNote(body, info)  Notiz speichern (Format wie GReport „note“) → {ok, error, fields, note: {id, a}, msg?}
      Hooks (alle freiwillig): qtIn(j), tagsLoaded(), tagsChanged(), onStart(ms), liveInfo(), onReset(), onEdit(n), onSaved(r, body, info),
-       manage(box), afterTpl(j), stats(), list(), tips(root), tipModeApply(), witSlot(box, body), extOld(), extFill(x), persons(), personsInfo(),
-       popOk(), onPop(doc), onBack(), width(w), autosave(), kindHold, att {pending(), reset(), draw(), upload(items, id, msg)} */
+       manage(box), afterTpl(j), stats(), list(), tips(root), tipMode(), tipModeApply(), witSlot(box, body), extOld(), extFill(x), persons(), personsInfo(),
+       popOk(), onPop(doc), onBack(), width(w), autosave() → Sekunden, kindHold (Art lange drücken = bearbeiten), att {pending(), reset(), draw(), upload(items, id, msg)}
+     Neue Möglichkeiten nur über den Adapter einschalten – sonst bleibt der Bildschirm in beiden Apps gleich (tests/smoke_ui.py in GLighter vergleicht ihn). */
   const H = { name: 'GReport', t: k => k, lang: () => 'de', toast: () => { }, now: () => Date.now(), fTime: ms => new Date(ms).toLocaleTimeString(), fDate: ms => new Date(ms).toLocaleDateString(),
     secs: ['txt', 'tags', 'wit', 'time'], viewOpts: ['dens'], ui: {}, layout: null, saveNote: null };
   const hook = (k, ...a) => typeof H[k] === 'function' ? H[k](...a) : undefined;
